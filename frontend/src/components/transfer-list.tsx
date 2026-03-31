@@ -73,11 +73,7 @@ export default function TransferList() {
                             <span key={i} className='h-5 w-5 flex flex-col justify-center items-center'>
                               {val.status === 'completed' && <SquareCheck size={20} />}
                               {val.status === 'pending' && <SquareDashed size={20} />}
-                              {val.status === 'running' && (
-                                <div className='w-4.5 h-4.5 rounded-full border border-secondary-foreground' style={{
-                                  background: `conic-gradient(var(--foreground) ${val.sent / val.size * 360}deg, rgba(0, 0, 0, 0) ${val.sent / val.size * 360 + 1}deg)`
-                                }} />
-                              )}
+                              {val.status === 'running' && <Spinner className='w-5 h-5' />}
                             </span>
                           ))}
                         </div>

@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 import { Dialog as BaseDialog } from '@base-ui/react'
 import { Button } from "@/components/ui/button";
-import instance from "@/lib/axios";
+import api from '@/lib/api';
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useState } from 'react'
@@ -23,7 +23,7 @@ import { OpaqueClient, OpaqueID, RegistrationResponse, getOpaqueConfig, type Reg
 import { Slider } from '../ui/slider';
 import { aead, kdf } from '@/lib/crypto'
 import { argon2id } from '@/workers'
-import sodium, { from_base64, to_base64 } from 'libsodium-wrappers-sumo'
+import sodium from 'libsodium-wrappers-sumo'
 import { mutate } from '@/lib/swr'
 
 const registerSchema = z.object({
@@ -87,15 +87,10 @@ export default function RegisterDialog() {
         throw req;
       }
 
-      let response = await instance.post('/auth/register/start', {
-        username: data.username,
-        blinded: to_base64(new Uint8Array(req.serialize()))
-      });
-
-      const { message } = response.data.data;
+      const message = await api.startRegistration(data.username, req.serialize());
 
       const fin = await client.registerFinish(
-        RegistrationResponse.deserialize(cfg, Array.from(from_base64(message))),
+        RegistrationResponse.deserialize(cfg, Array.from(message)),
         'vault',
         data.username,
       );
@@ -118,7 +113,7 @@ export default function RegisterDialog() {
 
       const kek = kdf(umk, 'KEK');
 
-      const { cipher, nonce } = aead(JSON.stringify({
+      const rootMetadata = aead(JSON.stringify({
         type: 'folder',
         name: '/'
       }), kek);
@@ -126,18 +121,16 @@ export default function RegisterDialog() {
       const { publicKey, privateKey } = sodium.crypto_box_curve25519xchacha20poly1305_keypair();
 
       const epk = aead(privateKey, kek);
-      
-      response = await instance.post('/auth/register/finish', {
+
+      await api.completeRegistration({
         email: data.email,
         username: data.username,
-        opaqueRecord: to_base64(new Uint8Array(fin.record.serialize())),
-        publicKey: to_base64(publicKey),
-        encryptedPrivateKey: to_base64(epk.cipher),
-        privateKeyNonce: to_base64(epk.nonce),
-        encryptedRootMetadata: to_base64(cipher),
-        rootNonce: to_base64(nonce),
+        opaqueRecord: new Uint8Array(fin.record.serialize()),
+        publicKey,
+        privateKey: epk,
+        rootMetadata,
         kdf: {
-          salt: to_base64(salt),
+          salt,
           memoryCost: data.kdfMemoryCost,
           timeCost: data.kdfTimeCost,
           parallelism: data.kdfParallelism,

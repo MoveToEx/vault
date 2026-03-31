@@ -47,9 +47,9 @@ async function upload(file: File, parentId: number, umk: Uint8Array) {
 
     const kek = kdf(umk, 'KEK');
     const fek = sodium.crypto_aead_chacha20poly1305_ietf_keygen();
-    const encryptedFEK = aead(fek, kek);
+    const efek = aead(fek, kek);
 
-    const meta = aead(JSON.stringify({
+    const metadata = aead(JSON.stringify({
       name: file.name,
       mime: file.type,
       type: 'file'
@@ -57,8 +57,7 @@ async function upload(file: File, parentId: number, umk: Uint8Array) {
 
     const { id, chunks, chunkSize } = await rpc({
       type: 'init',
-      encryptedMetadata: meta.cipher,
-      metadataNonce: meta.nonce,
+      metadata,
       parentId,
       size: file.size,
       transferId,
@@ -138,7 +137,7 @@ async function upload(file: File, parentId: number, umk: Uint8Array) {
     await rpc({
       type: 'ack',
       uploadId: id,
-      encryptedKey: new Uint8Array([...encryptedFEK.nonce, ...encryptedFEK.cipher]),
+      encryptedKey: efek,
       transferId,
     });
 

@@ -1,3 +1,4 @@
+import type { AEADResult } from "./crypto";
 
 export type Wrapped<T> = {
   error?: string,
@@ -112,8 +113,7 @@ export type WorkerRequest = ({
   chunkIndex: number,
 } | {
   type: 'init',
-  encryptedMetadata: Uint8Array,
-  metadataNonce: Uint8Array,
+  metadata: AEADResult,
   parentId: number,
   size: number,
 } | {
@@ -124,7 +124,7 @@ export type WorkerRequest = ({
 } | {
   type: 'ack',
   uploadId: number,
-  encryptedKey: Uint8Array,
+  encryptedKey: AEADResult,
 } | {
   type: 'get',
   fileId: number

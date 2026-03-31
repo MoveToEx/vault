@@ -1,8 +1,6 @@
 import { store } from '@/stores'
 import type { TransferCommand, TransferMessage, WithId, WorkerRequest, WorkerResponse } from './types';
 import { chunkCompleted, chunkProgressUpdated, transferCanceled, transferCompleted, transferCreated, transferFailed, transferPaused, transferProgressUpdated, transferResumed, transferStarted } from '@/stores/transfer';
-import instance from './axios';
-import { to_base64 } from 'libsodium-wrappers-sumo';
 import { mutate } from './swr';
 import { AxiosError } from 'axios';
 import api from '@/lib/api';
@@ -56,36 +54,21 @@ class TransferBridge {
           break;
         }
         case 'init': {
-          const { size, encryptedMetadata, metadataNonce, parentId, $id } = message;
-
-          const response = await instance.post('/upload/init', {
-            size,
-            encryptedMetadata: to_base64(encryptedMetadata),
-            metadataNonce: to_base64(metadataNonce),
-            parentId
-          });
-
-          const { id, chunks, chunkSize }: {
-            id: number,
-            chunks: number,
-            chunkSize: number
-          } = response.data.data;
+          const { size, metadata, parentId, $id } = message;
+          const { id, chunks, chunkSize } = await api.initUpload(size, metadata, parentId);
           this.post({ type: 'init', chunks, chunkSize, id, $id });
-
           break;
         }
         case 'ack': {
           const { encryptedKey, uploadId, $id } = message;
-          await instance.post(`/upload/${uploadId}`, {
-            encryptedKey: to_base64(encryptedKey)
-          });
-
+          await api.completeUpload(uploadId, encryptedKey);
+          
           this.post({ type: 'ack', $id });
           break;
         }
         case 'chunk-ack': {
           const { chunkIndex, size, uploadId, $id } = message;
-          await instance.post(`/upload/${uploadId}/chunks/${chunkIndex + 1}/complete`, { size });
+          await api.completeChunk(uploadId, chunkIndex, size);
 
           this.post({ type: 'chunk-ack', $id });
           break;

@@ -13,11 +13,9 @@ import { Input } from "@/components/ui/input"
 import { Dialog as BaseDialog } from '@base-ui/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import instance from "@/lib/axios";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useState } from "react";
-import type { KDFParameters, Wrapped } from "@/lib/types";
 import { getOpaqueConfig, OpaqueClient, OpaqueID, type AuthClient } from "@cloudflare/opaque-ts";
 import { KE2 } from "@cloudflare/opaque-ts/lib/src/messages";
 import RegisterDialog from "./register";
@@ -26,7 +24,8 @@ import { mutate } from "@/lib/swr";
 import { argon2id } from "@/workers";
 import { useAppDispatch } from "@/stores";
 import { set as setUMK } from "@/stores/umk";
-import sodium, { from_base64, from_string, to_base64 } from 'libsodium-wrappers-sumo';
+import sodium, { from_string, to_base64 } from 'libsodium-wrappers-sumo';
+import api from '@/lib/api';
 
 
 const schema = z.object({
@@ -66,15 +65,10 @@ export default function LoginDialog({
         throw req;
       }
 
-      const res1 = await instance.post<Wrapped<{ ke2: string, loginStateID: string }>>('/auth/login/start', {
-        username: data.username,
-        ke1: to_base64(new Uint8Array(req.serialize())),
-      });
-
-      const { ke2, loginStateID } = res1.data.data;
+      const { ke2, loginStateID } = await api.startLogin(data.username, new Uint8Array(req.serialize()));
 
       const fin = await client.authFinish(
-        KE2.deserialize(cfg, Array.from(from_base64(ke2))),
+        KE2.deserialize(cfg, Array.from(ke2)),
         'vault',
         data.username
       );
@@ -83,31 +77,24 @@ export default function LoginDialog({
         throw fin;
       }
 
-      const res2 = await instance.post<Wrapped<{ refreshToken: string, kdf: KDFParameters, rootDirectory: number }>>('/auth/login/finish', {
-        ke3: to_base64(new Uint8Array(fin.ke3.serialize())),
-        loginStateID
+      const { refreshToken, kdf } = await api.finishLogin(new Uint8Array(fin.ke3.serialize()), loginStateID);
+
+      toast.success('Successfully logged in');
+
+      const umk = await argon2id({
+        iterations: kdf.timeCost,
+        memorySize: kdf.memoryCost * 1024,
+        parallelism: kdf.parallelism,
+        password: from_string(data.password),
+        salt: kdf.salt,
+        hashLength: 32,
       });
 
-      if (res2.status === 200) {
-        toast.success('Successfully logged in');
+      setRefreshToken(refreshToken);
+      dispatch(setUMK(to_base64(umk)));
 
-        const { refreshToken, kdf } = res2.data.data;
-
-        const umk = await argon2id({
-          iterations: kdf.timeCost,
-          memorySize: kdf.memoryCost * 1024,
-          parallelism: kdf.parallelism,
-          password: from_string(data.password),
-          salt: from_base64(kdf.salt),
-          hashLength: 32,
-        });
-
-        setRefreshToken(refreshToken);
-        dispatch(setUMK(to_base64(umk)));
-
-        mutate('self');
-        handle.close();
-      }
+      mutate('self');
+      handle.close();
     }
     catch (e) {
       if (e instanceof AxiosError) {
