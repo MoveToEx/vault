@@ -1,0 +1,170 @@
+
+export type Wrapped<T> = {
+  error?: string,
+  data: T,
+};
+
+export type KDFParameters = {
+  salt: string,
+  memoryCost: number,
+  timeCost: number,
+  parallelism: number,
+}
+
+export type FileMetadata = {
+  name: string,
+  mime: string,
+  type: 'file'
+}
+
+export type FolderMetadata = {
+  name: string,
+  type: 'folder'
+}
+
+export type Metadata = FileMetadata | FolderMetadata;
+
+export type TransferMessage = (
+  | {
+    type: 'transfer-created';
+    kind: 'upload' | 'download';
+    filename: string;
+    size: number;
+  }
+  | {
+    type: 'transfer-started';
+    filename?: string;
+    size?: number;
+    chunks: number;
+    chunkSize: number;
+  }
+  | {
+    type: 'chunk-started';
+    chunkIndex: number;
+  }
+  | {
+    type: 'chunk-progress';
+    chunkIndex: number;
+    sent: number
+  }
+  | {
+    type: 'chunk-complete';
+    chunkIndex: number;
+  }
+  | {
+    type: 'transfer-progress';
+    sent: number;
+  }
+  | {
+    type: 'transfer-complete';
+  }
+  | {
+    type: 'transfer-error';
+    error: string;
+  }
+  | {
+    type: 'transfer-paused';
+  }
+  | {
+    type: 'transfer-resumed';
+  }
+  | {
+    type: 'transfer-canceled';
+  }) & {
+    transferId: string,
+  };
+
+export type TransferCommand =
+  {
+    type: 'enqueue-upload';
+    file: File;
+    umk: Uint8Array;
+    parentId: number;
+  }
+  | { 
+    type: 'enqueue-download';
+    fileId: number;
+    umk: Uint8Array;
+  }
+  | {
+    type: 'pause-transfer';
+    transferId: string;
+  }
+  | {
+    type: 'resume-transfer';
+    transferId: string;
+  }
+  | {
+    type: 'cancel-transfer';
+    transferId: string;
+  };
+
+
+// Worker RPC
+
+export type WithId<T> = {
+  $id: string
+} & T;
+
+export type WorkerRequest = ({
+  type: 'presign'
+  uploadId: number,
+  chunkIndex: number,
+} | {
+  type: 'init',
+  encryptedMetadata: Uint8Array,
+  metadataNonce: Uint8Array,
+  parentId: number,
+  size: number,
+} | {
+  type: 'chunk-ack',
+  uploadId: number,
+  chunkIndex: number,
+  size: number,
+} | {
+  type: 'ack',
+  uploadId: number,
+  encryptedKey: Uint8Array,
+} | {
+  type: 'get',
+  fileId: number
+} | {
+  type: 'get-chunk',
+  fileId: number,
+  chunkIndex: number
+} | {
+  type: 'download',
+  blob: Blob,
+  filename: string,
+}) & {
+  transferId: string,
+}
+
+export type WorkerResponse = ({
+  type: 'presign',
+  url: string,
+} | {
+  type: 'init',
+  id: number,
+  chunks: number,
+  chunkSize: number,
+} | {
+  type: 'chunk-ack'
+} | {
+  type: 'ack'
+} | {
+  type: 'get',
+  chunks: number,
+  chunkSize: number,
+  size: number,
+  encryptedKey: string,
+  encryptedMetadata: string,
+  metadataNonce: string,
+} | {
+  type: 'get-chunk',
+  url: string,
+} | {
+  type: 'download'
+}) & {
+  error?: string,
+}

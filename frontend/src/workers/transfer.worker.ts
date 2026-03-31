@@ -1,0 +1,298 @@
+import { aead, aeadCompositeDecrypt, aeadDecrypt, kdf } from "@/lib/crypto";
+import type { FileMetadata, TransferCommand, TransferMessage, WithId, WorkerRequest, WorkerResponse } from "@/lib/types";
+import { from_base64 } from "libsodium-wrappers-sumo";
+import axios, { AxiosError } from "axios";
+import sodium from "libsodium-wrappers-sumo";
+
+async function rpc<R extends WorkerRequest>(req: R): Promise<Extract<WorkerResponse, { type: R['type'] }>> {
+  return new Promise((resolve, reject) => {
+    const $id = crypto.randomUUID();
+
+    const listener = (event: MessageEvent<WithId<Extract<WorkerResponse, { type: R['type'] }>>>) => {
+      if (event.data.type === req.type && event.data.$id === $id) {
+        self.removeEventListener('message', listener);
+
+        if (event.data.error) {
+          reject(new Error(event.data.error));
+        }
+        else {
+          resolve(event.data);
+        }
+      }
+    };
+
+    self.addEventListener('message', listener);
+
+    self.postMessage({ ...req, $id });
+  })
+}
+
+function post<R extends TransferMessage>(message: R) {
+  self.postMessage(message);
+}
+
+async function upload(file: File, parentId: number, umk: Uint8Array) {
+  const transferId = crypto.randomUUID();
+
+  try {
+    await sodium.ready;
+
+    post({
+      type: 'transfer-created',
+      transferId,
+      kind: 'upload',
+      filename: file.name,
+      size: file.size,
+    })
+
+    const kek = kdf(umk, 'KEK');
+    const fek = sodium.crypto_aead_chacha20poly1305_ietf_keygen();
+    const encryptedFEK = aead(fek, kek);
+
+    const meta = aead(JSON.stringify({
+      name: file.name,
+      mime: file.type,
+      type: 'file'
+    }), kek);
+
+    const { id, chunks, chunkSize } = await rpc({
+      type: 'init',
+      encryptedMetadata: meta.cipher,
+      metadataNonce: meta.nonce,
+      parentId,
+      size: file.size,
+      transferId,
+    });
+
+
+    post({
+      type: 'transfer-started',
+      transferId,
+      chunks,
+      chunkSize,
+    });
+
+    let acc = 0;
+
+    for (let i = 0; i < chunks; ++i) {
+      let sent = 0;
+
+      post({
+        type: 'chunk-started',
+        chunkIndex: i,
+        transferId,
+      });
+
+      const { url } = await rpc({
+        type: 'presign',
+        uploadId: id,
+        chunkIndex: i,
+        transferId,
+      });
+
+      const slice = file.slice(i * chunkSize, (i + 1) * chunkSize);
+
+      const { cipher, nonce } = aead(await slice.bytes(), fek);
+
+      const body = new Uint8Array(cipher.length + nonce.length);
+      body.set(nonce);
+      body.set(cipher, nonce.length);
+
+      await axios.put(url, body, {
+        headers: {
+          'Content-Type': 'application/octet-stream'
+        },
+        onUploadProgress(e) {
+          sent = e.loaded;
+          post({
+            type: 'chunk-progress',
+            sent: e.loaded,
+            chunkIndex: i,
+            transferId
+          });
+          post({
+            type: 'transfer-progress',
+            sent: acc + sent,
+            transferId
+          });
+        },
+      });
+
+      acc += sent;
+
+      await rpc({
+        type: 'chunk-ack',
+        uploadId: id,
+        chunkIndex: i,
+        size: slice.size,
+        transferId,
+      });
+
+      post({
+        type: 'chunk-complete',
+        transferId,
+        chunkIndex: i,
+      });
+    }
+
+    await rpc({
+      type: 'ack',
+      uploadId: id,
+      encryptedKey: new Uint8Array([...encryptedFEK.nonce, ...encryptedFEK.cipher]),
+      transferId,
+    });
+
+    post({
+      type: 'transfer-complete',
+      transferId,
+    });
+  }
+  catch (e) {
+    let message = 'unknown error';
+
+    if (e instanceof AxiosError) {
+      message = e.response?.data?.error ?? e.response?.statusText;
+    }
+    else if (e instanceof Error) {
+      message = e.message;
+    }
+
+    post({
+      type: 'transfer-error',
+      transferId,
+      error: message
+    })
+  }
+}
+
+async function download(fileId: number, umk: Uint8Array) {
+  await sodium.ready;
+  const transferId = crypto.randomUUID();
+
+  try {
+
+    post({
+      type: 'transfer-created',
+      transferId,
+      kind: 'download',
+      filename: '-',
+      size: 0
+    });
+
+    const { chunks, chunkSize, size, encryptedKey, encryptedMetadata, metadataNonce } = await rpc({
+      type: 'get',
+      fileId,
+      transferId
+    });
+
+    const kek = kdf(umk, 'KEK');
+    const fek = aeadCompositeDecrypt(from_base64(encryptedKey), kek);
+
+    const metadata: FileMetadata = JSON.parse(
+      new TextDecoder().decode(
+        aeadDecrypt(from_base64(encryptedMetadata), kek, from_base64(metadataNonce))
+      )
+    );
+
+    post({
+      type: 'transfer-started',
+      transferId,
+      chunks,
+      chunkSize,
+      filename: metadata.name,
+      size
+    });
+
+    const result: Uint8Array<ArrayBuffer>[] = [];
+    let acc = 0;
+
+    for (let i = 0; i < chunks; i++) {
+      let received = 0;
+
+      const { url } = await rpc({
+        type: 'get-chunk',
+        chunkIndex: i,
+        fileId,
+        transferId
+      });
+
+      post({
+        type: 'chunk-started',
+        chunkIndex: i,
+        transferId
+      });
+
+      const f = await axios.get(url, {
+        responseType: 'blob',
+        onDownloadProgress(event) {
+          received = event.loaded;
+
+          post({
+            type: 'chunk-progress',
+            sent: event.loaded,
+            chunkIndex: i,
+            transferId
+          });
+          post({
+            type: 'transfer-progress',
+            sent: acc + received,
+            transferId
+          });
+        },
+      });
+      acc += received;
+
+      const buf = f.data as Blob;
+
+      const plain = aeadCompositeDecrypt(await buf.bytes(), fek);
+
+      result.push(new Uint8Array(plain));
+      post({
+        type: 'chunk-complete',
+        chunkIndex: i,
+        transferId
+      });
+    }
+
+    post({
+      type: 'transfer-complete',
+      transferId,
+    });
+
+    const blob = new Blob(result);
+
+    await rpc({
+      type: 'download',
+      blob,
+      filename: metadata.name,
+      transferId
+    });
+  }
+  catch (e) {
+    let message = 'unknown error';
+
+    if (e instanceof AxiosError) {
+      message = e.response?.data?.error ?? e.response?.statusText;
+    }
+    else if (e instanceof Error) {
+      message = e.message;
+    }
+
+    post({
+      type: 'transfer-error',
+      transferId,
+      error: message
+    })
+  }
+}
+
+self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
+  const params = e.data;
+
+  if (params.type === 'enqueue-upload') {
+    await upload(params.file, params.parentId, params.umk);
+  }
+  else if (params.type === 'enqueue-download') {
+    await download(params.fileId, params.umk);
+  }
+}
