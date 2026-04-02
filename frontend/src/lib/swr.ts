@@ -65,7 +65,7 @@ function exclude<T>(obj: T, key: keyof T) {
 export default function useTaggedSWR<Args extends unknown[], Result>(params: Params<Args, Result>) {
   return useSWR<Result>(
     params.type === '$custom' ? exclude(params, 'fetcher') : params,
-    params.type === '$custom' ? params.fetcher : fetcher,
+    params.type === '$custom' ? (args: Exclude<CustomParams<Args, Result>, 'fetcher'>) => params.fetcher(...args.args) : fetcher,
     params.config
   );
 }
