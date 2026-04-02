@@ -31,9 +31,14 @@ func NewToken(userID int64, permission int64, expiration time.Duration) (string,
 }
 
 func ParseToken(s string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(s, &Claims{}, func(t *jwt.Token) (any, error) {
-		return config.GetConfig().JWT.PublicKey, nil
-	})
+	token, err := jwt.ParseWithClaims(
+		s,
+		&Claims{},
+		func(t *jwt.Token) (any, error) {
+			return config.GetConfig().JWT.PublicKey, nil
+		},
+		jwt.WithValidMethods([]string{jwt.SigningMethodEdDSA.Alg()}),
+	)
 
 	if err != nil {
 		return nil, err
