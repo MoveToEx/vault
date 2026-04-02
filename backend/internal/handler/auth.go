@@ -359,7 +359,8 @@ type RefreshPayload struct {
 }
 
 type RefreshResponse struct {
-	Token string `json:"token"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 func Refresh(c *gin.Context) {
@@ -387,11 +388,22 @@ func Refresh(c *gin.Context) {
 	token, err := utils.NewToken(ref.UserID, 0, time.Minute*5)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when generating token: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when generating token")
+		return
+	}
+
+	refreshToken := rand.Text()
+
+	if err := db.Query().UpdateSession(ctx, sqlc.UpdateSessionParams{
+		RefreshToken: ref.RefreshToken,
+		NewToken:     refreshToken,
+	}); err != nil {
+		utils.ErrorResponse(c, 500, "Failed when rotating refresh token")
 		return
 	}
 
 	utils.SuccessResponse(c, RefreshResponse{
-		Token: token,
+		Token:        token,
+		RefreshToken: refreshToken,
 	})
 }
