@@ -1,4 +1,7 @@
 import useTaggedSWR from "@/lib/swr";
+import useAuth from "./use-auth";
+import instance from "@/lib/axios";
+import type { Wrapped } from "@/lib/types";
 
 type Item = {
   id: number,
@@ -8,12 +11,19 @@ type Item = {
 }
 
 export default function useFiles(dir: number) {
-  return useTaggedSWR<[], Item[]>({
-    type: 'GET',
+  const { data } = useAuth();
+
+  return useTaggedSWR({
     tags: ['file', 'self'],
-    url: '/files',
-    query: {
-      dir: dir.toString()
+    args: [data?.id, dir] as const,
+    fetcher: async (_, dir) => {
+      const response = await instance.get<Wrapped<Item[]>>('/files', {
+        params: {
+          dir
+        }
+      });
+
+      return response.data.data;
     },
   });
 }

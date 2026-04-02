@@ -13,7 +13,7 @@ const instance = axios.create({
   withCredentials: true,
 });
 
-const startsWith = (str: string, prefix: string[]) => prefix.some(it => str.startsWith(it));
+const startsWith = (str: string | undefined, prefix: string[]) => !str ? false : prefix.some(it => str.startsWith(it));
 
 const AUTH_IGNORE = [
   '/auth/login',
@@ -42,9 +42,9 @@ instance.interceptors.request.use(
 instance.interceptors.response.use(
   null,
   async error => {
-    if (!(error instanceof AxiosError) ||
+    if ((!(error instanceof AxiosError)) ||
       error.response?.status !== 401 ||
-      startsWith(error.request?.url, AUTH_IGNORE)
+      startsWith(error.config?.url, AUTH_IGNORE)
     ) {
       throw error;
     }

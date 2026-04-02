@@ -18,19 +18,18 @@ type AuthResponse = {
 }
 
 export default function useAuth() {
-  const [session, , removeAT] = useLocalStorage('vault-access-token', '');
-  const [, , removeRT] = useLocalStorage('vault-refresh-token', '');
+  const [key, , removeAT] = useLocalStorage('vault-access-token', '');
+  const [_, , removeRT] = useLocalStorage('vault-refresh-token', '');
 
   return {
     ...useTaggedSWR({
-      type: '$custom',
       tags: ['user', 'self'],
-      args: [session],
-      async fetcher(session) {
+      args: [key],
+      async fetcher(key) {
         try {
           const response = await instance.get<Wrapped<AuthResponse>>('/auth/get', {
             headers: {
-              'Authorization': 'Bearer ' + session
+              'Authorization': 'Bearer ' + key
             }
           });
           return response.data.data;

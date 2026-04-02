@@ -1,60 +1,13 @@
 import useSWR, { mutate as SWRMutate, type SWRConfiguration } from "swr";
-import instance from "./axios";
 
-export type Tags = 'file' | 'user' | 'self';
+export type Tags = 'file' | 'user' | 'self' | 'share';
 
-type BaseParams = {
-  tags: Tags[],
-  disabled?: boolean,
-  immutable?: boolean,
-  config?: SWRConfiguration
-}
-
-export type GetParams = BaseParams & {
-  type: 'GET',
-  url: string,
-  query?: Record<string, string>,
-};
-
-export type PostParams = BaseParams & {
-  type: 'POST',
-  url: string,
-  query?: Record<string, string>,
-  payload?: unknown,
-}
-
-export type CustomParams<T extends unknown[], R> = BaseParams & {
-  type: '$custom',
+export type Params<T extends unknown[] = [], R = unknown> = {
   args: T,
   fetcher: (...args: T) => Promise<R>,
-}
-
-type Params<T extends unknown[] = unknown[], R = unknown> = GetParams | PostParams | CustomParams<T, R>;
-
-const fetcher = async <T extends unknown[], R>(params: Params<T, R>) => {
-  if (params.disabled) {
-    return null;
-  }
-  if (params.type === '$custom') {
-    const response = await params.fetcher(...params.args);
-    return response;
-  }
-  else if (params.type === 'GET') {
-    const query = new URLSearchParams(params.query);
-    const s = query.toString();
-
-    const response = await instance.get(params.url + (s.length === 0 ? '' : '?' + s));
-
-    return response.data.data;
-  }
-  else if (params.type === 'POST') {
-    const query = new URLSearchParams(params.query);
-    const s = query.toString();
-
-    const response = await instance.post(params.url + (s.length === 0 ? '' : '?' + s), params.payload);
-
-    return response.data.data;
-  }
+  tags: Tags[],
+  immutable?: boolean,
+  config?: SWRConfiguration
 }
 
 function exclude<T>(obj: T, key: keyof T) {
@@ -64,8 +17,11 @@ function exclude<T>(obj: T, key: keyof T) {
 
 export default function useTaggedSWR<Args extends unknown[], Result>(params: Params<Args, Result>) {
   return useSWR<Result>(
-    params.type === '$custom' ? exclude(params, 'fetcher') : params,
-    params.type === '$custom' ? (args: Exclude<CustomParams<Args, Result>, 'fetcher'>) => params.fetcher(...args.args) : fetcher,
+    exclude(params, 'fetcher'),
+    async ({ args }: Exclude<Params<Args, Result>, 'fetcher'>) => {
+      const result = await params.fetcher(...args);
+      return result;
+    },
     params.config
   );
 }
