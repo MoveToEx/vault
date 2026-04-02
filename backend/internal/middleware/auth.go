@@ -34,7 +34,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		claims, err := utils.ParseToken(parts[1])
 
 		if err != nil {
-			utils.ErrorResponse(c, 401, "Invalid session")
+			utils.ErrorResponse(c, 401, "Invalid session: %v", err)
 			c.Abort()
 			return
 		}

@@ -38,18 +38,23 @@ func RegisterStart(c *gin.Context) {
 	req, err := svr.Deserialize.RegistrationRequest(payload.Blinded)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Faile when deserializing registration: %v", err)
+		utils.ErrorResponse(c, 500, "Faile when deserializing registration")
 		return
 	}
 
 	credID := opaque.RandomBytes(64)
 	pks, err := svr.Deserialize.DecodeAkePublicKey(config.GetConfig().Opaque.ServerPublicKey)
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when decoding AKE key: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when decoding AKE key")
 		return
 	}
 
-	config.Redis().Set(ctx, "reg/cred_id:"+payload.Username, credID, time.Minute*10)
+	status := config.Redis().Set(ctx, "reg/cred_id:"+payload.Username, credID, time.Minute*10)
+
+	if status.Err() != nil {
+		utils.ErrorResponse(c, 500, "Failed when recording state")
+		return
+	}
 
 	response := svr.RegistrationResponse(req, pks, credID, config.GetConfig().Opaque.SecretOPRFSeed)
 
@@ -82,16 +87,16 @@ func RegisterFinish(c *gin.Context) {
 	var payload RegisterFinishPayload
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		utils.ErrorResponse(c, 400, "Invalid request: %v", err)
+		utils.ErrorResponse(c, 400, "Invalid request")
 		return
 	}
 
 	ctx := context.Background()
 
-	credID, err := config.Redis().Get(ctx, "reg/cred_id:"+payload.Username).Bytes()
+	credID, err := config.Redis().GetDel(ctx, "reg/cred_id:"+payload.Username).Bytes()
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when recovering credential ID: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when recovering credential ID")
 		return
 	}
 
@@ -100,7 +105,7 @@ func RegisterFinish(c *gin.Context) {
 	record, err := svr.Deserialize.RegistrationRecord(payload.OpaqueRecord)
 
 	if err != nil {
-		utils.ErrorResponse(c, 400, "Invalid record: %v", err)
+		utils.ErrorResponse(c, 400, "Invalid record")
 		return
 	}
 
@@ -125,7 +130,7 @@ func RegisterFinish(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating user: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when creating user")
 		return
 	}
 
@@ -136,7 +141,7 @@ func RegisterFinish(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating root directory: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when creating root directory")
 		return
 	}
 
@@ -149,7 +154,7 @@ func RegisterFinish(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when assigning root directory: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when assigning root directory")
 		return
 	}
 
@@ -175,7 +180,7 @@ func LoginStart(c *gin.Context) {
 	var payload LoginStartPayload
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		utils.ErrorResponse(c, 400, "Invalid request: %v", err)
+		utils.ErrorResponse(c, 400, "Invalid request")
 		return
 	}
 
@@ -184,7 +189,7 @@ func LoginStart(c *gin.Context) {
 	ke1, err := svr.Deserialize.KE1(payload.KE1)
 
 	if err != nil {
-		utils.ErrorResponse(c, 400, "Failed when deserializing KE1: %v", err)
+		utils.ErrorResponse(c, 400, "Failed when deserializing KE1")
 		return
 	}
 
@@ -200,7 +205,7 @@ func LoginStart(c *gin.Context) {
 	record, err := svr.Deserialize.RegistrationRecord(rec.OpaqueRecord)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when serializing record: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when serializing record")
 		return
 	}
 
@@ -218,7 +223,7 @@ func LoginStart(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when marshaling state: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when marshaling state")
 		return
 	}
 
@@ -244,7 +249,7 @@ func LoginFinish(c *gin.Context) {
 	var payload LoginFinishPayload
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		utils.ErrorResponse(c, 400, "Invalid request: %v", err)
+		utils.ErrorResponse(c, 400, "Invalid request")
 		return
 	}
 
@@ -253,38 +258,38 @@ func LoginFinish(c *gin.Context) {
 	ctx := context.Background()
 
 	if err != nil {
-		utils.ErrorResponse(c, 400, "Invalid KE3: %v", err)
+		utils.ErrorResponse(c, 400, "Invalid KE3")
 		return
 	}
 
 	raw, err := config.Redis().Get(ctx, "login/state_id:"+payload.LoginStateID).Bytes()
 
 	if err != nil {
-		utils.ErrorResponse(c, 400, "Invalid state id: %v", err)
+		utils.ErrorResponse(c, 400, "Invalid state id")
 		return
 	}
 
 	var state LoginState
 
 	if err := json.Unmarshal(raw, &state); err != nil {
-		utils.ErrorResponse(c, 500, "Failed when unmarshaling state: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when unmarshaling state")
 		return
 	}
 
 	if err := svr.SetAKEState(state.AKEState); err != nil {
-		utils.ErrorResponse(c, 500, "Invalid state: %v", err)
+		utils.ErrorResponse(c, 500, "Invalid state")
 		return
 	}
 
 	if err := svr.LoginFinish(ke3); err != nil {
-		utils.ErrorResponse(c, 401, "Invalid credential: %v", err)
+		utils.ErrorResponse(c, 401, "Invalid credential")
 		return
 	}
 
 	user, err := db.Query().GetUser(ctx, state.UserID)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting KDF parameters: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when getting KDF parameters")
 		return
 	}
 
@@ -298,7 +303,7 @@ func LoginFinish(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating session: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when creating session")
 		return
 	}
 
@@ -335,7 +340,7 @@ func GetHandler(c *gin.Context) {
 	user, err := db.Query().GetUser(ctx, userID)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting user: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when getting user")
 		return
 	}
 
@@ -376,7 +381,7 @@ func Refresh(c *gin.Context) {
 	ref, err := db.Query().GetSession(ctx, payload.RefreshToken)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting token: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when getting token")
 		return
 	}
 

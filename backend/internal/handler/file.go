@@ -40,7 +40,7 @@ func GetFiles(c *gin.Context) {
 	user, err := db.Query().GetUser(ctx, userID)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting user: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when getting user")
 		return
 	}
 
@@ -51,7 +51,7 @@ func GetFiles(c *gin.Context) {
 	files, err := db.Query().GetFiles(ctx, payload.DirID)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when collecting files: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when collecting files")
 		return
 	}
 
@@ -60,7 +60,7 @@ func GetFiles(c *gin.Context) {
 		Int64: payload.DirID,
 	})
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when collecting folders: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when collecting folders")
 		return
 	}
 
@@ -115,7 +115,7 @@ func GetFile(c *gin.Context) {
 	}
 
 	if file.OwnerID != userID {
-		utils.ErrorResponse(c, 409, "Ownership mismatch")
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
 		return
 	}
 
@@ -251,7 +251,7 @@ func NewFolder(c *gin.Context) {
 		user, err := db.Query().GetUser(ctx, userID)
 
 		if err != nil {
-			utils.ErrorResponse(c, 500, "Failed when getting user: %v", err)
+			utils.ErrorResponse(c, 500, "Failed when getting user")
 			return
 		}
 
@@ -269,7 +269,7 @@ func NewFolder(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating folder: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when creating folder")
 		return
 	}
 

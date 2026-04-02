@@ -25,7 +25,7 @@ func GetUploadSessions(c *gin.Context) {
 	up, err := db.Query().GetActiveUploadSession(ctx, userID)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when collecting sessions: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when collecting sessions")
 		return
 	}
 
@@ -51,7 +51,7 @@ func InitUpload(c *gin.Context) {
 	var payload InitUploadPayload
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		utils.ErrorResponse(c, 400, "Invalid request: %v", err)
+		utils.ErrorResponse(c, 400, "Invalid request")
 		return
 	}
 
@@ -60,7 +60,7 @@ func InitUpload(c *gin.Context) {
 	cnt, err := db.Query().CountActiveUploadSession(ctx, userID)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when counting sessions: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when counting sessions")
 		return
 	}
 
@@ -73,7 +73,7 @@ func InitUpload(c *gin.Context) {
 		user, err := db.Query().GetUser(ctx, userID)
 
 		if err != nil {
-			utils.ErrorResponse(c, 500, "Failed when getting user: %v", err)
+			utils.ErrorResponse(c, 500, "Failed when getting user")
 			return
 		}
 
@@ -100,7 +100,7 @@ func InitUpload(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Faile when creating upload: %v", err)
+		utils.ErrorResponse(c, 500, "Faile when creating upload")
 		return
 	}
 
@@ -140,14 +140,14 @@ func UploadChunkInit(c *gin.Context) {
 	key, err := gonanoid.New()
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when generating key: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when generating key")
 		return
 	}
 
 	up, err := db.Query().GetUploadSession(ctx, uploadID)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting session: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when getting session")
 		return
 	}
 
@@ -163,7 +163,7 @@ func UploadChunkInit(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating chunk: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when creating chunk")
 		return
 	}
 
@@ -173,7 +173,7 @@ func UploadChunkInit(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when signing request: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when signing request")
 		return
 	}
 
@@ -216,7 +216,7 @@ func UploadChunkComplete(c *gin.Context) {
 	up, err := db.Query().GetUploadSession(ctx, uploadID)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting session: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when getting session")
 		return
 	}
 
@@ -231,7 +231,7 @@ func UploadChunkComplete(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when checking chunk validity: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when checking chunk validity")
 		return
 	}
 
@@ -246,7 +246,7 @@ func UploadChunkComplete(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating chunk: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when creating chunk")
 		return
 	}
 
@@ -258,9 +258,8 @@ type UploadCompletePayload struct {
 }
 
 func UploadComplete(c *gin.Context) {
-	// TODO verify ownership
+	userID := c.GetInt64("UserID")
 
-	// userID := c.GetInt64("UserID")
 	uploadID, err := strconv.ParseInt(c.Param("upload_id"), 10, 64)
 
 	if err != nil {
@@ -276,6 +275,13 @@ func UploadComplete(c *gin.Context) {
 	}
 
 	ctx := context.Background()
+
+	upload, err := db.Query().GetUploadSession(ctx, uploadID)
+
+	if upload.UserID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
 
 	err = db.Transaction(ctx, func(tx *sqlc.Queries) error {
 		if err := tx.CompleteUploadSession(ctx, uploadID); err != nil {
@@ -304,7 +310,7 @@ func UploadComplete(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating file: %v", err)
+		utils.ErrorResponse(c, 500, "Failed when creating file")
 	}
 
 	utils.SuccessResponse(c, nil)
