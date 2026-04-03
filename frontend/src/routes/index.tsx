@@ -32,7 +32,7 @@ type Item = {
 const fileMenuHandle = Menu.createHandle<{ id: number, filename: string, }>();
 
 function FileList() {
-  const umk = useAppSelector(state => state.umk.value);
+  const umk = useAppSelector(state => state.key.value.umk);
   const path = useAppSelector(state => state.path.value);
   const dispatch = useAppDispatch();
 

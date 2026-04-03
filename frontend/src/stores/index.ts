@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit'
-import UMKReducer from './umk'
+import KeyReducer from './key'
 import PathReducer from './path'
 import TransferReducer from './transfer'
 import UIReducer from './ui'
@@ -8,7 +8,7 @@ import { useDispatch, useSelector, useStore } from 'react-redux'
 
 export const store = configureStore({
   reducer: {
-    umk: UMKReducer,
+    key: KeyReducer,
     path: PathReducer,
     transfer: TransferReducer,
     ui: UIReducer

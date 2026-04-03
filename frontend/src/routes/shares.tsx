@@ -1,6 +1,7 @@
 import RequireUMK from "@/components/require-umk";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import useAuth from "@/hooks/use-auth";
 import useMyShares from "@/hooks/use-my-shares";
@@ -27,18 +28,9 @@ function SharedWithMe() {
   const { data } = useShares(page);
   const { data: user } = useAuth();
 
-  const umk = useAppSelector(state => state.umk.value);
+  const umk = useAppSelector(state => state.key.value.umk);
+  const pkey = useAppSelector(state => state.key.value.privKey);
   const dispatch = useAppDispatch();
-
-  const pkey = useMemo(() => {
-    if (!umk || !user) return null;
-
-    const kek = kdf(from_base64(umk), 'KEK');
-
-    const result = aeadDecrypt(from_base64(user.encryptedPrivateKey), kek, from_base64(user.privateKeyNonce));
-
-    return result;
-  }, [umk, user]);
 
   const decrypted = useMemo(() => {
     if (!data || !user || !pkey) return [];
@@ -51,7 +43,7 @@ function SharedWithMe() {
           sodium.crypto_box_seal_open(
             from_base64(it.encryptedMetadata),
             from_base64(user.publicKey),
-            pkey,
+            from_base64(pkey),
           )
         )
       );
@@ -68,7 +60,7 @@ function SharedWithMe() {
 
   }, [data, user, pkey]);
 
-  if (!user || !umk) {
+  if (!user || !umk || !pkey) {
     return <></>
   }
 
@@ -121,10 +113,8 @@ function SharedWithMe() {
                 onClick={() => {
                   transferBridge.enqueueDownloadShare(
                     it.id,
-                    from_base64(umk),
                     from_base64(user.publicKey),
-                    from_base64(user.encryptedPrivateKey),
-                    from_base64(user.privateKeyNonce),
+                    from_base64(pkey),
                   );
                   dispatch(toggleTransferList(true));
                 }}>
@@ -144,7 +134,7 @@ function SharedByMe() {
   const { data } = useMyShares(page);
   const { data: user } = useAuth();
 
-  const umk = useAppSelector(state => state.umk.value);
+  const umk = useAppSelector(state => state.key.value.umk);
 
   const decrypted = useMemo(() => {
     if (!data || !user || !umk) return [];
@@ -196,37 +186,44 @@ function SharedByMe() {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
-            File name
-          </TableHead>
-          <TableHead>
-            Shared at
-          </TableHead>
-          <TableHead>
-            Action
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-
-      <TableBody>
-
-        {decrypted && decrypted?.length > 0 && decrypted.map(it => (
-          <TableRow key={it.id} className='group'>
-            <TableCell>
-              {it.name}
-            </TableCell>
-            <TableCell>
-              {it.createdAt.toLocaleDateString()}
-            </TableCell>
-            <TableCell>
-            </TableCell>
+    <div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>
+              File name
+            </TableHead>
+            <TableHead>
+              Shared at
+            </TableHead>
+            <TableHead>
+              Expires at
+            </TableHead>
+            <TableHead>
+              Action
+            </TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+
+        <TableBody>
+          {decrypted && decrypted?.length > 0 && decrypted.map(it => (
+            <TableRow key={it.id} className='group'>
+              <TableCell>
+                {it.name}
+              </TableCell>
+              <TableCell>
+                {it.createdAt.toLocaleString()}
+              </TableCell>
+              <TableCell>
+                {it.expiresAt.toLocaleString()}
+              </TableCell>
+              <TableCell>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   )
 }
 
@@ -240,6 +237,8 @@ export default function SharesPage() {
         Shared with you
       </p>
       <SharedWithMe />
+
+      <Separator className='my-4 ' />
 
       <p>
         Shared by you

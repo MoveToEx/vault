@@ -7,7 +7,7 @@ import { Dialog as BaseDialog } from '@base-ui/react';
 import LoginDialog from "./dialogs/login";
 import { useLocation, useNavigate } from "react-router";
 import { useAppDispatch } from "@/stores";
-import { set } from '@/stores/umk';
+import { reset as resetKeys } from '@/stores/key';
 import { logout } from "@/lib/utils";
 import type { FC } from "react";
 
@@ -81,7 +81,7 @@ function AccountMenu() {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => {
-            dispatch(set(''));
+            dispatch(resetKeys());
           }}>
             <Lock /> Lock
           </DropdownMenuItem>

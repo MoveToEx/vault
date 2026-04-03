@@ -7,7 +7,7 @@ import useAuth from "@/hooks/use-auth";
 const handle = BaseAlertDialog.createHandle<undefined>();
 
 export default function RequireUMK() {
-  const umk = useAppSelector(state => state.umk.value);
+  const umk = useAppSelector(state => state.key.value.umk);
   const { data, isLoading } = useAuth();
 
   useEffect(() => {

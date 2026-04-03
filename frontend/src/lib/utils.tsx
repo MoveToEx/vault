@@ -1,7 +1,7 @@
 import { store } from "@/stores";
 import { reset as resetPath } from "@/stores/path";
 import { clear } from "@/stores/transfer";
-import { set } from "@/stores/umk";
+import { reset } from "@/stores/key";
 import { clsx, type ClassValue } from "clsx"
 import { FileArchive, FileCode, FileCog, FileIcon, FileImage, FileMusic, FilePen, FilePlay } from "lucide-react";
 import { twMerge } from "tailwind-merge"
@@ -33,7 +33,7 @@ export function formatSize(size: number) {
 }
 
 export function logout() {
-  store.dispatch(set(''));
+  store.dispatch(reset());
   store.dispatch(resetPath());
   store.dispatch(clear());
 }
@@ -44,7 +44,7 @@ export function endsWith(str: string, suffix: string[]) {
 
 export function getIcon(name: string) {
   if (!name) return <FileIcon size={16} className='inline mx-2' />;
-  
+
   name = name.toLowerCase();
 
   if (endsWith(name, ['.rar', '.zip', '.zipx', '.7z', '.tar', '.gz', '.gz.zip', '.tar.bz'])) {

@@ -73,7 +73,8 @@ type StartLoginResponse = {
 
 type FinishLoginResponse = {
   refreshToken: string,
-  rootDirectory: number,
+  encryptedPrivateKey: Uint8Array,
+  privateKeyNonce: Uint8Array,
   kdf: KDFParameters
 }
 
@@ -215,6 +216,8 @@ const api = {
 
     return {
       ...data,
+      encryptedPrivateKey: from_base64(data.encryptedPrivateKey),
+      privateKeyNonce: from_base64(data.privateKeyNonce),
       kdf: {
         ...data.kdf,
         salt: from_base64(data.kdf.salt)

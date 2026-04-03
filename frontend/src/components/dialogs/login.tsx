@@ -23,9 +23,10 @@ import { useLocalStorage } from "usehooks-ts";
 import { mutate } from "@/lib/swr";
 import { argon2id } from "@/workers";
 import { useAppDispatch } from "@/stores";
-import { set as setUMK } from "@/stores/umk";
+import { set } from "@/stores/key";
 import sodium, { from_string, to_base64 } from 'libsodium-wrappers-sumo';
 import api from '@/lib/api';
+import { aeadDecrypt, kdf } from "@/lib/crypto";
 
 
 const schema = z.object({
@@ -77,21 +78,28 @@ export default function LoginDialog({
         throw fin;
       }
 
-      const { refreshToken, kdf } = await api.finishLogin(new Uint8Array(fin.ke3.serialize()), loginStateID);
+      const { refreshToken, kdf: kdfParams, encryptedPrivateKey, privateKeyNonce } = await api.finishLogin(new Uint8Array(fin.ke3.serialize()), loginStateID);
 
       toast.success('Successfully logged in');
 
       const umk = await argon2id({
-        iterations: kdf.timeCost,
-        memorySize: kdf.memoryCost * 1024,
-        parallelism: kdf.parallelism,
+        iterations: kdfParams.timeCost,
+        memorySize: kdfParams.memoryCost * 1024,
+        parallelism: kdfParams.parallelism,
         password: from_string(data.password),
-        salt: kdf.salt,
+        salt: kdfParams.salt,
         hashLength: 32,
       });
 
+      const kek = kdf(umk, 'KEK');
+
+      const privKey = aeadDecrypt(encryptedPrivateKey, kek, privateKeyNonce);
+
       setRefreshToken(refreshToken);
-      dispatch(setUMK(to_base64(umk)));
+      dispatch(set({
+        umk: to_base64(umk),
+        privKey: to_base64(privKey)
+      }));
 
       mutate('self');
       handle.close();

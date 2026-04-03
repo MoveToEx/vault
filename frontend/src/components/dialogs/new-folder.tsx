@@ -29,7 +29,7 @@ export default function NewFolderDialog() {
       name: ''
     }
   });
-  const umk = useAppSelector(state => state.umk.value);
+  const umk = useAppSelector(state => state.key.value.umk);
   const path = useAppSelector(state => state.path.value);
 
   const [loading, setLoading] = useState(false);

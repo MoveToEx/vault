@@ -13,7 +13,7 @@ import { toggleTransferList } from "@/stores/ui";
 const handle = BaseDialog.createHandle();
 
 export default function UploadDialog() {
-  const umk = useAppSelector(state => state.umk.value);
+  const umk = useAppSelector(state => state.key.value.umk);
   const dispatch = useAppDispatch();
 
   const path = useAppSelector(state => state.path.value);

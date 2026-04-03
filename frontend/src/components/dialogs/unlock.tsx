@@ -11,7 +11,7 @@ import { aeadDecrypt, kdf } from "@/lib/crypto";
 import { logout } from "@/lib/utils";
 import { argon2id } from "@/workers";
 import { useAppDispatch } from "@/stores";
-import { set } from "@/stores/umk";
+import { set } from "@/stores/key";
 import sodium, { to_base64, from_base64 } from "libsodium-wrappers-sumo";
 import { Spinner } from "../ui/spinner";
 import { Key, LogOut } from "lucide-react";
@@ -54,13 +54,16 @@ export default function UnlockDialog({ handle }: {
 
       await sodium.ready;
 
-      aeadDecrypt(
+      const privKey = aeadDecrypt(
         from_base64(auth.encryptedPrivateKey),
         kek,
         from_base64(auth.privateKeyNonce)
       );
 
-      dispatch(set(to_base64(umk)));
+      dispatch(set({
+        umk: to_base64(umk),
+        privKey: to_base64(privKey),
+      }));
 
       handle.close();
     }

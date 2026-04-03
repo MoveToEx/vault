@@ -36,14 +36,12 @@ class TransferBridge {
     });
   }
 
-  enqueueDownloadShare(shareId: number, umk: Uint8Array, pubKey: Uint8Array, eprivKey: Uint8Array, privKeyNonce: Uint8Array) {
+  enqueueDownloadShare(shareId: number, pubKey: Uint8Array, privKey: Uint8Array) {
     this.post({
       type: 'enqueue-download-share',
       shareId,
-      umk,
       publicKey: pubKey,
-      encryptedPrivateKey: eprivKey,
-      privateKeyNonce: privKeyNonce
+      privateKey: privKey,
     })
   }
 

@@ -241,8 +241,10 @@ type LoginFinishPayload struct {
 }
 
 type LoginFinishResponse struct {
-	RefreshToken string        `json:"refreshToken"`
-	KDF          KDFParameters `json:"kdf"`
+	RefreshToken        string        `json:"refreshToken"`
+	KDF                 KDFParameters `json:"kdf"`
+	EncryptedPrivateKey utils.Bytes   `json:"encryptedPrivateKey"`
+	PrivateKeyNonce     utils.Bytes   `json:"privateKeyNonce"`
 }
 
 func LoginFinish(c *gin.Context) {
@@ -308,7 +310,9 @@ func LoginFinish(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, LoginFinishResponse{
-		RefreshToken: session.RefreshToken,
+		RefreshToken:        session.RefreshToken,
+		EncryptedPrivateKey: user.EncryptedPrivateKey,
+		PrivateKeyNonce:     user.PrivateKeyNonce,
 		KDF: KDFParameters{
 			Salt:        user.KdfSalt,
 			MemoryCost:  user.KdfMemoryCost,
@@ -332,7 +336,7 @@ type GetResponse struct {
 	KdfParallelism      int32       `json:"kdfParallelism"`
 }
 
-func GetHandler(c *gin.Context) {
+func GetIdentity(c *gin.Context) {
 	userID := c.GetInt64("UserID")
 
 	ctx := context.Background()

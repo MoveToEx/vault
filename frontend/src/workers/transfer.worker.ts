@@ -285,7 +285,7 @@ async function download(fileId: number, umk: Uint8Array) {
   }
 }
 
-async function downloadShare(shareId: number, umk: Uint8Array, pubKey: Uint8Array, eprivKey: Uint8Array, privKeyNonce: Uint8Array) {
+async function downloadShare(shareId: number, pubKey: Uint8Array, privKey: Uint8Array) {
   await sodium.ready;
   const transferId = crypto.randomUUID();
 
@@ -305,8 +305,6 @@ async function downloadShare(shareId: number, umk: Uint8Array, pubKey: Uint8Arra
       transferId
     });
 
-    const kek = kdf(umk, 'KEK');
-    const privKey = aeadDecrypt(eprivKey, kek, privKeyNonce);
     const fek = sodium.crypto_box_seal_open(encryptedKey, pubKey, privKey);
 
     const metadata: FileMetadata = JSON.parse(
@@ -420,7 +418,7 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
       break;
     }
     case 'enqueue-download-share': {
-      await downloadShare(params.shareId, params.umk, params.publicKey, params.encryptedPrivateKey, params.privateKeyNonce);
+      await downloadShare(params.shareId, params.publicKey, params.privateKey);
       break;
     }
   }

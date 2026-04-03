@@ -33,7 +33,7 @@ export default function NewShareDialog({ handle }: {
   return (
     <Dialog handle={handle}>
       {function Content({ payload }) {
-        const umk = useAppSelector(state => state.umk.value);
+        const umk = useAppSelector(state => state.key.value.umk);
         const [loading, setLoading] = useState(false);
 
         const submit = async (data: z.infer<typeof schema>) => {

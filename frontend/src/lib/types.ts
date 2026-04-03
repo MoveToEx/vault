@@ -90,10 +90,8 @@ export type TransferCommand =
   | {
     type: 'enqueue-download-share';
     shareId: number;
-    umk: Uint8Array;
     publicKey: Uint8Array;
-    encryptedPrivateKey: Uint8Array;
-    privateKeyNonce: Uint8Array;
+    privateKey: Uint8Array;
   }
   | {
     type: 'pause-transfer';
