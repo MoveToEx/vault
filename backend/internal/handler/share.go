@@ -142,6 +142,7 @@ type GetSharesResponse struct {
 	ID                int64       `json:"id"`
 	SenderID          int64       `json:"senderId"`
 	ReceiverID        int64       `json:"receiverId"`
+	Sender            string      `json:"sender"`
 	EncryptedKey      utils.Bytes `json:"encryptedKey"`
 	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
 	CreatedAt         time.Time   `json:"createdAt"`
@@ -182,6 +183,7 @@ func GetShares(c *gin.Context) {
 			EncryptedMetadata: shares[i].EncryptedMetadata,
 			CreatedAt:         shares[i].CreatedAt.Time,
 			ExpiresAt:         shares[i].ExpiresAt.Time,
+			Sender:            shares[i].Sender,
 		})
 	}
 
@@ -197,6 +199,7 @@ type GetMySharesResponse struct {
 	ID                int64       `json:"id"`
 	SenderID          int64       `json:"senderId"`
 	ReceiverID        int64       `json:"receiverId"`
+	Receiver          string      `json:"receiver"`
 	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
 	MetadataNonce     utils.Bytes `json:"metadataNonce"`
 	CreatedAt         time.Time   `json:"createdAt"`
@@ -233,6 +236,7 @@ func GetMyShares(c *gin.Context) {
 			ID:                shares[i].ID,
 			SenderID:          shares[i].SenderID,
 			ReceiverID:        shares[i].ReceiverID,
+			Receiver:          shares[i].Receiver,
 			EncryptedMetadata: shares[i].EncryptedMetadata,
 			MetadataNonce:     shares[i].MetadataNonce,
 			CreatedAt:         shares[i].CreatedAt.Time,
@@ -349,4 +353,42 @@ func GetShareChunk(c *gin.Context) {
 		Headers: req.SignedHeader,
 		Method:  req.Method,
 	})
+}
+
+type DeleteSharePayload struct {
+	ShareID int64 `uri:"share_id"`
+}
+
+func DeleteShare(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	var payload DeleteSharePayload
+
+	if err := c.ShouldBindUri(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	ctx := context.Background()
+
+	share, err := db.Query().GetShare(ctx, payload.ShareID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting row")
+		return
+	}
+
+	if share.SenderID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
+
+	err = db.Query().InvalidateShare(ctx, payload.ShareID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when updating row")
+		return
+	}
+
+	utils.SuccessResponse(c, nil)
 }

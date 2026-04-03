@@ -263,6 +263,10 @@ const api = {
     const response = await instance.get<PresignResponse>(`/share/${shareId}/${index + 1}`);
 
     return response.data.data;
+  },
+  
+  async revokeShare(shareId: number) {
+    await instance.delete(`/share/${shareId}`);
   }
 };
 

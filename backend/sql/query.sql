@@ -169,18 +169,20 @@ VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetShares :many
-SELECT * FROM shares
-WHERE receiver_id = $1 AND expires_at > NOW()
-ORDER BY created_at DESC
+SELECT s.*, u.username AS sender FROM shares s
+INNER JOIN users u ON s.sender_id = u.id
+WHERE s.receiver_id = $1 AND s.expires_at > NOW()
+ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: GetSharesBySender :many
 SELECT
-    s.id, s.sender_id, s.receiver_id,
+    s.id, s.sender_id, s.receiver_id, u.username AS receiver,
     f.encrypted_metadata, f.metadata_nonce,
     s.created_at, s.expires_at
 FROM shares s
 INNER JOIN files f ON s.file_id = f.id
+INNER JOIN users u ON s.receiver_id = u.id
 WHERE s.sender_id = $1 AND s.expires_at > NOW()
 ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3;
@@ -195,5 +197,10 @@ SELECT s.*, c.* FROM shares s
 INNER JOIN files f ON s.file_id = f.id
 INNER JOIN file_chunks c ON c.file_id = f.id
 WHERE s.id = $1 AND c.chunk_index = $2 AND s.expires_at > NOW();
+
+-- name: InvalidateShare :exec
+UPDATE shares
+SET expires_at = NOW()
+WHERE id = $1;
 
 --#endregion

@@ -44,6 +44,7 @@ func SetupRoutes(r *gin.Engine) {
 		protected.GET("/share/my", handler.GetMyShares)
 		protected.GET("/share/:share_id", handler.GetShare)
 		protected.GET("/share/:share_id/:chunk_index", handler.GetShareChunk)
+		protected.DELETE("/share/:share_id", handler.DeleteShare)
 
 		protected.GET("/user/:username", handler.GetUser)
 	}

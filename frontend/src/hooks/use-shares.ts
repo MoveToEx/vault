@@ -7,6 +7,7 @@ type Item = {
   id: number,
   senderId: number,
   receiverId: number,
+  sender: string,
   encryptedMetadata: string,
   encryptedKey: string,
   createdAt: string,

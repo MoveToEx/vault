@@ -461,9 +461,10 @@ func (q *Queries) GetShareChunk(ctx context.Context, arg GetShareChunkParams) (G
 }
 
 const getShares = `-- name: GetShares :many
-SELECT id, file_id, sender_id, receiver_id, encrypted_fek, encrypted_metadata, created_at, expires_at FROM shares
-WHERE receiver_id = $1 AND expires_at > NOW()
-ORDER BY created_at DESC
+SELECT s.id, s.file_id, s.sender_id, s.receiver_id, s.encrypted_fek, s.encrypted_metadata, s.created_at, s.expires_at, u.username AS sender FROM shares s
+INNER JOIN users u ON s.sender_id = u.id
+WHERE s.receiver_id = $1 AND s.expires_at > NOW()
+ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -473,15 +474,27 @@ type GetSharesParams struct {
 	Offset     int32 `json:"offset"`
 }
 
-func (q *Queries) GetShares(ctx context.Context, arg GetSharesParams) ([]Share, error) {
+type GetSharesRow struct {
+	ID                int64              `json:"id"`
+	FileID            int64              `json:"fileId"`
+	SenderID          int64              `json:"senderId"`
+	ReceiverID        int64              `json:"receiverId"`
+	EncryptedFek      []byte             `json:"encryptedFek"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+	Sender            string             `json:"sender"`
+}
+
+func (q *Queries) GetShares(ctx context.Context, arg GetSharesParams) ([]GetSharesRow, error) {
 	rows, err := q.db.Query(ctx, getShares, arg.ReceiverID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Share{}
+	items := []GetSharesRow{}
 	for rows.Next() {
-		var i Share
+		var i GetSharesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.FileID,
@@ -491,6 +504,7 @@ func (q *Queries) GetShares(ctx context.Context, arg GetSharesParams) ([]Share, 
 			&i.EncryptedMetadata,
 			&i.CreatedAt,
 			&i.ExpiresAt,
+			&i.Sender,
 		); err != nil {
 			return nil, err
 		}
@@ -504,11 +518,12 @@ func (q *Queries) GetShares(ctx context.Context, arg GetSharesParams) ([]Share, 
 
 const getSharesBySender = `-- name: GetSharesBySender :many
 SELECT
-    s.id, s.sender_id, s.receiver_id,
+    s.id, s.sender_id, s.receiver_id, u.username AS receiver,
     f.encrypted_metadata, f.metadata_nonce,
     s.created_at, s.expires_at
 FROM shares s
 INNER JOIN files f ON s.file_id = f.id
+INNER JOIN users u ON s.receiver_id = u.id
 WHERE s.sender_id = $1 AND s.expires_at > NOW()
 ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3
@@ -524,6 +539,7 @@ type GetSharesBySenderRow struct {
 	ID                int64              `json:"id"`
 	SenderID          int64              `json:"senderId"`
 	ReceiverID        int64              `json:"receiverId"`
+	Receiver          string             `json:"receiver"`
 	EncryptedMetadata []byte             `json:"encryptedMetadata"`
 	MetadataNonce     []byte             `json:"metadataNonce"`
 	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
@@ -543,6 +559,7 @@ func (q *Queries) GetSharesBySender(ctx context.Context, arg GetSharesBySenderPa
 			&i.ID,
 			&i.SenderID,
 			&i.ReceiverID,
+			&i.Receiver,
 			&i.EncryptedMetadata,
 			&i.MetadataNonce,
 			&i.CreatedAt,
@@ -703,6 +720,17 @@ func (q *Queries) GetUserByName(ctx context.Context, username string) (User, err
 		&i.LastLoginAt,
 	)
 	return i, err
+}
+
+const invalidateShare = `-- name: InvalidateShare :exec
+UPDATE shares
+SET expires_at = NOW()
+WHERE id = $1
+`
+
+func (q *Queries) InvalidateShare(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, invalidateShare, id)
+	return err
 }
 
 const migrateChunks = `-- name: MigrateChunks :exec

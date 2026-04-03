@@ -12,13 +12,23 @@ import type { FileMetadata } from "@/lib/types";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleTransferList } from "@/stores/ui";
 import sodium, { from_base64, to_string } from "libsodium-wrappers-sumo";
-import { Download, Share2 } from "lucide-react";
+import { Ban, Download, Share2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Dialog as BaseDialog } from "@base-ui/react";
+import RevokeShareDialog from "@/components/dialogs/revoke-share";
 
 type ShareMetadata = FileMetadata & {
   createdAt: Date,
   expiresAt: Date,
   id: number,
+  sender: string,
+}
+
+type MyShareMetadata = FileMetadata & {
+  createdAt: Date,
+  expiresAt: Date,
+  id: number,
+  receiver: string,
 }
 
 function SharedWithMe() {
@@ -53,6 +63,7 @@ function SharedWithMe() {
         createdAt: new Date(it.createdAt),
         expiresAt: new Date(it.expiresAt),
         id: it.id,
+        sender: it.sender,
       });
     }
 
@@ -90,6 +101,9 @@ function SharedWithMe() {
             Shared at
           </TableHead>
           <TableHead>
+            Shared by
+          </TableHead>
+          <TableHead>
             Action
           </TableHead>
         </TableRow>
@@ -104,6 +118,9 @@ function SharedWithMe() {
             </TableCell>
             <TableCell>
               {it.createdAt.toLocaleDateString()}
+            </TableCell>
+            <TableCell>
+              {it.sender}
             </TableCell>
             <TableCell>
               <Button
@@ -128,6 +145,8 @@ function SharedWithMe() {
   )
 }
 
+const revokeHandle = BaseDialog.createHandle<{ id: number, filename: string }>();
+
 function SharedByMe() {
   const [page] = useState(1);
 
@@ -139,7 +158,7 @@ function SharedByMe() {
   const decrypted = useMemo(() => {
     if (!data || !user || !umk) return [];
 
-    const result: ShareMetadata[] = [];
+    const result: MyShareMetadata[] = [];
 
     const kek = kdf(from_base64(umk), 'KEK');
 
@@ -159,6 +178,7 @@ function SharedByMe() {
         createdAt: new Date(it.createdAt),
         expiresAt: new Date(it.expiresAt),
         id: it.id,
+        receiver: it.receiver,
       });
     }
 
@@ -187,6 +207,7 @@ function SharedByMe() {
 
   return (
     <div>
+      <RevokeShareDialog handle={revokeHandle} />
       <Table>
         <TableHeader>
           <TableRow>
@@ -198,6 +219,9 @@ function SharedByMe() {
             </TableHead>
             <TableHead>
               Expires at
+            </TableHead>
+            <TableHead>
+              Shared with
             </TableHead>
             <TableHead>
               Action
@@ -218,6 +242,20 @@ function SharedByMe() {
                 {it.expiresAt.toLocaleString()}
               </TableCell>
               <TableCell>
+                {it.receiver}
+              </TableCell>
+              <TableCell className='flex flex-row items-center justify-start gap-2'>
+                {it.type === 'file' && (
+                  <Button
+                    className='duration-[0] invisible group-hover:visible text-destructive'
+                    variant='outline'
+                    size='icon-sm'
+                    onClick={() => {
+                      revokeHandle.openWithPayload({ id: it.id, filename: it.name });
+                    }}>
+                    <Ban />
+                  </Button>
+                )}
               </TableCell>
             </TableRow>
           ))}
