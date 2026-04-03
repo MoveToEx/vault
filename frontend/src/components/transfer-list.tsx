@@ -1,6 +1,6 @@
 import { Drawer } from "@base-ui/react";
 import { Button } from "./ui/button";
-import { ArrowUpDown, Ban, Check, CircleAlert, CircleDashed, DownloadCloudIcon, SquareCheck, SquareDashed, UploadIcon } from "lucide-react";
+import { ArrowUpDown, Ban, Check, CircleAlert, CircleDashed, DownloadCloudIcon, Share2, SquareCheck, SquareDashed, UploadIcon } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleTransferList } from "@/stores/ui";
 import { Spinner } from "./ui/spinner";
@@ -59,6 +59,7 @@ export default function TransferList() {
                         <ProgressLabel className='flex flex-row items-center justify-start gap-2'>
                           {it.kind === 'download' && <DownloadCloudIcon className='inline' size={16} />}
                           {it.kind === 'upload' && <UploadIcon className='inline' size={16} />}
+                          {it.kind === 'download-share' && <Share2 className='inline' size={16} />}
                           {it.filename}
                         </ProgressLabel>
                         <ProgressValue />

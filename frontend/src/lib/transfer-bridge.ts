@@ -36,6 +36,17 @@ class TransferBridge {
     });
   }
 
+  enqueueDownloadShare(shareId: number, umk: Uint8Array, pubKey: Uint8Array, eprivKey: Uint8Array, privKeyNonce: Uint8Array) {
+    this.post({
+      type: 'enqueue-download-share',
+      shareId,
+      umk,
+      publicKey: pubKey,
+      encryptedPrivateKey: eprivKey,
+      privateKeyNonce: privKeyNonce
+    })
+  }
+
   post(message: TransferCommand | WithId<WorkerResponse>) {
     this.worker.postMessage(message);
   }
@@ -62,7 +73,7 @@ class TransferBridge {
         case 'ack': {
           const { encryptedKey, uploadId, $id } = message;
           await api.completeUpload(uploadId, encryptedKey);
-          
+
           this.post({ type: 'ack', $id });
           break;
         }
@@ -76,28 +87,37 @@ class TransferBridge {
 
         //#endregion
 
-        //#region Download RPC
-        case 'get': {
-          const { fileId, $id } = message;
+        //#region Share RPC
+        case 'get-share': {
+          const { shareId, $id } = message;
+          const result = await api.getShare(shareId);
 
-          const {
-            chunks, chunkSize, size,
-            encryptedKey, encryptedMetadata,
-            metadataNonce
-          } = await api.getFile(fileId);
-
-          this.post({
-            type: 'get',
-            $id, chunks, chunkSize, encryptedKey,
-            encryptedMetadata, metadataNonce, size
-          });
+          this.post({ type: 'get-share', ...result, $id });
           break;
         }
-        case 'get-chunk': {
+        case 'get-share-chunk': {
+          const { shareId, chunkIndex, $id } = message;
+          const result = await api.getShareChunk(shareId, chunkIndex);
+
+          this.post({ type: 'get-share-chunk', ...result, $id });
+          break;
+        }
+        //#endregion
+
+        //#region Download RPC
+        case 'get-file': {
+          const { fileId, $id } = message;
+
+          const result = await api.getFile(fileId);
+
+          this.post({ type: 'get-file', $id, ...result });
+          break;
+        }
+        case 'get-file-chunk': {
           const { fileId, chunkIndex, $id } = message;
           const { url } = await api.getChunk(fileId, chunkIndex);
 
-          this.post({ type: 'get-chunk', url, $id });
+          this.post({ type: 'get-file-chunk', url, $id });
 
           break;
         }
@@ -174,7 +194,7 @@ class TransferBridge {
           store.dispatch(transferFailed(message));
           break;
         }
-          
+
         //#endregion
       }
     }

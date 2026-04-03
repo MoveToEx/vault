@@ -61,6 +61,68 @@ func (q *Queries) DeleteFile(ctx context.Context, id int64) error {
 	return err
 }
 
+const findUserByEmail = `-- name: FindUserByEmail :many
+SELECT id, username, public_key FROM users
+WHERE email ILIKE CONCAT('%', $1::TEXT, '%')
+`
+
+type FindUserByEmailRow struct {
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	PublicKey []byte `json:"publicKey"`
+}
+
+func (q *Queries) FindUserByEmail(ctx context.Context, key string) ([]FindUserByEmailRow, error) {
+	rows, err := q.db.Query(ctx, findUserByEmail, key)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindUserByEmailRow{}
+	for rows.Next() {
+		var i FindUserByEmailRow
+		if err := rows.Scan(&i.ID, &i.Username, &i.PublicKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findUserByUsername = `-- name: FindUserByUsername :many
+SELECT id, username, public_key FROM users
+WHERE username ILIKE CONCAT('%', $1::TEXT, '%')
+`
+
+type FindUserByUsernameRow struct {
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	PublicKey []byte `json:"publicKey"`
+}
+
+func (q *Queries) FindUserByUsername(ctx context.Context, key string) ([]FindUserByUsernameRow, error) {
+	rows, err := q.db.Query(ctx, findUserByUsername, key)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindUserByUsernameRow{}
+	for rows.Next() {
+		var i FindUserByUsernameRow
+		if err := rows.Scan(&i.ID, &i.Username, &i.PublicKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getActiveUploadSession = `-- name: GetActiveUploadSession :many
 SELECT u.id, u.user_id, u.encrypted_metadata, u.metadata_nonce, u.parent_id, u.chunks, u.size, u.created_at, u.completed_at, u.expires_at, ARRAY_AGG(uc.chunk_index)::INT[] AS completed FROM uploads u
 INNER JOIN upload_chunks uc ON u.id = uc.upload_id
@@ -222,6 +284,26 @@ func (q *Queries) GetFiles(ctx context.Context, parentID int64) ([]File, error) 
 	return items, nil
 }
 
+const getFolder = `-- name: GetFolder :one
+SELECT id, encrypted_metadata, metadata_nonce, parent_id, owner_id, created_at, deleted_at FROM folders
+WHERE id = $1 AND deleted_at ISNULL
+`
+
+func (q *Queries) GetFolder(ctx context.Context, id int64) (Folder, error) {
+	row := q.db.QueryRow(ctx, getFolder, id)
+	var i Folder
+	err := row.Scan(
+		&i.ID,
+		&i.EncryptedMetadata,
+		&i.MetadataNonce,
+		&i.ParentID,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getKDFParameters = `-- name: GetKDFParameters :one
 SELECT id, kdf_memory_cost, kdf_parallelism, kdf_salt, kdf_time_cost
 FROM users
@@ -290,6 +372,190 @@ func (q *Queries) GetSession(ctx context.Context, refreshToken string) (Session,
 		&i.LastUsedAt,
 	)
 	return i, err
+}
+
+const getShare = `-- name: GetShare :one
+SELECT s.id, s.file_id, s.sender_id, s.receiver_id, s.encrypted_fek, s.encrypted_metadata, s.created_at, s.expires_at, f.chunks, f.size FROM shares s
+INNER JOIN files f ON s.file_id = f.id
+WHERE s.id = $1 AND s.expires_at > NOW()
+`
+
+type GetShareRow struct {
+	ID                int64              `json:"id"`
+	FileID            int64              `json:"fileId"`
+	SenderID          int64              `json:"senderId"`
+	ReceiverID        int64              `json:"receiverId"`
+	EncryptedFek      []byte             `json:"encryptedFek"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+	Chunks            int32              `json:"chunks"`
+	Size              int64              `json:"size"`
+}
+
+func (q *Queries) GetShare(ctx context.Context, id int64) (GetShareRow, error) {
+	row := q.db.QueryRow(ctx, getShare, id)
+	var i GetShareRow
+	err := row.Scan(
+		&i.ID,
+		&i.FileID,
+		&i.SenderID,
+		&i.ReceiverID,
+		&i.EncryptedFek,
+		&i.EncryptedMetadata,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.Chunks,
+		&i.Size,
+	)
+	return i, err
+}
+
+const getShareChunk = `-- name: GetShareChunk :one
+SELECT s.id, s.file_id, s.sender_id, s.receiver_id, s.encrypted_fek, s.encrypted_metadata, s.created_at, s.expires_at, c.file_id, c.chunk_index, c.s3_key, c.size, c.checksum FROM shares s
+INNER JOIN files f ON s.file_id = f.id
+INNER JOIN file_chunks c ON c.file_id = f.id
+WHERE s.id = $1 AND c.chunk_index = $2 AND s.expires_at > NOW()
+`
+
+type GetShareChunkParams struct {
+	ID         int64 `json:"id"`
+	ChunkIndex int32 `json:"chunkIndex"`
+}
+
+type GetShareChunkRow struct {
+	ID                int64              `json:"id"`
+	FileID            int64              `json:"fileId"`
+	SenderID          int64              `json:"senderId"`
+	ReceiverID        int64              `json:"receiverId"`
+	EncryptedFek      []byte             `json:"encryptedFek"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+	FileID_2          int64              `json:"fileId2"`
+	ChunkIndex        int32              `json:"chunkIndex"`
+	S3Key             string             `json:"s3Key"`
+	Size              int64              `json:"size"`
+	Checksum          []byte             `json:"checksum"`
+}
+
+func (q *Queries) GetShareChunk(ctx context.Context, arg GetShareChunkParams) (GetShareChunkRow, error) {
+	row := q.db.QueryRow(ctx, getShareChunk, arg.ID, arg.ChunkIndex)
+	var i GetShareChunkRow
+	err := row.Scan(
+		&i.ID,
+		&i.FileID,
+		&i.SenderID,
+		&i.ReceiverID,
+		&i.EncryptedFek,
+		&i.EncryptedMetadata,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.FileID_2,
+		&i.ChunkIndex,
+		&i.S3Key,
+		&i.Size,
+		&i.Checksum,
+	)
+	return i, err
+}
+
+const getShares = `-- name: GetShares :many
+SELECT id, file_id, sender_id, receiver_id, encrypted_fek, encrypted_metadata, created_at, expires_at FROM shares
+WHERE receiver_id = $1 AND expires_at > NOW()
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetSharesParams struct {
+	ReceiverID int64 `json:"receiverId"`
+	Limit      int32 `json:"limit"`
+	Offset     int32 `json:"offset"`
+}
+
+func (q *Queries) GetShares(ctx context.Context, arg GetSharesParams) ([]Share, error) {
+	rows, err := q.db.Query(ctx, getShares, arg.ReceiverID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Share{}
+	for rows.Next() {
+		var i Share
+		if err := rows.Scan(
+			&i.ID,
+			&i.FileID,
+			&i.SenderID,
+			&i.ReceiverID,
+			&i.EncryptedFek,
+			&i.EncryptedMetadata,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSharesBySender = `-- name: GetSharesBySender :many
+SELECT
+    s.id, s.sender_id, s.receiver_id,
+    f.encrypted_metadata, f.metadata_nonce,
+    s.created_at, s.expires_at
+FROM shares s
+INNER JOIN files f ON s.file_id = f.id
+WHERE s.sender_id = $1 AND s.expires_at > NOW()
+ORDER BY s.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetSharesBySenderParams struct {
+	SenderID int64 `json:"senderId"`
+	Limit    int32 `json:"limit"`
+	Offset   int32 `json:"offset"`
+}
+
+type GetSharesBySenderRow struct {
+	ID                int64              `json:"id"`
+	SenderID          int64              `json:"senderId"`
+	ReceiverID        int64              `json:"receiverId"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	MetadataNonce     []byte             `json:"metadataNonce"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+}
+
+func (q *Queries) GetSharesBySender(ctx context.Context, arg GetSharesBySenderParams) ([]GetSharesBySenderRow, error) {
+	rows, err := q.db.Query(ctx, getSharesBySender, arg.SenderID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetSharesBySenderRow{}
+	for rows.Next() {
+		var i GetSharesBySenderRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SenderID,
+			&i.ReceiverID,
+			&i.EncryptedMetadata,
+			&i.MetadataNonce,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getSubfolders = `-- name: GetSubfolders :many
@@ -378,6 +644,41 @@ WHERE id = $1
 
 func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 	row := q.db.QueryRow(ctx, getUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Username,
+		&i.OpaqueRecord,
+		&i.CredentialIdentifier,
+		&i.Permission,
+		&i.Capacity,
+		&i.KdfSalt,
+		&i.KdfMemoryCost,
+		&i.KdfTimeCost,
+		&i.KdfParallelism,
+		&i.PublicKey,
+		&i.EncryptedPrivateKey,
+		&i.PrivateKeyNonce,
+		&i.RootFolder,
+		&i.IsActive,
+		&i.IsLocked,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LastLoginAt,
+	)
+	return i, err
+}
+
+const getUserByName = `-- name: GetUserByName :one
+
+SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, private_key_nonce, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
+WHERE username = $1
+`
+
+// #region Sharing
+func (q *Queries) GetUserByName(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByName, username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -549,6 +850,42 @@ func (q *Queries) NewSession(ctx context.Context, arg NewSessionParams) (Session
 	return i, err
 }
 
+const newShare = `-- name: NewShare :one
+INSERT INTO shares(file_id, sender_id, receiver_id, encrypted_fek, encrypted_metadata)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, file_id, sender_id, receiver_id, encrypted_fek, encrypted_metadata, created_at, expires_at
+`
+
+type NewShareParams struct {
+	FileID            int64  `json:"fileId"`
+	SenderID          int64  `json:"senderId"`
+	ReceiverID        int64  `json:"receiverId"`
+	EncryptedFek      []byte `json:"encryptedFek"`
+	EncryptedMetadata []byte `json:"encryptedMetadata"`
+}
+
+func (q *Queries) NewShare(ctx context.Context, arg NewShareParams) (Share, error) {
+	row := q.db.QueryRow(ctx, newShare,
+		arg.FileID,
+		arg.SenderID,
+		arg.ReceiverID,
+		arg.EncryptedFek,
+		arg.EncryptedMetadata,
+	)
+	var i Share
+	err := row.Scan(
+		&i.ID,
+		&i.FileID,
+		&i.SenderID,
+		&i.ReceiverID,
+		&i.EncryptedFek,
+		&i.EncryptedMetadata,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const newUpload = `-- name: NewUpload :one
 INSERT INTO uploads (
     user_id, chunks, size, expires_at, parent_id, encrypted_metadata, metadata_nonce
@@ -715,5 +1052,21 @@ type SetRootFolderParams struct {
 
 func (q *Queries) SetRootFolder(ctx context.Context, arg SetRootFolderParams) error {
 	_, err := q.db.Exec(ctx, setRootFolder, arg.RootFolder, arg.ID)
+	return err
+}
+
+const updateSession = `-- name: UpdateSession :exec
+UPDATE sessions
+SET refresh_token = $2
+WHERE refresh_token = $1
+`
+
+type UpdateSessionParams struct {
+	RefreshToken string `json:"refreshToken"`
+	NewToken     string `json:"newToken"`
+}
+
+func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) error {
+	_, err := q.db.Exec(ctx, updateSession, arg.RefreshToken, arg.NewToken)
 	return err
 }

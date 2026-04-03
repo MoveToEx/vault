@@ -48,6 +48,18 @@ func GetFiles(c *gin.Context) {
 		payload.DirID = user.RootFolder.Int64
 	}
 
+	cur, err := db.Query().GetFolder(ctx, payload.DirID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting folder")
+		return
+	}
+
+	if cur.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
+
 	files, err := db.Query().GetFiles(ctx, payload.DirID)
 
 	if err != nil {

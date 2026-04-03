@@ -1,19 +1,21 @@
-import { Trash } from "lucide-react";
+import { Share2, Trash } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from "./ui/dropdown-menu";
-import { Menu as BaseMenu } from '@base-ui/react';
+import { Menu as BaseMenu, Dialog as BaseDialog, AlertDialog as BaseAlertDialog } from '@base-ui/react';
 import { useState } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
-import { AlertDialog as BaseAlertDialog } from "@base-ui/react";
 import api from '@/lib/api';
 import { mutate } from "@/lib/swr";
+import NewShareDialog from "./dialogs/new-share";
 
 type Payload = {
-  id: number;
+  id: number,
+  filename: string,
 }
 
-const deleteHandle = BaseAlertDialog.createHandle<{ id: number }>();
+const deleteHandle = BaseAlertDialog.createHandle<{ id: number, filename: string, }>();
+const shareHandle = BaseDialog.createHandle<{ id: number, filename: string, }>();
 
-function DeleteDialog({ handle }: { handle: BaseAlertDialog.Handle<{ id: number }> }) {
+function DeleteDialog({ handle }: { handle: BaseAlertDialog.Handle<{ id: number, filename: string }> }) {
   return (
     <AlertDialog handle={handle}>
       {function Content({ payload }) {
@@ -60,15 +62,29 @@ export default function FilePopupMenu({ handle }: { handle: BaseMenu.Handle<Payl
   return (
     <div>
       <DeleteDialog handle={deleteHandle} />
+      <NewShareDialog handle={shareHandle} />
+
       <DropdownMenu<Payload> handle={handle}>
         {({ payload }) => (
           <DropdownMenuContent>
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => {
-                deleteHandle.openWithPayload({ id: payload?.id ?? 0 });
+                deleteHandle.openWithPayload({
+                  id: payload?.id ?? 0,
+                  filename: payload?.filename ?? '',
+                });
               }} className='text-destructive'>
                 <Trash />
                 Delete
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                shareHandle.openWithPayload({
+                  id: payload?.id ?? 0,
+                  filename: payload?.filename ?? '',
+                });
+              }}>
+                <Share2 />
+                Share
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>

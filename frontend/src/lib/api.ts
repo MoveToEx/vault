@@ -1,9 +1,8 @@
-import { AxiosError, type AxiosResponse } from "axios";
+import axios, { type AxiosResponse } from "axios";
 import instance from "./axios"
-import { toast } from "sonner";
 import { createComposite, type AEADResult } from "./crypto";
 import { from_base64, to_base64 } from "libsodium-wrappers-sumo";
-import type { Wrapped } from "./types";
+import type { KDFParameters, Wrapped } from "./types";
 
 type Unserializable = Uint8Array;
 
@@ -27,11 +26,16 @@ type Serialized<T> = T extends Unserializable ? string : (
   )
 );
 
+type RefreshResponse = Wrapped<{
+  accessKey: string,
+  refreshKey: string,
+}>
+
 type GetFileResponse = Wrapped<{
   chunks: number,
   chunkSize: number,
   size: number,
-  encryptedKey: string,
+  encryptedKey: string,         // [ ] string -> Uint8Array
   encryptedMetadata: string,
   metadataNonce: string,
 }>;
@@ -59,12 +63,7 @@ type FinishRegistrationPayload = {
   publicKey: Uint8Array,
   privateKey: AEADResult,
   rootMetadata: AEADResult,
-  kdf: {
-    salt: Uint8Array,
-    memoryCost: number,
-    timeCost: number,
-    parallelism: number
-  },
+  kdf: KDFParameters,
 }
 
 type StartLoginResponse = {
@@ -75,15 +74,45 @@ type StartLoginResponse = {
 type FinishLoginResponse = {
   refreshToken: string,
   rootDirectory: number,
-  kdf: {
-    salt: Uint8Array,
-    memoryCost: number,
-    timeCost: number,
-    parallelism: number,
-  }
+  kdf: KDFParameters
 }
 
-const API = {
+type CreateSharePayload = {
+  receiver: string,
+  fileId: number,
+  encryptedMetadata: Uint8Array,
+  encryptedKey: Uint8Array,
+}
+
+type NewShareResponse = {
+  id: number,
+}
+
+type GetUserResponse = {
+  id: number,
+  username: string,
+  publicKey: Uint8Array,
+}
+
+type GetShareResposne = {
+  chunks: number,
+  chunkSize: number,
+  size: number,
+  senderId: number,
+  receiverId: number,
+
+  encryptedKey: Uint8Array,
+  encryptedMetadata: Uint8Array,
+}
+
+const api = {
+  async refresh(refreshToken: string) {
+    const response = await axios.post<RefreshResponse>('/auth/refresh', {
+      refreshToken
+    });
+
+    return response.data.data;
+  },
   async deleteFile(id: number) {
     await instance.delete(`/files/${id}`);
   },
@@ -191,36 +220,47 @@ const API = {
         salt: from_base64(data.kdf.salt)
       }
     } as FinishLoginResponse;
+  },
+
+  async createShare({ encryptedKey, encryptedMetadata, fileId, receiver }: CreateSharePayload) {
+    const response = await instance.post<Serialized<Wrapped<NewShareResponse>>>('/share', {
+      fileId,
+      receiver,
+      encryptedKey: to_base64(encryptedKey),
+      encryptedMetadata: to_base64(encryptedMetadata)
+    });
+
+    return response.data.data;
+  },
+
+  async getUser(username: string) {
+    const response = await instance.get<Serialized<Wrapped<GetUserResponse>>>(`/user/${username}`);
+
+    const data = response.data.data;
+
+    return {
+      ...data,
+      publicKey: from_base64(data.publicKey),
+    } as GetUserResponse;
+  },
+
+  async getShare(shareId: number) {
+    const response = await instance.get<Serialized<Wrapped<GetShareResposne>>>(`/share/${shareId}`);
+
+    const data = response.data.data;
+
+    return {
+      ...data,
+      encryptedKey: from_base64(data.encryptedKey),
+      encryptedMetadata: from_base64(data.encryptedMetadata)
+    } as GetShareResposne
+  },
+
+  async getShareChunk(shareId: number, index: number) {
+    const response = await instance.get<PresignResponse>(`/share/${shareId}/${index + 1}`);
+
+    return response.data.data;
   }
 };
 
-const proxy = new Proxy(API, {
-  get(target, prop) {
-    const val = Reflect.get(target, prop);
-
-    if (!val) {
-      throw new TypeError();
-    }
-
-    if (typeof val === 'function') {
-      return (...args: unknown[]) => {
-        try {
-          return val(...args);
-        }
-        catch (e) {
-          if (e instanceof AxiosError) {
-            toast.error(e.response?.data?.error ?? e.response?.statusText ?? 'unknown error');
-          }
-          else if (e instanceof Error) {
-            toast.error(e.message);
-          }
-          else {
-            toast.error('unknown error');
-          }
-        }
-      }
-    }
-  }
-});
-
-export default proxy;
+export default api;

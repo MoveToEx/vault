@@ -1,4 +1,4 @@
-import { ChevronUp, CircleUserRound, ExternalLink, Home, Lock, LogIn, LogOut, Logs, Settings, User2 } from "lucide-react";
+import { ChevronUp, ExternalLink, Home, Lock, LogIn, LogOut, Logs, Settings, Share2, User2 } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import useAuth from "@/hooks/use-auth";
@@ -23,6 +23,11 @@ const items = [
     title: 'Audit log',
     url: '/#/audit',
     icon: Logs
+  },
+  {
+    title: 'Share',
+    url: '/#/share',
+    icon: Share2
   }
 ];
 
@@ -69,11 +74,6 @@ function AccountMenu() {
           </SidebarMenuButton>
         } />
         <DropdownMenuContent side='top' className="w-[--radix-popper-anchor-width]">
-          <DropdownMenuItem className='cursor-pointer' onClick={() => {
-            navigate('/user/' + data.id)
-          }}>
-            <CircleUserRound /> Profile
-          </DropdownMenuItem>
           <DropdownMenuItem className='cursor-pointer' onClick={() => {
             navigate('/user/settings')
           }}>

@@ -35,3 +35,18 @@ meta --XChacha20(FEK, %)--> mc
 ```
 [24B: Nonce] [...: Cipher]
 ```
+
+# Upload
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Server
+    participant S3
+    Client->>Server: Initiate
+    Server->>Client: Upload ID
+    Client->>Server: Get chunk
+    Server->>Client: Signed chunk url
+    Client->>S3: Request for chunk
+    S3->>Client: Cipher chunk
+```

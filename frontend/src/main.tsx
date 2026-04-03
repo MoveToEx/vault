@@ -5,6 +5,7 @@ import { createHashRouter, RouterProvider } from 'react-router'
 import IndexPage from './routes/index.tsx'
 import Layout from './layout.tsx'
 import AuditPage from './routes/audit.tsx'
+import SharesPage from './routes/shares.tsx'
 
 const router = createHashRouter([
   {
@@ -18,6 +19,10 @@ const router = createHashRouter([
       {
         path: 'audit',
         Component: AuditPage
+      },
+      {
+        path: 'share',
+        Component: SharesPage
       }
     ]
   }

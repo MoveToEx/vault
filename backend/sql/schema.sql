@@ -135,9 +135,14 @@ CREATE TABLE IF NOT EXISTS upload_chunks (
 
 CREATE TABLE IF NOT EXISTS shares (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    node_id BIGINT NOT NULL,
-    sender_id BIGINT NOT NULL,
-    receiver_id BIGINT,
-    encrypted_fek BYTEA NOT NULL
 
-)
+    file_id BIGINT NOT NULL,
+    sender_id BIGINT NOT NULL REFERENCES users(id),
+    receiver_id BIGINT NOT NULL REFERENCES users(id),
+    
+    encrypted_fek BYTEA NOT NULL,
+    encrypted_metadata BYTEA NOT NULL,
+    
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
+);

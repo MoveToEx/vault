@@ -6,7 +6,7 @@ export type Wrapped<T> = {
 };
 
 export type KDFParameters = {
-  salt: string,
+  salt: Uint8Array,
   memoryCost: number,
   timeCost: number,
   parallelism: number,
@@ -28,7 +28,7 @@ export type Metadata = FileMetadata | FolderMetadata;
 export type TransferMessage = (
   | {
     type: 'transfer-created';
-    kind: 'upload' | 'download';
+    kind: 'upload' | 'download' | 'download-share';
     filename: string;
     size: number;
   }
@@ -88,6 +88,14 @@ export type TransferCommand =
     umk: Uint8Array;
   }
   | {
+    type: 'enqueue-download-share';
+    shareId: number;
+    umk: Uint8Array;
+    publicKey: Uint8Array;
+    encryptedPrivateKey: Uint8Array;
+    privateKeyNonce: Uint8Array;
+  }
+  | {
     type: 'pause-transfer';
     transferId: string;
   }
@@ -126,12 +134,19 @@ export type WorkerRequest = ({
   uploadId: number,
   encryptedKey: AEADResult,
 } | {
-  type: 'get',
+  type: 'get-file',
   fileId: number
 } | {
-  type: 'get-chunk',
+  type: 'get-file-chunk',
   fileId: number,
   chunkIndex: number
+} | {
+  type: 'get-share',
+  shareId: number
+} | {
+  type: 'get-share-chunk',
+  shareId: number,
+  chunkIndex: number,
 } | {
   type: 'download',
   blob: Blob,
@@ -153,7 +168,7 @@ export type WorkerResponse = ({
 } | {
   type: 'ack'
 } | {
-  type: 'get',
+  type: 'get-file',
   chunks: number,
   chunkSize: number,
   size: number,
@@ -161,10 +176,28 @@ export type WorkerResponse = ({
   encryptedMetadata: string,
   metadataNonce: string,
 } | {
-  type: 'get-chunk',
+  type: 'get-share'
+  chunks: number,
+  chunkSize: number,
+  size: number,
+  receiverId: number,
+  senderId: number,
+  encryptedKey: Uint8Array,
+  encryptedMetadata: Uint8Array,
+} | {
+  type: 'get-share-chunk',
+  url: string,
+} | {
+  type: 'get-file-chunk',
   url: string,
 } | {
   type: 'download'
 }) & {
   error?: string,
+}
+
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    _retry?: boolean
+  }
 }

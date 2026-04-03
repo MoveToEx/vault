@@ -104,11 +104,14 @@ type Session struct {
 }
 
 type Share struct {
-	ID           int64       `json:"id"`
-	NodeID       int64       `json:"nodeId"`
-	SenderID     int64       `json:"senderId"`
-	ReceiverID   pgtype.Int8 `json:"receiverId"`
-	EncryptedFek []byte      `json:"encryptedFek"`
+	ID                int64              `json:"id"`
+	FileID            int64              `json:"fileId"`
+	SenderID          int64              `json:"senderId"`
+	ReceiverID        int64              `json:"receiverId"`
+	EncryptedFek      []byte             `json:"encryptedFek"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
 }
 
 type Upload struct {

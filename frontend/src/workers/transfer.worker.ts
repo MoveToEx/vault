@@ -1,6 +1,6 @@
 import { aead, aeadCompositeDecrypt, aeadDecrypt, kdf } from "@/lib/crypto";
 import type { FileMetadata, TransferCommand, TransferMessage, WithId, WorkerRequest, WorkerResponse } from "@/lib/types";
-import { from_base64 } from "libsodium-wrappers-sumo";
+import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import axios, { AxiosError } from "axios";
 import sodium from "libsodium-wrappers-sumo";
 
@@ -46,7 +46,7 @@ async function upload(file: File, parentId: number, umk: Uint8Array) {
     })
 
     const kek = kdf(umk, 'KEK');
-    const fek = sodium.crypto_aead_chacha20poly1305_ietf_keygen();
+    const fek = sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
     const efek = aead(fek, kek);
 
     const metadata = aead(JSON.stringify({
@@ -179,7 +179,7 @@ async function download(fileId: number, umk: Uint8Array) {
     });
 
     const { chunks, chunkSize, size, encryptedKey, encryptedMetadata, metadataNonce } = await rpc({
-      type: 'get',
+      type: 'get-file',
       fileId,
       transferId
     });
@@ -209,9 +209,131 @@ async function download(fileId: number, umk: Uint8Array) {
       let received = 0;
 
       const { url } = await rpc({
-        type: 'get-chunk',
+        type: 'get-file-chunk',
         chunkIndex: i,
         fileId,
+        transferId
+      });
+
+      post({
+        type: 'chunk-started',
+        chunkIndex: i,
+        transferId
+      });
+
+      const f = await axios.get(url, {
+        responseType: 'blob',
+        onDownloadProgress(event) {
+          received = event.loaded;
+
+          post({
+            type: 'chunk-progress',
+            sent: event.loaded,
+            chunkIndex: i,
+            transferId
+          });
+          post({
+            type: 'transfer-progress',
+            sent: acc + received,
+            transferId
+          });
+        },
+      });
+      acc += received;
+
+      const buf = f.data as Blob;
+
+      const plain = aeadCompositeDecrypt(await buf.bytes(), fek);
+
+      result.push(new Uint8Array(plain));
+      post({
+        type: 'chunk-complete',
+        chunkIndex: i,
+        transferId
+      });
+    }
+
+    post({
+      type: 'transfer-complete',
+      transferId,
+    });
+
+    const blob = new Blob(result);
+
+    await rpc({
+      type: 'download',
+      blob,
+      filename: metadata.name,
+      transferId
+    });
+  }
+  catch (e) {
+    let message = 'unknown error';
+
+    if (e instanceof AxiosError) {
+      message = e.response?.data?.error ?? e.response?.statusText;
+    }
+    else if (e instanceof Error) {
+      message = e.message;
+    }
+
+    post({
+      type: 'transfer-error',
+      transferId,
+      error: message
+    })
+  }
+}
+
+async function downloadShare(shareId: number, umk: Uint8Array, pubKey: Uint8Array, eprivKey: Uint8Array, privKeyNonce: Uint8Array) {
+  await sodium.ready;
+  const transferId = crypto.randomUUID();
+
+  try {
+
+    post({
+      type: 'transfer-created',
+      transferId,
+      kind: 'download-share',
+      filename: '-',
+      size: 0
+    });
+
+    const { chunks, chunkSize, size, encryptedKey, encryptedMetadata } = await rpc({
+      type: 'get-share',
+      shareId,
+      transferId
+    });
+
+    const kek = kdf(umk, 'KEK');
+    const privKey = aeadDecrypt(eprivKey, kek, privKeyNonce);
+    const fek = sodium.crypto_box_seal_open(encryptedKey, pubKey, privKey);
+
+    const metadata: FileMetadata = JSON.parse(
+      to_string(
+        sodium.crypto_box_seal_open(encryptedMetadata, pubKey, privKey)
+      )
+    );
+
+    post({
+      type: 'transfer-started',
+      transferId,
+      chunks,
+      chunkSize,
+      filename: metadata.name,
+      size
+    });
+
+    const result: Uint8Array<ArrayBuffer>[] = [];
+    let acc = 0;
+
+    for (let i = 0; i < chunks; i++) {
+      let received = 0;
+
+      const { url } = await rpc({
+        type: 'get-share-chunk',
+        chunkIndex: i,
+        shareId,
         transferId
       });
 
@@ -288,10 +410,18 @@ async function download(fileId: number, umk: Uint8Array) {
 self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
   const params = e.data;
 
-  if (params.type === 'enqueue-upload') {
-    await upload(params.file, params.parentId, params.umk);
-  }
-  else if (params.type === 'enqueue-download') {
-    await download(params.fileId, params.umk);
+  switch (params.type) {
+    case 'enqueue-upload': {
+      await upload(params.file, params.parentId, params.umk);
+      break;
+    }
+    case 'enqueue-download': {
+      await download(params.fileId, params.umk);
+      break;
+    }
+    case 'enqueue-download-share': {
+      await downloadShare(params.shareId, params.umk, params.publicKey, params.encryptedPrivateKey, params.privateKeyNonce);
+      break;
+    }
   }
 }

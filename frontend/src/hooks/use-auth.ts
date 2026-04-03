@@ -23,6 +23,7 @@ export default function useAuth() {
 
   return {
     ...useTaggedSWR({
+      id: 'auth',
       tags: ['user', 'self'],
       args: [key],
       async fetcher(key) {

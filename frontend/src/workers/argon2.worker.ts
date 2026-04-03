@@ -14,12 +14,7 @@ self.onmessage = async (event: MessageEvent<Argon2Request>) => {
 
   try {
     const hash = await argon2id({
-      password: params.password,
-      salt: params.salt,
-      iterations: params.iterations,
-      memorySize: params.memorySize,
-      parallelism: params.parallelism,
-      hashLength: params.hashLength,
+      ...params,
       outputType: 'binary'
     })
 

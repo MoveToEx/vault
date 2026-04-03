@@ -1,0 +1,1 @@
+- [ ] Compress `cipher, nonce` into composite

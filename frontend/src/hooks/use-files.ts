@@ -14,6 +14,7 @@ export default function useFiles(dir: number) {
   const { data } = useAuth();
 
   return useTaggedSWR({
+    id: 'files',
     tags: ['file', 'self'],
     args: [data?.id, dir] as const,
     fetcher: async (_, dir) => {

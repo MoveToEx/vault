@@ -12,7 +12,7 @@ type ChunkItem = {
 
 type TransferItem = {
   id: string,
-  kind: 'upload' | 'download',
+  kind: 'upload' | 'download' | 'download-share',
   filename: string,
   status: TransferStatus,
   chunks: ChunkItem[],
@@ -48,7 +48,7 @@ export const TransferSlice = createSlice({
   reducers: {
     transferCreated(state, action: PayloadAction<{
       transferId: string,
-      kind: 'upload' | 'download',
+      kind: 'upload' | 'download' | 'download-share',
       filename: string,
       size: number,
     }>) {

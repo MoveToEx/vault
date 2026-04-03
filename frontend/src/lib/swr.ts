@@ -3,6 +3,7 @@ import useSWR, { mutate as SWRMutate, type SWRConfiguration } from "swr";
 export type Tags = 'file' | 'user' | 'self' | 'share';
 
 export type Params<T extends unknown[] = [], R = unknown> = {
+  id: string,
   args: T,
   fetcher: (...args: T) => Promise<R>,
   tags: Tags[],

@@ -26,6 +26,11 @@ RETURNING *;
 SELECT * FROM sessions
 WHERE refresh_token = $1;
 
+-- name: UpdateSession :exec
+UPDATE sessions
+SET refresh_token = @new_token
+WHERE refresh_token = $1;
+
 -- name: GetUser :one
 SELECT * FROM users
 WHERE id = $1;
@@ -116,6 +121,10 @@ WHERE id = $2;
 SELECT * FROM files f
 WHERE parent_id = $1 AND deleted_at ISNULL;
 
+-- name: GetFolder :one
+SELECT * FROM folders
+WHERE id = $1 AND deleted_at ISNULL;
+
 -- name: GetSubfolders :many
 SELECT * FROM folders
 WHERE parent_id = $1 AND deleted_at ISNULL;
@@ -138,3 +147,53 @@ WHERE f.owner_id = $1 AND f.id = @file_id;
 UPDATE files
 SET deleted_at = NOW()
 WHERE id = $1;
+
+
+--#region Sharing
+
+-- name: GetUserByName :one
+SELECT * FROM users
+WHERE username = $1;
+
+-- name: FindUserByUsername :many
+SELECT id, username, public_key FROM users
+WHERE username ILIKE CONCAT('%', @key::TEXT, '%');
+
+-- name: FindUserByEmail :many
+SELECT id, username, public_key FROM users
+WHERE email ILIKE CONCAT('%', @key::TEXT, '%');
+
+-- name: NewShare :one
+INSERT INTO shares(file_id, sender_id, receiver_id, encrypted_fek, encrypted_metadata)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: GetShares :many
+SELECT * FROM shares
+WHERE receiver_id = $1 AND expires_at > NOW()
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetSharesBySender :many
+SELECT
+    s.id, s.sender_id, s.receiver_id,
+    f.encrypted_metadata, f.metadata_nonce,
+    s.created_at, s.expires_at
+FROM shares s
+INNER JOIN files f ON s.file_id = f.id
+WHERE s.sender_id = $1 AND s.expires_at > NOW()
+ORDER BY s.created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetShare :one
+SELECT s.*, f.chunks, f.size FROM shares s
+INNER JOIN files f ON s.file_id = f.id
+WHERE s.id = $1 AND s.expires_at > NOW();
+
+-- name: GetShareChunk :one
+SELECT s.*, c.* FROM shares s
+INNER JOIN files f ON s.file_id = f.id
+INNER JOIN file_chunks c ON c.file_id = f.id
+WHERE s.id = $1 AND c.chunk_index = $2 AND s.expires_at > NOW();
+
+--#endregion

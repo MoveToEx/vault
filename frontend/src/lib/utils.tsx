@@ -43,6 +43,8 @@ export function endsWith(str: string, suffix: string[]) {
 }
 
 export function getIcon(name: string) {
+  if (!name) return <FileIcon size={16} className='inline mx-2' />;
+  
   name = name.toLowerCase();
 
   if (endsWith(name, ['.rar', '.zip', '.zipx', '.7z', '.tar', '.gz', '.gz.zip', '.tar.bz'])) {

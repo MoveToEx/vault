@@ -1,12 +1,13 @@
 {
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "ES2022",
+    "target": "esnext",
     "useDefineForClassFields": true,
     "lib": [
-      "ES2022",
+      "esnext",
       "DOM",
-      "DOM.Iterable"
+      "DOM.Iterable",
+      "DOM.AsyncIterable"
     ],
     "module": "ESNext",
     "types": [

@@ -123,7 +123,7 @@ export default function LoginDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form id='form-login' onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup>
             <Controller
               name='username'
@@ -165,8 +165,7 @@ export default function LoginDialog({
                 </Field>
               )} />
           </FieldGroup>
-
-          <div className='w-full flex flex-col mt-6 gap-2'>
+          <div className='w-full flex flex-col gap-2'>
             <div className='flex flex-row justify-end'>
               <span>
                 No account yet?
@@ -174,16 +173,16 @@ export default function LoginDialog({
               </span>
             </div>
           </div>
-
-          <DialogFooter>
-            <Button type='submit' disabled={loading}>
-              {loading && <Spinner />}
-              {loading || <LogIn />}
-              Login
-            </Button>
-            <DialogClose render={<Button variant='outline'>Cancel</Button>} />
-          </DialogFooter>
         </form>
+
+        <DialogFooter>
+          <Button type='submit' form='form-login' disabled={loading}>
+            {loading && <Spinner />}
+            {loading || <LogIn />}
+            Login
+          </Button>
+          <DialogClose render={<Button variant='outline'>Cancel</Button>} />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -118,7 +118,7 @@ export default function RegisterDialog() {
         name: '/'
       }), kek);
 
-      const { publicKey, privateKey } = sodium.crypto_box_curve25519xchacha20poly1305_keypair();
+      const { publicKey, privateKey } = sodium.crypto_box_keypair();
 
       const epk = aead(privateKey, kek);
 

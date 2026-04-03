@@ -29,7 +29,7 @@ type Item = {
   id: number,
 };
 
-const fileMenuHandle = Menu.createHandle<{ id: number }>();
+const fileMenuHandle = Menu.createHandle<{ id: number, filename: string, }>();
 
 function FileList() {
   const umk = useAppSelector(state => state.umk.value);
@@ -135,7 +135,7 @@ function FileList() {
                 )}
                 <Menu.Trigger
                   handle={fileMenuHandle}
-                  payload={{ id: val.id }}
+                  payload={{ id: val.id, filename: val.name }}
                   render={
                     <Button className='duration-[0] invisible group-hover:visible' variant='outline' size='icon-sm'>
                       <EllipsisVertical />
