@@ -1,22 +1,35 @@
 import { LogIn } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { useForm, Controller } from 'react-hook-form'
-import z from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm, Controller } from "react-hook-form";
+import z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Dialog as BaseDialog } from '@base-ui/react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Dialog as BaseDialog } from "@base-ui/react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useState } from "react";
-import { getOpaqueConfig, OpaqueClient, OpaqueID, type AuthClient } from "@cloudflare/opaque-ts";
+import {
+  getOpaqueConfig,
+  OpaqueClient,
+  OpaqueID,
+  type AuthClient,
+} from "@cloudflare/opaque-ts";
 import { KE2 } from "@cloudflare/opaque-ts/lib/src/messages";
 import RegisterDialog from "./register";
 import { useLocalStorage } from "usehooks-ts";
@@ -24,31 +37,30 @@ import { mutate } from "@/lib/swr";
 import { argon2id } from "@/workers";
 import { useAppDispatch } from "@/stores";
 import { set } from "@/stores/key";
-import sodium, { from_string, to_base64 } from 'libsodium-wrappers-sumo';
-import api from '@/lib/api';
+import sodium, { from_string, to_base64 } from "libsodium-wrappers-sumo";
+import api from "@/lib/api";
 import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
-
 
 const schema = z.object({
   username: z.string(),
-  password: z.string()
+  password: z.string(),
 });
 
 export default function LoginDialog({
-  handle
+  handle,
 }: {
-  handle: BaseDialog.Handle<void>
+  handle: BaseDialog.Handle<void>;
 }) {
   const [loading, setLoading] = useState(false);
-  const [, setRefreshToken] = useLocalStorage('vault-refresh-token', '');
+  const [, setRefreshToken] = useLocalStorage("vault-refresh-token", "");
   const dispatch = useAppDispatch();
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: {
-      username: '',
-      password: ''
-    }
+      username: "",
+      password: "",
+    },
   });
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
@@ -66,21 +78,31 @@ export default function LoginDialog({
         throw req;
       }
 
-      const { ke2, loginStateID } = await api.startLogin(data.username, new Uint8Array(req.serialize()));
+      const { ke2, loginStateID } = await api.startLogin(
+        data.username,
+        new Uint8Array(req.serialize()),
+      );
 
       const fin = await client.authFinish(
         KE2.deserialize(cfg, Array.from(ke2)),
-        'vault',
-        data.username
+        "vault",
+        data.username,
       );
 
       if (fin instanceof Error) {
         throw fin;
       }
 
-      const { refreshToken, kdf: kdfParams, encryptedPrivateKey } = await api.finishLogin(new Uint8Array(fin.ke3.serialize()), loginStateID);
+      const {
+        refreshToken,
+        kdf: kdfParams,
+        encryptedPrivateKey,
+      } = await api.finishLogin(
+        new Uint8Array(fin.ke3.serialize()),
+        loginStateID,
+      );
 
-      toast.success('Successfully logged in');
+      toast.success("Successfully logged in");
 
       const umk = await argon2id({
         iterations: kdfParams.timeCost,
@@ -91,50 +113,48 @@ export default function LoginDialog({
         hashLength: 32,
       });
 
-      const kek = kdf(umk, 'KEK');
+      const kek = kdf(umk, "KEK");
 
       const privKey = aeadCompositeDecrypt(encryptedPrivateKey, kek);
 
       setRefreshToken(refreshToken);
-      dispatch(set({
-        umk: to_base64(umk),
-        privKey: to_base64(privKey)
-      }));
+      dispatch(
+        set({
+          umk: to_base64(umk),
+          privKey: to_base64(privKey),
+        }),
+      );
 
-      mutate('self');
+      mutate("self");
       handle.close();
-    }
-    catch (e) {
+    } catch (e) {
       if (e instanceof AxiosError) {
-        form.setError('root', {
-          type: 'custom',
-          message: e.response?.data.error
-        })
-      }
-      else {
+        form.setError("root", {
+          type: "custom",
+          message: e.response?.data.error,
+        });
+      } else {
         throw e;
       }
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog handle={handle}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className='text-xl'>Login</span>
+            <span className="text-xl">Login</span>
           </DialogTitle>
-          <DialogDescription>
-          </DialogDescription>
+          <DialogDescription></DialogDescription>
         </DialogHeader>
 
-        <form id='form-login' onSubmit={form.handleSubmit(onSubmit)}>
+        <form id="form-login" onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup>
             <Controller
-              name='username'
+              name="username"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
@@ -151,9 +171,10 @@ export default function LoginDialog({
                     <FieldError errors={[fieldState.error]} />
                   )}
                 </Field>
-              )} />
+              )}
+            />
             <Controller
-              name='password'
+              name="password"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
@@ -164,17 +185,18 @@ export default function LoginDialog({
                     {...field}
                     id="form-login-password"
                     placeholder="••••••••"
-                    autoComplete='current-password'
-                    type='password'
+                    autoComplete="current-password"
+                    type="password"
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
                 </Field>
-              )} />
+              )}
+            />
           </FieldGroup>
-          <div className='w-full flex flex-col gap-2'>
-            <div className='flex flex-row justify-end'>
+          <div className="w-full flex flex-col gap-2">
+            <div className="flex flex-row justify-end">
               <span>
                 No account yet?
                 <RegisterDialog />
@@ -184,14 +206,14 @@ export default function LoginDialog({
         </form>
 
         <DialogFooter>
-          <Button type='submit' form='form-login' disabled={loading}>
+          <Button type="submit" form="form-login" disabled={loading}>
             {loading && <Spinner />}
             {loading || <LogIn />}
             Login
           </Button>
-          <DialogClose render={<Button variant='outline'>Cancel</Button>} />
+          <DialogClose render={<Button variant="outline">Cancel</Button>} />
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,14 +1,14 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 type PathItem = {
-  folderName: string,
-  id: number,
-}
+  folderName: string;
+  id: number;
+};
 
 export const PathSlice = createSlice({
-  name: 'path',
+  name: "path",
   initialState: {
-    value: [] as PathItem[]
+    value: [] as PathItem[],
   },
   reducers: {
     push: (state, action: PayloadAction<PathItem>) => {
@@ -23,13 +23,13 @@ export const PathSlice = createSlice({
       state.value = [];
     },
     popUntil: (state, action: PayloadAction<number>) => {
-      const idx = state.value.findIndex(val => val.id === action.payload);
+      const idx = state.value.findIndex((val) => val.id === action.payload);
 
       if (idx === -1) return;
 
       state.value = state.value.slice(0, idx + 1);
-    }
-  }
+    },
+  },
 });
 
 export const { push, pop, reset, popUntil } = PathSlice.actions;

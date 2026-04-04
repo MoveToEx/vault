@@ -1,15 +1,15 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './global.css'
-import { createHashRouter, RouterProvider } from 'react-router'
-import IndexPage from './routes/index.tsx'
-import Layout from './layout.tsx'
-import AuditPage from './routes/audit.tsx'
-import SharesPage from './routes/shares.tsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./global.css";
+import { createHashRouter, RouterProvider } from "react-router";
+import IndexPage from "./routes/index.tsx";
+import Layout from "./layout.tsx";
+import AuditPage from "./routes/audit.tsx";
+import SharesPage from "./routes/shares.tsx";
 
 const router = createHashRouter([
   {
-    path: '/',
+    path: "/",
     Component: Layout,
     children: [
       {
@@ -17,19 +17,19 @@ const router = createHashRouter([
         Component: IndexPage,
       },
       {
-        path: 'audit',
-        Component: AuditPage
+        path: "audit",
+        Component: AuditPage,
       },
       {
-        path: 'share',
-        Component: SharesPage
-      }
-    ]
-  }
-])
+        path: "share",
+        Component: SharesPage,
+      },
+    ],
+  },
+]);
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RouterProvider router={router} />
   </StrictMode>,
-)
+);

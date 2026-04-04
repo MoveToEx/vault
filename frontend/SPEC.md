@@ -69,10 +69,3 @@ sequenceDiagram
     Sender->>Sender: Encrypt file metadata and FEK with public key
     Sender->>Server: Encrypted FEK
 ```
-
-```mermaid
-sequenceDiagram
-    participant Receiver
-    participant Server
-    Receiver->>Server: 
-```

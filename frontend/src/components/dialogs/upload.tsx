@@ -1,22 +1,28 @@
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useAppDispatch, useAppSelector } from "@/stores"
+import { useAppDispatch, useAppSelector } from "@/stores";
 import { from_base64 } from "libsodium-wrappers-sumo";
 import { Upload } from "lucide-react";
 import { useState } from "react";
-import { Dialog as BaseDialog } from '@base-ui/react';
+import { Dialog as BaseDialog } from "@base-ui/react";
 import { transferBridge } from "@/lib/transfer-bridge";
 import { toggleTransferList } from "@/stores/ui";
 
 const handle = BaseDialog.createHandle();
 
 export default function UploadDialog() {
-  const umk = useAppSelector(state => state.key.value.umk);
+  const umk = useAppSelector((state) => state.key.value.umk);
   const dispatch = useAppDispatch();
 
-  const path = useAppSelector(state => state.path.value);
+  const path = useAppSelector((state) => state.path.value);
 
   const [file, setFile] = useState(null as File | null);
 
@@ -30,7 +36,7 @@ export default function UploadDialog() {
     dispatch(toggleTransferList(true));
 
     handle.close();
-  }
+  };
 
   return (
     <Dialog
@@ -39,37 +45,33 @@ export default function UploadDialog() {
         if (!open) {
           setFile(null);
         }
-      }}>
-      <DialogTrigger render={
-        <Button>
-          <Upload /> Upload
-        </Button>
-      } />
+      }}
+    >
+      <DialogTrigger
+        render={
+          <Button>
+            <Upload /> Upload
+          </Button>
+        }
+      />
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            Upload New File
-          </DialogTitle>
+          <DialogTitle>Upload New File</DialogTitle>
         </DialogHeader>
         <Field>
-          <FieldLabel htmlFor='upload-input'>
-            File
-          </FieldLabel>
+          <FieldLabel htmlFor="upload-input">File</FieldLabel>
           <Input
-            id='upload-input'
-            type='file'
-            onChange={e => {
+            id="upload-input"
+            type="file"
+            onChange={(e) => {
               if (!e.target.files) return;
 
               setFile(e.target.files[0]);
             }}
           />
           <FieldDescription>
-            Will upload to /
-            {
-              path.map(it => it.folderName).join('/')
-            }
+            Will upload to /{path.map((it) => it.folderName).join("/")}
           </FieldDescription>
         </Field>
 
@@ -79,5 +81,5 @@ export default function UploadDialog() {
         </Button>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

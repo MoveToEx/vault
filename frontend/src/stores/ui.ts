@@ -1,8 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-
 export const UISlice = createSlice({
-  name: 'ui',
+  name: "ui",
   initialState: {
     transferListOpen: false,
   },
@@ -10,7 +9,7 @@ export const UISlice = createSlice({
     toggleTransferList: (state, action: PayloadAction<boolean>) => {
       state.transferListOpen = action.payload;
     },
-  }
+  },
 });
 
 export const { toggleTransferList } = UISlice.actions;

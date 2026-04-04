@@ -1,4 +1,4 @@
-import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
 
 interface UseDebouncedStateResult<T> {
   debouncedState: T;
@@ -9,7 +9,7 @@ interface UseDebouncedStateResult<T> {
 
 export function useDebouncedState<T>(
   initialValue: T,
-  delay: number
+  delay: number,
 ): UseDebouncedStateResult<T> {
   const [instantState, setInstantState] = useState<T>(initialValue);
   const [debouncedState, setDebouncedState] = useState<T>(initialValue);

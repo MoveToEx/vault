@@ -1,6 +1,6 @@
-import { useForm, Controller } from 'react-hook-form'
-import z from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm, Controller } from "react-hook-form";
+import z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Field,
   FieldError,
@@ -8,36 +8,53 @@ import {
   FieldLabel,
   FieldLegend,
   FieldSet,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
-import { Dialog as BaseDialog } from '@base-ui/react'
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Dialog as BaseDialog } from "@base-ui/react";
 import { Button } from "@/components/ui/button";
-import api from '@/lib/api';
+import api from "@/lib/api";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { useState } from 'react'
-import { ChevronDown, ChevronUp, User } from 'lucide-react'
-import { Spinner } from '../ui/spinner';
-import { OpaqueClient, OpaqueID, RegistrationResponse, getOpaqueConfig, type RegistrationClient } from '@cloudflare/opaque-ts';
-import { Slider } from '../ui/slider';
-import { aeadComposite, kdf } from '@/lib/crypto'
-import { argon2id } from '@/workers'
-import sodium from 'libsodium-wrappers-sumo'
-import { mutate } from '@/lib/swr'
+import { useState } from "react";
+import { ChevronDown, ChevronUp, User } from "lucide-react";
+import { Spinner } from "../ui/spinner";
+import {
+  OpaqueClient,
+  OpaqueID,
+  RegistrationResponse,
+  getOpaqueConfig,
+  type RegistrationClient,
+} from "@cloudflare/opaque-ts";
+import { Slider } from "../ui/slider";
+import { aeadComposite, kdf } from "@/lib/crypto";
+import { argon2id } from "@/workers";
+import sodium from "libsodium-wrappers-sumo";
+import { mutate } from "@/lib/swr";
 
 const registerSchema = z.object({
   email: z.email(),
-  username: z.string()
-    .min(6, 'Username should be no shorter than 6 characters')
-    .max(32, 'Username should be no longer than 32 characters')
-    .regex(/^[a-zA-Z0-9]+$/, 'Only digits and letters are allowed'),
-  password: z.string()
-    .min(8, 'Password should be at lease 8 characters')
-    .max(128, 'Password should be at most 128 characters'),
-  confirmPassword: z.string()
-    .min(8, 'Password should be at lease 8 characters')
-    .max(128, 'Password should be at most 128 characters'),
+  username: z
+    .string()
+    .min(6, "Username should be no shorter than 6 characters")
+    .max(32, "Username should be no longer than 32 characters")
+    .regex(/^[a-zA-Z0-9]+$/, "Only digits and letters are allowed"),
+  password: z
+    .string()
+    .min(8, "Password should be at lease 8 characters")
+    .max(128, "Password should be at most 128 characters"),
+  confirmPassword: z
+    .string()
+    .min(8, "Password should be at lease 8 characters")
+    .max(128, "Password should be at most 128 characters"),
   kdfMemoryCost: z.number().min(64).max(1024),
   kdfTimeCost: z.number().min(1).max(100),
   kdfParallelism: z.number().min(1).max(4),
@@ -52,24 +69,24 @@ export default function RegisterDialog() {
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      email: '',
-      username: '',
-      password: '',
-      confirmPassword: '',
+      email: "",
+      username: "",
+      password: "",
+      confirmPassword: "",
       kdfMemoryCost: 128,
       kdfTimeCost: 3,
       kdfParallelism: 1,
     },
-    disabled: loading
+    disabled: loading,
   });
 
   const onSubmit = async (data: z.infer<typeof registerSchema>) => {
     await sodium.ready;
 
     if (data.confirmPassword !== data.password) {
-      form.setError('confirmPassword', {
-        type: 'validate',
-        message: 'Passwords do not match'
+      form.setError("confirmPassword", {
+        type: "validate",
+        message: "Passwords do not match",
       });
       return;
     }
@@ -87,11 +104,14 @@ export default function RegisterDialog() {
         throw req;
       }
 
-      const message = await api.startRegistration(data.username, req.serialize());
+      const message = await api.startRegistration(
+        data.username,
+        req.serialize(),
+      );
 
       const fin = await client.registerFinish(
         RegistrationResponse.deserialize(cfg, Array.from(message)),
-        'vault',
+        "vault",
         data.username,
       );
 
@@ -111,12 +131,15 @@ export default function RegisterDialog() {
         hashLength: 32,
       });
 
-      const kek = kdf(umk, 'KEK');
+      const kek = kdf(umk, "KEK");
 
-      const rootMetadata = aeadComposite(JSON.stringify({
-        type: 'folder',
-        name: '/'
-      }), kek);
+      const rootMetadata = aeadComposite(
+        JSON.stringify({
+          type: "folder",
+          name: "/",
+        }),
+        kek,
+      );
 
       const { publicKey, privateKey } = sodium.crypto_box_keypair();
 
@@ -134,62 +157,56 @@ export default function RegisterDialog() {
           memoryCost: data.kdfMemoryCost,
           timeCost: data.kdfTimeCost,
           parallelism: data.kdfParallelism,
-        }
+        },
       });
 
-      toast.success('Signed up');
+      toast.success("Signed up");
       registerHandle.close();
 
-      mutate('file');
-    }
-    catch (e) {
+      mutate("file");
+    } catch (e) {
       if (e instanceof AxiosError) {
-        form.setError('root', {
-          type: 'custom',
-          message: e.response?.data.error
+        form.setError("root", {
+          type: "custom",
+          message: e.response?.data.error,
         });
-      }
-      else {
+      } else {
         throw e;
       }
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog
       handle={registerHandle}
       onOpenChangeComplete={() => {
         form.reset();
-      }}>
-      <DialogTrigger render={
-        <Button variant='link'>
-          Register
-        </Button>
-      } />
+      }}
+    >
+      <DialogTrigger render={<Button variant="link">Register</Button>} />
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className='text-xl'>Register</span>
+            <span className="text-xl">Register</span>
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={e => {
-          e.stopPropagation();
+        <form
+          onSubmit={(e) => {
+            e.stopPropagation();
 
-          form.handleSubmit(onSubmit)(e);
-        }}>
+            form.handleSubmit(onSubmit)(e);
+          }}
+        >
           <FieldGroup>
             <Controller
-              name='email'
+              name="email"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="form-register-email">
-                    Email
-                  </FieldLabel>
+                  <FieldLabel htmlFor="form-register-email">Email</FieldLabel>
                   <Input
                     {...field}
                     id="form-register-email"
@@ -200,9 +217,10 @@ export default function RegisterDialog() {
                     <FieldError errors={[fieldState.error]} />
                   )}
                 </Field>
-              )} />
+              )}
+            />
             <Controller
-              name='username'
+              name="username"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
@@ -219,9 +237,10 @@ export default function RegisterDialog() {
                     <FieldError errors={[fieldState.error]} />
                   )}
                 </Field>
-              )} />
+              )}
+            />
             <Controller
-              name='password'
+              name="password"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
@@ -232,16 +251,17 @@ export default function RegisterDialog() {
                     {...field}
                     id="form-register-password"
                     placeholder="••••••••"
-                    autoComplete='new-password'
-                    type='password'
+                    autoComplete="new-password"
+                    type="password"
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
                 </Field>
-              )} />
+              )}
+            />
             <Controller
-              name='confirmPassword'
+              name="confirmPassword"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
@@ -253,19 +273,23 @@ export default function RegisterDialog() {
                     id="form-register-confirm-password"
                     placeholder="••••••••"
                     autoComplete="new-password"
-                    type='password'
+                    type="password"
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
                 </Field>
-              )} />
+              )}
+            />
           </FieldGroup>
 
-          <div className='w-full flex flex-row justify-end items-center'>
-            <Button variant='link' onClick={() => {
-              setShowKDF(val => !val);
-            }}>
+          <div className="w-full flex flex-row justify-end items-center">
+            <Button
+              variant="link"
+              onClick={() => {
+                setShowKDF((val) => !val);
+              }}
+            >
               {showKDF && <ChevronUp />}
               {showKDF || <ChevronDown />}
               Advanced
@@ -278,17 +302,16 @@ export default function RegisterDialog() {
 
               <FieldGroup>
                 <Controller
-                  name='kdfTimeCost'
+                  name="kdfTimeCost"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className='flex flex-row justify-between items-center' htmlFor="form-register-kdf-timecost">
-                        <span>
-                          Time cost
-                        </span>
-                        <span>
-                          {field.value}
-                        </span>
+                      <FieldLabel
+                        className="flex flex-row justify-between items-center"
+                        htmlFor="form-register-kdf-timecost"
+                      >
+                        <span>Time cost</span>
+                        <span>{field.value}</span>
                       </FieldLabel>
                       <Slider
                         {...field}
@@ -297,7 +320,8 @@ export default function RegisterDialog() {
                         onValueChange={field.onChange}
                         step={1}
                         min={1}
-                        max={10} />
+                        max={10}
+                      />
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />
                       )}
@@ -305,17 +329,16 @@ export default function RegisterDialog() {
                   )}
                 />
                 <Controller
-                  name='kdfMemoryCost'
+                  name="kdfMemoryCost"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className='flex flex-row justify-between items-center' htmlFor="form-register-kdf-memcost">
-                        <span>
-                          Memory cost
-                        </span>
-                        <span>
-                          {field.value} MiB
-                        </span>
+                      <FieldLabel
+                        className="flex flex-row justify-between items-center"
+                        htmlFor="form-register-kdf-memcost"
+                      >
+                        <span>Memory cost</span>
+                        <span>{field.value} MiB</span>
                       </FieldLabel>
                       <Slider
                         {...field}
@@ -324,7 +347,8 @@ export default function RegisterDialog() {
                         onValueChange={field.onChange}
                         step={64}
                         min={64}
-                        max={1024} />
+                        max={1024}
+                      />
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />
                       )}
@@ -332,17 +356,16 @@ export default function RegisterDialog() {
                   )}
                 />
                 <Controller
-                  name='kdfParallelism'
+                  name="kdfParallelism"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel className='flex flex-row justify-between items-center' htmlFor="form-register-kdf-parallel">
-                        <span>
-                          Parallelism
-                        </span>
-                        <span>
-                          {field.value}
-                        </span>
+                      <FieldLabel
+                        className="flex flex-row justify-between items-center"
+                        htmlFor="form-register-kdf-parallel"
+                      >
+                        <span>Parallelism</span>
+                        <span>{field.value}</span>
                       </FieldLabel>
                       <Slider
                         {...field}
@@ -351,40 +374,37 @@ export default function RegisterDialog() {
                         onValueChange={field.onChange}
                         step={1}
                         min={1}
-                        max={4} />
+                        max={4}
+                      />
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />
                       )}
                     </Field>
                   )}
                 />
-
               </FieldGroup>
-
             </FieldSet>
           )}
 
-          <div className='flex flex-row justify-end'>
+          <div className="flex flex-row justify-end">
             <span>
               Already have an account?
-              <DialogClose render={
-                <Button variant='link'>
-                  Go back to login
-                </Button>
-              } />
+              <DialogClose
+                render={<Button variant="link">Go back to login</Button>}
+              />
             </span>
           </div>
 
           <DialogFooter>
-            <Button type='submit' disabled={loading}>
+            <Button type="submit" disabled={loading}>
               {loading || <User />}
               {loading && <Spinner />}
               Register
             </Button>
-            <DialogClose render={<Button variant='outline'>Cancel</Button>} />
+            <DialogClose render={<Button variant="outline">Cancel</Button>} />
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,25 +1,25 @@
-import { argon2id } from "hash-wasm"
+import { argon2id } from "hash-wasm";
 
 export type Argon2Request = {
-  password: Uint8Array
-  salt: Uint8Array
-  iterations: number
-  memorySize: number
-  parallelism: number
-  hashLength: number
-}
+  password: Uint8Array;
+  salt: Uint8Array;
+  iterations: number;
+  memorySize: number;
+  parallelism: number;
+  hashLength: number;
+};
 
 self.onmessage = async (event: MessageEvent<Argon2Request>) => {
-  const params = event.data
+  const params = event.data;
 
   try {
     const hash = await argon2id({
       ...params,
-      outputType: 'binary'
-    })
+      outputType: "binary",
+    });
 
-    self.postMessage(hash)
+    self.postMessage(hash);
   } catch (err) {
-    self.postMessage({ error: String(err) })
+    self.postMessage({ error: String(err) });
   }
-}
+};

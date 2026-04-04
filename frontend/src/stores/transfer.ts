@@ -1,39 +1,45 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-type TransferStatus = 'pending' | 'running' | 'completed' | 'canceled' | 'paused' | 'error';
-type ChunkStatus = 'pending' | 'running' | 'completed' | 'error';
+type TransferStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "canceled"
+  | "paused"
+  | "error";
+type ChunkStatus = "pending" | "running" | "completed" | "error";
 
 type ChunkItem = {
-  status: ChunkStatus,
-  size: number,
-  sent: number,
-  error?: string,
-}
+  status: ChunkStatus;
+  size: number;
+  sent: number;
+  error?: string;
+};
 
 type TransferItem = {
-  id: string,
-  kind: 'upload' | 'download' | 'download-share',
-  filename: string,
-  status: TransferStatus,
-  chunks: ChunkItem[],
-  size: number,
-  sent: number,
-  error?: string,
-  createdAt: number,
-}
+  id: string;
+  kind: "upload" | "download" | "download-share";
+  filename: string;
+  status: TransferStatus;
+  chunks: ChunkItem[];
+  size: number;
+  sent: number;
+  error?: string;
+  createdAt: number;
+};
 
 function createChunks(size: number, chunkSize: number) {
   const result: ChunkItem[] = Array.from({ length: size / chunkSize }, () => ({
     sent: 0,
     size: chunkSize,
-    status: 'pending',
+    status: "pending",
   }));
 
   if (size % chunkSize !== 0) {
     result.push({
       sent: 0,
       size: size % chunkSize,
-      status: 'pending'
+      status: "pending",
     });
   }
 
@@ -41,17 +47,20 @@ function createChunks(size: number, chunkSize: number) {
 }
 
 export const TransferSlice = createSlice({
-  name: 'transfer',
+  name: "transfer",
   initialState: {
     items: {} as Record<string, TransferItem>,
   },
   reducers: {
-    transferCreated(state, action: PayloadAction<{
-      transferId: string,
-      kind: 'upload' | 'download' | 'download-share',
-      filename: string,
-      size: number,
-    }>) {
+    transferCreated(
+      state,
+      action: PayloadAction<{
+        transferId: string;
+        kind: "upload" | "download" | "download-share";
+        filename: string;
+        size: number;
+      }>,
+    ) {
       const { payload } = action;
 
       state.items[payload.transferId] = {
@@ -60,21 +69,21 @@ export const TransferSlice = createSlice({
         filename: payload.filename,
         size: payload.size,
         sent: 0,
-        status: 'pending',
+        status: "pending",
         chunks: [],
         createdAt: new Date().getTime(),
-      }
+      };
     },
-    
+
     transferStarted: (
       state,
       action: PayloadAction<{
-        transferId: string,
-        filename?: string,
-        size?: number
-        chunks: number,
-        chunkSize: number,
-      }>
+        transferId: string;
+        filename?: string;
+        size?: number;
+        chunks: number;
+        chunkSize: number;
+      }>,
     ) => {
       const { transferId, chunkSize, filename, size } = action.payload;
       if (filename) {
@@ -83,8 +92,11 @@ export const TransferSlice = createSlice({
       if (size) {
         state.items[transferId].size = size;
       }
-      state.items[transferId].status = 'running';
-      state.items[transferId].chunks = createChunks(state.items[transferId].size, chunkSize);
+      state.items[transferId].status = "running";
+      state.items[transferId].chunks = createChunks(
+        state.items[transferId].size,
+        chunkSize,
+      );
     },
 
     chunkProgressUpdated: (
@@ -93,17 +105,17 @@ export const TransferSlice = createSlice({
         transferId: string;
         chunkIndex: number;
         sent: number;
-      }>
+      }>,
     ) => {
       const { transferId, chunkIndex, sent } = action.payload;
       const transfer = state.items[transferId];
       if (!transfer) return;
 
-      transfer.status = 'running';
+      transfer.status = "running";
 
       if (!transfer.chunks[chunkIndex]) return;
 
-      transfer.chunks[chunkIndex].status = 'running';
+      transfer.chunks[chunkIndex].status = "running";
       transfer.chunks[chunkIndex].sent = sent;
     },
 
@@ -112,7 +124,7 @@ export const TransferSlice = createSlice({
       action: PayloadAction<{
         transferId: string;
         chunkIndex: number;
-      }>
+      }>,
     ) => {
       const { transferId, chunkIndex } = action.payload;
       const transfer = state.items[transferId];
@@ -121,7 +133,7 @@ export const TransferSlice = createSlice({
       const chunk = transfer.chunks[chunkIndex];
 
       transfer.chunks[chunkIndex] = {
-        status: 'completed',
+        status: "completed",
         sent: chunk.size,
         size: chunk.size,
       };
@@ -132,52 +144,58 @@ export const TransferSlice = createSlice({
       action: PayloadAction<{
         transferId: string;
         sent: number;
-      }>
+      }>,
     ) => {
       const { transferId, sent } = action.payload;
       const transfer = state.items[transferId];
       if (!transfer) return;
 
-      transfer.status = 'running';
+      transfer.status = "running";
       transfer.sent = sent;
     },
 
     transferPaused: (state, action: PayloadAction<{ transferId: string }>) => {
       const transfer = state.items[action.payload.transferId];
       if (transfer) {
-        transfer.status = 'paused';
+        transfer.status = "paused";
       }
     },
 
     transferResumed: (state, action: PayloadAction<{ transferId: string }>) => {
       const transfer = state.items[action.payload.transferId];
       if (transfer) {
-        transfer.status = 'running';
+        transfer.status = "running";
       }
     },
 
-    transferCompleted: (state, action: PayloadAction<{ transferId: string }>) => {
+    transferCompleted: (
+      state,
+      action: PayloadAction<{ transferId: string }>,
+    ) => {
       const transfer = state.items[action.payload.transferId];
       if (transfer) {
-        transfer.status = 'completed';
+        transfer.status = "completed";
         transfer.sent = transfer.size;
       }
     },
 
-    transferCanceled: (state, action: PayloadAction<{ transferId: string }>) => {
+    transferCanceled: (
+      state,
+      action: PayloadAction<{ transferId: string }>,
+    ) => {
       const transfer = state.items[action.payload.transferId];
       if (transfer) {
-        transfer.status = 'canceled';
+        transfer.status = "canceled";
       }
     },
 
     transferFailed: (
       state,
-      action: PayloadAction<{ transferId: string; error: string }>
+      action: PayloadAction<{ transferId: string; error: string }>,
     ) => {
       const transfer = state.items[action.payload.transferId];
       if (transfer) {
-        transfer.status = 'error';
+        transfer.status = "error";
         transfer.error = action.payload.error;
       }
     },
@@ -191,8 +209,8 @@ export const TransferSlice = createSlice({
 
     clear: (state) => {
       state.items = {};
-    }
-  }
+    },
+  },
 });
 
 export const {

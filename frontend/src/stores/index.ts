@@ -1,24 +1,24 @@
-import { configureStore } from '@reduxjs/toolkit'
-import KeyReducer from './key'
-import PathReducer from './path'
-import TransferReducer from './transfer'
-import UIReducer from './ui'
-import type { TypedUseSelectorHook } from 'react-redux'
-import { useDispatch, useSelector, useStore } from 'react-redux'
+import { configureStore } from "@reduxjs/toolkit";
+import KeyReducer from "./key";
+import PathReducer from "./path";
+import TransferReducer from "./transfer";
+import UIReducer from "./ui";
+import type { TypedUseSelectorHook } from "react-redux";
+import { useDispatch, useSelector, useStore } from "react-redux";
 
 export const store = configureStore({
   reducer: {
     key: KeyReducer,
     path: PathReducer,
     transfer: TransferReducer,
-    ui: UIReducer
-  }
+    ui: UIReducer,
+  },
 });
 
-export type AppStore = typeof store
-export type RootState = ReturnType<AppStore['getState']>
-export type AppDispatch = AppStore['dispatch']
+export type AppStore = typeof store;
+export type RootState = ReturnType<AppStore["getState"]>;
+export type AppDispatch = AppStore["dispatch"];
 
-export const useAppDispatch: () => AppDispatch = useDispatch
-export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
-export const useAppStore: () => AppStore = useStore
+export const useAppDispatch: () => AppDispatch = useDispatch;
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+export const useAppStore: () => AppStore = useStore;

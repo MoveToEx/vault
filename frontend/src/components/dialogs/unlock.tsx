@@ -1,5 +1,13 @@
 import useAuth from "@/hooks/use-auth";
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { AlertDialog as BaseAlertDialog } from "@base-ui/react";
 import z from "zod";
 import { Controller, useForm } from "react-hook-form";
@@ -17,11 +25,13 @@ import { Spinner } from "../ui/spinner";
 import { Key, LogOut } from "lucide-react";
 
 const schema = z.object({
-  password: z.string()
+  password: z.string(),
 });
 
-export default function UnlockDialog({ handle }: {
-  handle: BaseAlertDialog.Handle<void>
+export default function UnlockDialog({
+  handle,
+}: {
+  handle: BaseAlertDialog.Handle<void>;
 }) {
   const { data: auth, reset, error } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -30,7 +40,7 @@ export default function UnlockDialog({ handle }: {
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: {
-      password: '',
+      password: "",
     },
     disabled: loading || error,
   });
@@ -50,7 +60,7 @@ export default function UnlockDialog({ handle }: {
         hashLength: 32,
       });
 
-      const kek = kdf(umk, 'KEK');
+      const kek = kdf(umk, "KEK");
 
       await sodium.ready;
 
@@ -59,42 +69,40 @@ export default function UnlockDialog({ handle }: {
         kek,
       );
 
-      dispatch(set({
-        umk: to_base64(umk),
-        privKey: to_base64(privKey),
-      }));
+      dispatch(
+        set({
+          umk: to_base64(umk),
+          privKey: to_base64(privKey),
+        }),
+      );
 
       handle.close();
-    }
-    catch (e) {
+    } catch (e) {
       if (e instanceof Error) {
-        form.setError('password', {
+        form.setError("password", {
           message: e.message,
-          type: 'value',
+          type: "value",
         });
       }
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <AlertDialog handle={handle} onOpenChangeComplete={() => form.reset()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Enter password to unlock vault
-          </AlertDialogTitle>
+          <AlertDialogTitle>Enter password to unlock vault</AlertDialogTitle>
           <AlertDialogDescription>
             You're logged in as {auth?.username}.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <form id='form-unlock' onSubmit={form.handleSubmit(submit)}>
+        <form id="form-unlock" onSubmit={form.handleSubmit(submit)}>
           <FieldGroup>
             <Controller
-              name='password'
+              name="password"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
@@ -104,7 +112,7 @@ export default function UnlockDialog({ handle }: {
                   <Input
                     {...field}
                     id="form-unlock-password"
-                    type='password'
+                    type="password"
                     placeholder="••••••••"
                     autoComplete="current-password"
                     disabled={loading || error}
@@ -113,19 +121,28 @@ export default function UnlockDialog({ handle }: {
                     <FieldError errors={[fieldState.error]} />
                   )}
                 </Field>
-              )} />
+              )}
+            />
           </FieldGroup>
         </form>
 
         <AlertDialogFooter>
-          <AlertDialogAction disabled={loading} variant='outline' onClick={() => {
-            reset();
-            logout();
-            handle.close();
-          }}>
+          <AlertDialogAction
+            disabled={loading}
+            variant="outline"
+            onClick={() => {
+              reset();
+              logout();
+              handle.close();
+            }}
+          >
             <LogOut /> Logout
           </AlertDialogAction>
-          <AlertDialogAction form='form-unlock' type='submit' disabled={loading}>
+          <AlertDialogAction
+            form="form-unlock"
+            type="submit"
+            disabled={loading}
+          >
             {loading && <Spinner />}
             {loading || <Key />}
             Continue
@@ -133,5 +150,5 @@ export default function UnlockDialog({ handle }: {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

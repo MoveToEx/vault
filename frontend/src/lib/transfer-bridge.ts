@@ -1,27 +1,44 @@
-import { store } from '@/stores'
-import type { TransferCommand, TransferMessage, WithId, WorkerRequest, WorkerResponse } from './types';
-import { chunkCompleted, chunkProgressUpdated, transferCanceled, transferCompleted, transferCreated, transferFailed, transferPaused, transferProgressUpdated, transferResumed, transferStarted } from '@/stores/transfer';
-import { mutate } from './swr';
-import { AxiosError } from 'axios';
-import api from '@/lib/api';
+import { store } from "@/stores";
+import type {
+  TransferCommand,
+  TransferMessage,
+  WithId,
+  WorkerRequest,
+  WorkerResponse,
+} from "./types";
+import {
+  chunkCompleted,
+  chunkProgressUpdated,
+  transferCanceled,
+  transferCompleted,
+  transferCreated,
+  transferFailed,
+  transferPaused,
+  transferProgressUpdated,
+  transferResumed,
+  transferStarted,
+} from "@/stores/transfer";
+import { mutate } from "./swr";
+import { AxiosError } from "axios";
+import api from "@/lib/api";
 
 class TransferBridge {
   private worker: Worker;
 
   constructor() {
     this.worker = new Worker(
-      new URL('@/workers/transfer.worker.ts', import.meta.url),
-      { type: 'module' }
+      new URL("@/workers/transfer.worker.ts", import.meta.url),
+      { type: "module" },
     );
 
-    this.worker.addEventListener('message', event => {
+    this.worker.addEventListener("message", (event) => {
       this.onMessage(event.data);
     });
   }
 
   enqueueUpload(file: File, dir: number, umk: Uint8Array) {
     this.post({
-      type: 'enqueue-upload',
+      type: "enqueue-upload",
       file,
       parentId: dir,
       umk,
@@ -30,19 +47,23 @@ class TransferBridge {
 
   enqueueDownload(fileId: number, umk: Uint8Array) {
     this.post({
-      type: 'enqueue-download',
+      type: "enqueue-download",
       fileId,
-      umk
+      umk,
     });
   }
 
-  enqueueDownloadShare(shareId: number, pubKey: Uint8Array, privKey: Uint8Array) {
+  enqueueDownloadShare(
+    shareId: number,
+    pubKey: Uint8Array,
+    privKey: Uint8Array,
+  ) {
     this.post({
-      type: 'enqueue-download-share',
+      type: "enqueue-download-share",
       shareId,
       publicKey: pubKey,
       privateKey: privKey,
-    })
+    });
   }
 
   post(message: TransferCommand | WithId<WorkerResponse>) {
@@ -53,77 +74,81 @@ class TransferBridge {
     try {
       switch (message.type) {
         //#region Upload RPC
-        case 'presign': {
+        case "presign": {
           const { uploadId, chunkIndex, $id } = message;
           const response = await api.presignUploadChunk(uploadId, chunkIndex);
 
           const { url } = response;
-          this.post({ type: 'presign', url, $id });
+          this.post({ type: "presign", url, $id });
 
           break;
         }
-        case 'init': {
+        case "init": {
           const { size, metadata, parentId, $id } = message;
-          const { id, chunks, chunkSize } = await api.initUpload(size, metadata, parentId);
-          this.post({ type: 'init', chunks, chunkSize, id, $id });
+          const { id, chunks, chunkSize } = await api.initUpload(
+            size,
+            metadata,
+            parentId,
+          );
+          this.post({ type: "init", chunks, chunkSize, id, $id });
           break;
         }
-        case 'ack': {
+        case "ack": {
           const { encryptedKey, uploadId, $id } = message;
           await api.completeUpload(uploadId, encryptedKey);
 
-          this.post({ type: 'ack', $id });
+          this.post({ type: "ack", $id });
           break;
         }
-        case 'chunk-ack': {
+        case "chunk-ack": {
           const { chunkIndex, size, uploadId, $id } = message;
           await api.completeChunk(uploadId, chunkIndex, size);
 
-          this.post({ type: 'chunk-ack', $id });
+          this.post({ type: "chunk-ack", $id });
           break;
         }
 
         //#endregion
 
         //#region Share RPC
-        case 'get-share': {
+        case "get-share": {
           const { shareId, $id } = message;
           const result = await api.getShare(shareId);
 
-          this.post({ type: 'get-share', ...result, $id });
+          this.post({ type: "get-share", ...result, $id });
           break;
         }
-        case 'get-share-chunk': {
+        case "get-share-chunk": {
           const { shareId, chunkIndex, $id } = message;
           const result = await api.getShareChunk(shareId, chunkIndex);
 
-          this.post({ type: 'get-share-chunk', ...result, $id });
+          this.post({ type: "get-share-chunk", ...result, $id });
           break;
         }
         //#endregion
 
         //#region Download RPC
-        case 'get-file': {
+        case "get-file": {
           const { fileId, $id } = message;
 
           const result = await api.getFile(fileId);
 
-          this.post({ type: 'get-file', $id, ...result });
+          this.post({ type: "get-file", $id, ...result });
           break;
         }
-        case 'get-file-chunk': {
+        case "get-file-chunk": {
           const { fileId, chunkIndex, $id } = message;
           const { url } = await api.getChunk(fileId, chunkIndex);
 
-          this.post({ type: 'get-file-chunk', url, $id });
+          this.post({ type: "get-file-chunk", url, $id });
 
           break;
         }
-        case 'download': {
+        case "download": {
           const { blob, $id, filename } = message;
           const url = URL.createObjectURL(blob);
 
-          const elem = document.createElement('a');
+          const elem = document.createElement("a");
           elem.href = url;
           elem.download = filename;
 
@@ -133,85 +158,85 @@ class TransferBridge {
           document.body.removeChild(elem);
           URL.revokeObjectURL(url);
 
-          this.post({ type: 'download', $id });
+          this.post({ type: "download", $id });
           break;
         }
         //#endregion
 
         //#region Messages
-        case 'transfer-created': {
+        case "transfer-created": {
           store.dispatch(transferCreated(message));
           break;
         }
-        case 'transfer-started': {
+        case "transfer-started": {
           store.dispatch(transferStarted(message));
           break;
         }
-        case 'transfer-complete': {
-          mutate('file')
+        case "transfer-complete": {
+          mutate("file");
           store.dispatch(transferCompleted(message));
           break;
         }
-        case 'chunk-started': {
-          store.dispatch(chunkProgressUpdated({
-            ...message,
-            sent: 0,
-          }));
+        case "chunk-started": {
+          store.dispatch(
+            chunkProgressUpdated({
+              ...message,
+              sent: 0,
+            }),
+          );
           break;
         }
-        case 'chunk-progress': {
+        case "chunk-progress": {
           store.dispatch(chunkProgressUpdated(message));
           break;
         }
-        case 'chunk-complete': {
+        case "chunk-complete": {
           store.dispatch(chunkCompleted(message));
           break;
         }
 
-        case 'transfer-progress': {
+        case "transfer-progress": {
           store.dispatch(transferProgressUpdated(message));
           break;
         }
 
-        case 'transfer-paused': {
+        case "transfer-paused": {
           store.dispatch(transferPaused(message));
           break;
         }
 
-        case 'transfer-resumed': {
+        case "transfer-resumed": {
           store.dispatch(transferResumed(message));
           break;
         }
 
-        case 'transfer-canceled': {
+        case "transfer-canceled": {
           store.dispatch(transferCanceled(message));
           break;
         }
 
-        case 'transfer-error': {
+        case "transfer-error": {
           store.dispatch(transferFailed(message));
           break;
         }
 
         //#endregion
       }
-    }
-    catch (e) {
+    } catch (e) {
       if (e instanceof AxiosError) {
         store.dispatch(
           transferFailed({
             transferId: message.transferId,
-            error: e.response?.data?.error ?? e.response?.statusText ?? 'Fail'
-          })
-        )
-      }
-      else if (e instanceof Error) {
+            error: e.response?.data?.error ?? e.response?.statusText ?? "Fail",
+          }),
+        );
+      } else if (e instanceof Error) {
         store.dispatch(
           transferFailed({
             transferId: message.transferId,
-            error: e.message
-          })
-        )
+            error: e.message,
+          }),
+        );
       }
     }
   }

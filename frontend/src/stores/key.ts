@@ -1,17 +1,17 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 type Payload = {
-  umk: string,
-  privKey: string,
-}
+  umk: string;
+  privKey: string;
+};
 
 export const KeySlice = createSlice({
-  name: 'key',
+  name: "key",
   initialState: {
     value: {
       umk: null as string | null,
       privKey: null as string | null,
-    }
+    },
   },
   reducers: {
     setUMK: (state, action: PayloadAction<string>) => {
@@ -27,8 +27,8 @@ export const KeySlice = createSlice({
     reset: (state) => {
       state.value.umk = null;
       state.value.privKey = null;
-    }
-  }
+    },
+  },
 });
 
 export const { set, setUMK, setPrivateKey, reset } = KeySlice.actions;
