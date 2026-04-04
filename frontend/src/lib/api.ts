@@ -61,7 +61,7 @@ type FinishRegistrationPayload = {
   username: string,
   opaqueRecord: Uint8Array,
   publicKey: Uint8Array,
-  privateKey: AEADResult,
+  privateKey: Uint8Array,
   rootMetadata: AEADResult,
   kdf: KDFParameters,
 }
@@ -74,7 +74,6 @@ type StartLoginResponse = {
 type FinishLoginResponse = {
   refreshToken: string,
   encryptedPrivateKey: Uint8Array,
-  privateKeyNonce: Uint8Array,
   kdf: KDFParameters
 }
 
@@ -181,8 +180,7 @@ const api = {
       username: payload.username,
       opaqueRecord: to_base64(payload.opaqueRecord),
       publicKey: to_base64(payload.publicKey),
-      encryptedPrivateKey: to_base64(payload.privateKey.cipher),
-      privateKeyNonce: to_base64(payload.privateKey.nonce),
+      encryptedPrivateKey: to_base64(payload.privateKey),
       encryptedRootMetadata: to_base64(payload.rootMetadata.cipher),
       rootNonce: to_base64(payload.rootMetadata.nonce),
       kdf: {
@@ -217,7 +215,6 @@ const api = {
     return {
       ...data,
       encryptedPrivateKey: from_base64(data.encryptedPrivateKey),
-      privateKeyNonce: from_base64(data.privateKeyNonce),
       kdf: {
         ...data.kdf,
         salt: from_base64(data.kdf.salt)

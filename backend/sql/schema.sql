@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS users (
 
     public_key BYTEA NOT NULL,
     encrypted_private_key BYTEA NOT NULL,
-    private_key_nonce BYTEA NOT NULL,
 
     root_folder BIGINT,
 

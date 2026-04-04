@@ -655,7 +655,7 @@ func (q *Queries) GetUploadSession(ctx context.Context, id int64) (Upload, error
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, private_key_nonce, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
+SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
 WHERE id = $1
 `
 
@@ -676,7 +676,6 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.KdfParallelism,
 		&i.PublicKey,
 		&i.EncryptedPrivateKey,
-		&i.PrivateKeyNonce,
 		&i.RootFolder,
 		&i.IsActive,
 		&i.IsLocked,
@@ -689,7 +688,7 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 
 const getUserByName = `-- name: GetUserByName :one
 
-SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, private_key_nonce, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
+SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
 WHERE username = $1
 `
 
@@ -711,7 +710,6 @@ func (q *Queries) GetUserByName(ctx context.Context, username string) (User, err
 		&i.KdfParallelism,
 		&i.PublicKey,
 		&i.EncryptedPrivateKey,
-		&i.PrivateKeyNonce,
 		&i.RootFolder,
 		&i.IsActive,
 		&i.IsLocked,
@@ -985,10 +983,10 @@ const newUser = `-- name: NewUser :one
 INSERT INTO users (
     email, username, opaque_record, credential_identifier, permission, capacity,
     kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism,
-    public_key, encrypted_private_key, private_key_nonce, root_folder
+    public_key, encrypted_private_key, root_folder
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-RETURNING id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, private_key_nonce, root_folder, is_active, is_locked, created_at, updated_at, last_login_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+RETURNING id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at
 `
 
 type NewUserParams struct {
@@ -1004,7 +1002,6 @@ type NewUserParams struct {
 	KdfParallelism       int32       `json:"kdfParallelism"`
 	PublicKey            []byte      `json:"publicKey"`
 	EncryptedPrivateKey  []byte      `json:"encryptedPrivateKey"`
-	PrivateKeyNonce      []byte      `json:"privateKeyNonce"`
 	RootFolder           pgtype.Int8 `json:"rootFolder"`
 }
 
@@ -1022,7 +1019,6 @@ func (q *Queries) NewUser(ctx context.Context, arg NewUserParams) (User, error) 
 		arg.KdfParallelism,
 		arg.PublicKey,
 		arg.EncryptedPrivateKey,
-		arg.PrivateKeyNonce,
 		arg.RootFolder,
 	)
 	var i User
@@ -1040,7 +1036,6 @@ func (q *Queries) NewUser(ctx context.Context, arg NewUserParams) (User, error) 
 		&i.KdfParallelism,
 		&i.PublicKey,
 		&i.EncryptedPrivateKey,
-		&i.PrivateKeyNonce,
 		&i.RootFolder,
 		&i.IsActive,
 		&i.IsLocked,

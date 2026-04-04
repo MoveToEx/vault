@@ -149,7 +149,6 @@ type User struct {
 	KdfParallelism       int32              `json:"kdfParallelism"`
 	PublicKey            []byte             `json:"publicKey"`
 	EncryptedPrivateKey  []byte             `json:"encryptedPrivateKey"`
-	PrivateKeyNonce      []byte             `json:"privateKeyNonce"`
 	RootFolder           pgtype.Int8        `json:"rootFolder"`
 	IsActive             bool               `json:"isActive"`
 	IsLocked             bool               `json:"isLocked"`

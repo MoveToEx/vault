@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { useState } from "react";
-import { aeadDecrypt, kdf } from "@/lib/crypto";
+import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
 import { logout } from "@/lib/utils";
 import { argon2id } from "@/workers";
 import { useAppDispatch } from "@/stores";
@@ -54,10 +54,9 @@ export default function UnlockDialog({ handle }: {
 
       await sodium.ready;
 
-      const privKey = aeadDecrypt(
+      const privKey = aeadCompositeDecrypt(
         from_base64(auth.encryptedPrivateKey),
         kek,
-        from_base64(auth.privateKeyNonce)
       );
 
       dispatch(set({

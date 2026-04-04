@@ -8,7 +8,6 @@ type AuthResponse = {
   username: string,
   publicKey: string,
   encryptedPrivateKey: string,
-  privateKeyNonce: string,
   rootFolder: number,
   createdAt: string,
   kdfSalt: string,

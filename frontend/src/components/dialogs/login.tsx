@@ -26,7 +26,7 @@ import { useAppDispatch } from "@/stores";
 import { set } from "@/stores/key";
 import sodium, { from_string, to_base64 } from 'libsodium-wrappers-sumo';
 import api from '@/lib/api';
-import { aeadDecrypt, kdf } from "@/lib/crypto";
+import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
 
 
 const schema = z.object({
@@ -78,7 +78,7 @@ export default function LoginDialog({
         throw fin;
       }
 
-      const { refreshToken, kdf: kdfParams, encryptedPrivateKey, privateKeyNonce } = await api.finishLogin(new Uint8Array(fin.ke3.serialize()), loginStateID);
+      const { refreshToken, kdf: kdfParams, encryptedPrivateKey } = await api.finishLogin(new Uint8Array(fin.ke3.serialize()), loginStateID);
 
       toast.success('Successfully logged in');
 
@@ -93,7 +93,7 @@ export default function LoginDialog({
 
       const kek = kdf(umk, 'KEK');
 
-      const privKey = aeadDecrypt(encryptedPrivateKey, kek, privateKeyNonce);
+      const privKey = aeadCompositeDecrypt(encryptedPrivateKey, kek);
 
       setRefreshToken(refreshToken);
       dispatch(set({

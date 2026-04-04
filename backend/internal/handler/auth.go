@@ -75,7 +75,6 @@ type RegisterFinishPayload struct {
 	Username            string        `json:"username"`
 	PublicKey           utils.Bytes   `json:"publicKey"`
 	EncryptedPrivateKey utils.Bytes   `json:"encryptedPrivateKey"`
-	PrivateKeyNonce     utils.Bytes   `json:"privateKeyNonce"`
 	OpaqueRecord        utils.Bytes   `json:"opaqueRecord"`
 	KDF                 KDFParameters `json:"kdf"`
 
@@ -115,7 +114,6 @@ func RegisterFinish(c *gin.Context) {
 
 		PublicKey:           payload.PublicKey,
 		EncryptedPrivateKey: payload.EncryptedPrivateKey,
-		PrivateKeyNonce:     payload.PrivateKeyNonce,
 
 		CredentialIdentifier: credID,
 		OpaqueRecord:         record.Serialize(),
@@ -244,7 +242,6 @@ type LoginFinishResponse struct {
 	RefreshToken        string        `json:"refreshToken"`
 	KDF                 KDFParameters `json:"kdf"`
 	EncryptedPrivateKey utils.Bytes   `json:"encryptedPrivateKey"`
-	PrivateKeyNonce     utils.Bytes   `json:"privateKeyNonce"`
 }
 
 func LoginFinish(c *gin.Context) {
@@ -312,7 +309,6 @@ func LoginFinish(c *gin.Context) {
 	utils.SuccessResponse(c, LoginFinishResponse{
 		RefreshToken:        session.RefreshToken,
 		EncryptedPrivateKey: user.EncryptedPrivateKey,
-		PrivateKeyNonce:     user.PrivateKeyNonce,
 		KDF: KDFParameters{
 			Salt:        user.KdfSalt,
 			MemoryCost:  user.KdfMemoryCost,
@@ -327,7 +323,6 @@ type GetResponse struct {
 	Username            string      `json:"username"`
 	PublicKey           utils.Bytes `json:"publicKey"`
 	EncryptedPrivateKey utils.Bytes `json:"encryptedPrivateKey"`
-	PrivateKeyNonce     utils.Bytes `json:"privateKeyNonce"`
 	RootFolder          int64       `json:"rootFolder"`
 	CreatedAt           time.Time   `json:"createdAt"`
 	KDFSalt             utils.Bytes `json:"kdfSalt"`
@@ -353,7 +348,6 @@ func GetIdentity(c *gin.Context) {
 		Username:            user.Username,
 		PublicKey:           user.PublicKey,
 		EncryptedPrivateKey: user.EncryptedPrivateKey,
-		PrivateKeyNonce:     user.PrivateKeyNonce,
 		RootFolder:          user.RootFolder.Int64,
 		CreatedAt:           user.CreatedAt.Time,
 		KDFSalt:             user.KdfSalt,

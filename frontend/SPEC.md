@@ -10,7 +10,7 @@ kek[Key encryption key]
 efek[Encrypted KEK]
 
 pswd --Argon2id--> umk
-umk --HKDF--> kek
+umk --KDF--> kek
 kek --AEAD--> efek
 fek --AEAD--> efek
 
@@ -46,7 +46,33 @@ sequenceDiagram
     Client->>Server: Initiate
     Server->>Client: Upload ID
     Client->>Server: Get chunk
-    Server->>Client: Signed chunk url
-    Client->>S3: Request for chunk
-    S3->>Client: Cipher chunk
+    Server->>Client: Signed chunk PUT url
+    Client->>S3: Cipher chunk
+    S3->>Client: Success
+    Client->>Server: Complete chunk
+    Server->>Client:
+    Client->>Server: Complete upload
+    Server->>Client:
+```
+
+# Share
+
+```mermaid
+sequenceDiagram
+    participant Sender
+    participant Server
+    Sender->>Server: Request for file
+    Server->>Sender: Encrypted file metadata + FEK
+    Sender->>Server: Request for receiver
+    Server->>Sender: Receiver public key
+    Sender->>Sender: Decrypt file metdata and FEK
+    Sender->>Sender: Encrypt file metadata and FEK with public key
+    Sender->>Server: Encrypted FEK
+```
+
+```mermaid
+sequenceDiagram
+    participant Receiver
+    participant Server
+    Receiver->>Server: 
 ```

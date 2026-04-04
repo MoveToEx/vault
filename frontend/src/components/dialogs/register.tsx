@@ -21,7 +21,7 @@ import { ChevronDown, ChevronUp, User } from 'lucide-react'
 import { Spinner } from '../ui/spinner';
 import { OpaqueClient, OpaqueID, RegistrationResponse, getOpaqueConfig, type RegistrationClient } from '@cloudflare/opaque-ts';
 import { Slider } from '../ui/slider';
-import { aead, kdf } from '@/lib/crypto'
+import { aead, aeadComposite, kdf } from '@/lib/crypto'
 import { argon2id } from '@/workers'
 import sodium from 'libsodium-wrappers-sumo'
 import { mutate } from '@/lib/swr'
@@ -120,7 +120,7 @@ export default function RegisterDialog() {
 
       const { publicKey, privateKey } = sodium.crypto_box_keypair();
 
-      const epk = aead(privateKey, kek);
+      const epk = aeadComposite(privateKey, kek);
 
       await api.completeRegistration({
         email: data.email,
