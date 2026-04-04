@@ -131,7 +131,7 @@ func GetFile(c *gin.Context) {
 		Chunks:            file.Chunks,
 		EncryptedKey:      file.EncryptedKey,
 		Size:              file.Size,
-		ChunkSize:         config.GetConfig().ChunkSize,
+		ChunkSize:         file.ChunkSize,
 		EncryptedMetadata: file.EncryptedMetadata,
 	})
 }
@@ -187,7 +187,6 @@ func GetChunk(c *gin.Context) {
 	utils.SuccessResponse(c, GetChunkResponse{
 		URL:     req.URL,
 		Headers: req.SignedHeader,
-		Size:    chunk.Size,
 	})
 }
 

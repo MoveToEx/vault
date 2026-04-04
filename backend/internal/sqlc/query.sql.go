@@ -124,7 +124,7 @@ func (q *Queries) FindUserByUsername(ctx context.Context, key string) ([]FindUse
 }
 
 const getActiveUploadSession = `-- name: GetActiveUploadSession :many
-SELECT u.id, u.user_id, u.encrypted_metadata, u.parent_id, u.chunks, u.size, u.created_at, u.completed_at, u.expires_at, ARRAY_AGG(uc.chunk_index)::INT[] AS completed FROM uploads u
+SELECT u.id, u.user_id, u.encrypted_metadata, u.parent_id, u.chunks, u.chunk_size, u.size, u.created_at, u.completed_at, u.expires_at, ARRAY_AGG(uc.chunk_index)::INT[] AS completed FROM uploads u
 INNER JOIN upload_chunks uc ON u.id = uc.upload_id
 WHERE user_id = $1 AND u.completed_at IS NULL
 GROUP BY u.id
@@ -136,6 +136,7 @@ type GetActiveUploadSessionRow struct {
 	EncryptedMetadata []byte             `json:"encryptedMetadata"`
 	ParentID          int64              `json:"parentId"`
 	Chunks            int32              `json:"chunks"`
+	ChunkSize         int64              `json:"chunkSize"`
 	Size              int64              `json:"size"`
 	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
 	CompletedAt       pgtype.Timestamptz `json:"completedAt"`
@@ -158,6 +159,7 @@ func (q *Queries) GetActiveUploadSession(ctx context.Context, userID int64) ([]G
 			&i.EncryptedMetadata,
 			&i.ParentID,
 			&i.Chunks,
+			&i.ChunkSize,
 			&i.Size,
 			&i.CreatedAt,
 			&i.CompletedAt,
@@ -175,7 +177,7 @@ func (q *Queries) GetActiveUploadSession(ctx context.Context, userID int64) ([]G
 }
 
 const getChunk = `-- name: GetChunk :one
-SELECT c.file_id, c.chunk_index, c.s3_key, c.size, c.checksum FROM file_chunks c
+SELECT c.file_id, c.chunk_index, c.s3_key, c.checksum FROM file_chunks c
 JOIN files f ON c.file_id = f.id
 WHERE f.owner_id = $1 AND f.id = $3 AND c.chunk_index = $2
 `
@@ -193,14 +195,13 @@ func (q *Queries) GetChunk(ctx context.Context, arg GetChunkParams) (FileChunk, 
 		&i.FileID,
 		&i.ChunkIndex,
 		&i.S3Key,
-		&i.Size,
 		&i.Checksum,
 	)
 	return i, err
 }
 
 const getChunks = `-- name: GetChunks :one
-SELECT c.file_id, c.chunk_index, c.s3_key, c.size, c.checksum FROM file_chunks c
+SELECT c.file_id, c.chunk_index, c.s3_key, c.checksum FROM file_chunks c
 JOIN files f ON c.file_id = f.id
 WHERE f.owner_id = $1 AND f.id = $2
 `
@@ -217,14 +218,13 @@ func (q *Queries) GetChunks(ctx context.Context, arg GetChunksParams) (FileChunk
 		&i.FileID,
 		&i.ChunkIndex,
 		&i.S3Key,
-		&i.Size,
 		&i.Checksum,
 	)
 	return i, err
 }
 
 const getFile = `-- name: GetFile :one
-SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, size, created_at, deleted_at FROM files
+SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at, deleted_at FROM files
 WHERE id = $1
 `
 
@@ -238,6 +238,7 @@ func (q *Queries) GetFile(ctx context.Context, id int64) (File, error) {
 		&i.EncryptedKey,
 		&i.ParentID,
 		&i.Chunks,
+		&i.ChunkSize,
 		&i.Size,
 		&i.CreatedAt,
 		&i.DeletedAt,
@@ -246,7 +247,7 @@ func (q *Queries) GetFile(ctx context.Context, id int64) (File, error) {
 }
 
 const getFiles = `-- name: GetFiles :many
-SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, size, created_at, deleted_at FROM files f
+SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at, deleted_at FROM files f
 WHERE parent_id = $1 AND deleted_at ISNULL
 `
 
@@ -266,6 +267,7 @@ func (q *Queries) GetFiles(ctx context.Context, parentID int64) ([]File, error) 
 			&i.EncryptedKey,
 			&i.ParentID,
 			&i.Chunks,
+			&i.ChunkSize,
 			&i.Size,
 			&i.CreatedAt,
 			&i.DeletedAt,
@@ -370,7 +372,7 @@ func (q *Queries) GetSession(ctx context.Context, refreshToken string) (Session,
 }
 
 const getShare = `-- name: GetShare :one
-SELECT s.id, s.file_id, s.sender_id, s.receiver_id, s.encrypted_fek, s.encrypted_metadata, s.created_at, s.expires_at, f.chunks, f.size FROM shares s
+SELECT s.id, s.file_id, s.sender_id, s.receiver_id, s.encrypted_fek, s.encrypted_metadata, s.created_at, s.expires_at, f.chunks, f.size, f.chunk_size FROM shares s
 INNER JOIN files f ON s.file_id = f.id
 WHERE s.id = $1 AND s.expires_at > NOW()
 `
@@ -386,6 +388,7 @@ type GetShareRow struct {
 	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
 	Chunks            int32              `json:"chunks"`
 	Size              int64              `json:"size"`
+	ChunkSize         int64              `json:"chunkSize"`
 }
 
 func (q *Queries) GetShare(ctx context.Context, id int64) (GetShareRow, error) {
@@ -402,12 +405,13 @@ func (q *Queries) GetShare(ctx context.Context, id int64) (GetShareRow, error) {
 		&i.ExpiresAt,
 		&i.Chunks,
 		&i.Size,
+		&i.ChunkSize,
 	)
 	return i, err
 }
 
 const getShareChunk = `-- name: GetShareChunk :one
-SELECT s.id, s.file_id, s.sender_id, s.receiver_id, s.encrypted_fek, s.encrypted_metadata, s.created_at, s.expires_at, c.file_id, c.chunk_index, c.s3_key, c.size, c.checksum FROM shares s
+SELECT s.id, s.file_id, s.sender_id, s.receiver_id, s.encrypted_fek, s.encrypted_metadata, s.created_at, s.expires_at, c.file_id, c.chunk_index, c.s3_key, c.checksum FROM shares s
 INNER JOIN files f ON s.file_id = f.id
 INNER JOIN file_chunks c ON c.file_id = f.id
 WHERE s.id = $1 AND c.chunk_index = $2 AND s.expires_at > NOW()
@@ -430,7 +434,6 @@ type GetShareChunkRow struct {
 	FileID_2          int64              `json:"fileId2"`
 	ChunkIndex        int32              `json:"chunkIndex"`
 	S3Key             string             `json:"s3Key"`
-	Size              int64              `json:"size"`
 	Checksum          []byte             `json:"checksum"`
 }
 
@@ -449,7 +452,6 @@ func (q *Queries) GetShareChunk(ctx context.Context, arg GetShareChunkParams) (G
 		&i.FileID_2,
 		&i.ChunkIndex,
 		&i.S3Key,
-		&i.Size,
 		&i.Checksum,
 	)
 	return i, err
@@ -600,7 +602,7 @@ func (q *Queries) GetSubfolders(ctx context.Context, parentID pgtype.Int8) ([]Fo
 }
 
 const getUploadChunk = `-- name: GetUploadChunk :one
-SELECT upload_id, chunk_index, s3_key, size, completed FROM upload_chunks
+SELECT upload_id, chunk_index, s3_key, completed FROM upload_chunks
 WHERE upload_id = $1 AND chunk_index = $2
 `
 
@@ -616,14 +618,13 @@ func (q *Queries) GetUploadChunk(ctx context.Context, arg GetUploadChunkParams) 
 		&i.UploadID,
 		&i.ChunkIndex,
 		&i.S3Key,
-		&i.Size,
 		&i.Completed,
 	)
 	return i, err
 }
 
 const getUploadSession = `-- name: GetUploadSession :one
-SELECT id, user_id, encrypted_metadata, parent_id, chunks, size, created_at, completed_at, expires_at FROM uploads
+SELECT id, user_id, encrypted_metadata, parent_id, chunks, chunk_size, size, created_at, completed_at, expires_at FROM uploads
 WHERE id = $1 AND completed_at IS NULL AND expires_at > NOW()
 `
 
@@ -636,12 +637,25 @@ func (q *Queries) GetUploadSession(ctx context.Context, id int64) (Upload, error
 		&i.EncryptedMetadata,
 		&i.ParentID,
 		&i.Chunks,
+		&i.ChunkSize,
 		&i.Size,
 		&i.CreatedAt,
 		&i.CompletedAt,
 		&i.ExpiresAt,
 	)
 	return i, err
+}
+
+const getUsedCapacity = `-- name: GetUsedCapacity :one
+SELECT SUM(size) FROM files
+WHERE owner_id = $1 AND deleted_at ISNULL
+`
+
+func (q *Queries) GetUsedCapacity(ctx context.Context, ownerID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getUsedCapacity, ownerID)
+	var sum int64
+	err := row.Scan(&sum)
+	return sum, err
 }
 
 const getUser = `-- name: GetUser :one
@@ -723,11 +737,11 @@ func (q *Queries) InvalidateShare(ctx context.Context, id int64) error {
 
 const migrateChunks = `-- name: MigrateChunks :exec
 INSERT INTO
-    file_chunks (file_id, chunk_index, s3_key, size)
+    file_chunks (file_id, chunk_index, s3_key)
 SELECT 
-    $1 AS file_id, chunk_index, s3_key, size
+    $1 AS file_id, chunk_index, s3_key
 FROM upload_chunks
-WHERE upload_id = $2
+WHERE upload_id = $2 AND completed = TRUE
 `
 
 type MigrateChunksParams struct {
@@ -742,9 +756,9 @@ func (q *Queries) MigrateChunks(ctx context.Context, arg MigrateChunksParams) er
 
 const migrateUpload = `-- name: MigrateUpload :one
 INSERT INTO
-    files (owner_id, encrypted_metadata, parent_id, encrypted_key, chunks, size)
+    files (owner_id, encrypted_metadata, parent_id, encrypted_key, chunks, size, chunk_size)
 SELECT
-    user_id, encrypted_metadata, parent_id, $2 AS encrypted_key, chunks, size
+    user_id, encrypted_metadata, parent_id, $2 AS encrypted_key, chunks, size, chunk_size
 FROM uploads u
 WHERE u.id = $1
 RETURNING id
@@ -770,7 +784,7 @@ INSERT INTO files (
 VALUES (
     $1, $2, $3, $4, $5
 )
-RETURNING id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, size, created_at, deleted_at
+RETURNING id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at, deleted_at
 `
 
 type NewFileParams struct {
@@ -797,6 +811,7 @@ func (q *Queries) NewFile(ctx context.Context, arg NewFileParams) (File, error) 
 		&i.EncryptedKey,
 		&i.ParentID,
 		&i.Chunks,
+		&i.ChunkSize,
 		&i.Size,
 		&i.CreatedAt,
 		&i.DeletedAt,
@@ -894,16 +909,17 @@ func (q *Queries) NewShare(ctx context.Context, arg NewShareParams) (Share, erro
 
 const newUpload = `-- name: NewUpload :one
 INSERT INTO uploads (
-    user_id, chunks, size, expires_at, parent_id, encrypted_metadata
+    user_id, chunks, chunk_size, size, expires_at, parent_id, encrypted_metadata
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING id, user_id, encrypted_metadata, parent_id, chunks, size, created_at, completed_at, expires_at
+RETURNING id, user_id, encrypted_metadata, parent_id, chunks, chunk_size, size, created_at, completed_at, expires_at
 `
 
 type NewUploadParams struct {
 	UserID            int64              `json:"userId"`
 	Chunks            int32              `json:"chunks"`
+	ChunkSize         int64              `json:"chunkSize"`
 	Size              int64              `json:"size"`
 	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
 	ParentID          int64              `json:"parentId"`
@@ -914,6 +930,7 @@ func (q *Queries) NewUpload(ctx context.Context, arg NewUploadParams) (Upload, e
 	row := q.db.QueryRow(ctx, newUpload,
 		arg.UserID,
 		arg.Chunks,
+		arg.ChunkSize,
 		arg.Size,
 		arg.ExpiresAt,
 		arg.ParentID,
@@ -926,6 +943,7 @@ func (q *Queries) NewUpload(ctx context.Context, arg NewUploadParams) (Upload, e
 		&i.EncryptedMetadata,
 		&i.ParentID,
 		&i.Chunks,
+		&i.ChunkSize,
 		&i.Size,
 		&i.CreatedAt,
 		&i.CompletedAt,
@@ -935,24 +953,18 @@ func (q *Queries) NewUpload(ctx context.Context, arg NewUploadParams) (Upload, e
 }
 
 const newUploadChunk = `-- name: NewUploadChunk :exec
-INSERT INTO upload_chunks (upload_id, chunk_index, s3_key, size, completed)
-VALUES ($1, $2, $3, $4, false)
+INSERT INTO upload_chunks (upload_id, chunk_index, s3_key, completed)
+VALUES ($1, $2, $3, false)
 `
 
 type NewUploadChunkParams struct {
 	UploadID   int64  `json:"uploadId"`
 	ChunkIndex int32  `json:"chunkIndex"`
 	S3Key      string `json:"s3Key"`
-	Size       int64  `json:"size"`
 }
 
 func (q *Queries) NewUploadChunk(ctx context.Context, arg NewUploadChunkParams) error {
-	_, err := q.db.Exec(ctx, newUploadChunk,
-		arg.UploadID,
-		arg.ChunkIndex,
-		arg.S3Key,
-		arg.Size,
-	)
+	_, err := q.db.Exec(ctx, newUploadChunk, arg.UploadID, arg.ChunkIndex, arg.S3Key)
 	return err
 }
 

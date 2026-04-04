@@ -50,17 +50,21 @@ UPDATE files
 SET parent_id = $2
 WHERE id = $1;
 
+-- name: GetUsedCapacity :one
+SELECT SUM(size) FROM files
+WHERE owner_id = $1 AND deleted_at ISNULL;
+
 -- name: NewUpload :one
 INSERT INTO uploads (
-    user_id, chunks, size, expires_at, parent_id, encrypted_metadata
+    user_id, chunks, chunk_size, size, expires_at, parent_id, encrypted_metadata
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 )
 RETURNING *;
 
 -- name: NewUploadChunk :exec
-INSERT INTO upload_chunks (upload_id, chunk_index, s3_key, size, completed)
-VALUES ($1, $2, $3, $4, false);
+INSERT INTO upload_chunks (upload_id, chunk_index, s3_key, completed)
+VALUES ($1, $2, $3, false);
 
 -- name: CompleteUploadChunk :exec
 UPDATE upload_chunks
@@ -88,20 +92,20 @@ WHERE id = $1;
 
 -- name: MigrateUpload :one
 INSERT INTO
-    files (owner_id, encrypted_metadata, parent_id, encrypted_key, chunks, size)
+    files (owner_id, encrypted_metadata, parent_id, encrypted_key, chunks, size, chunk_size)
 SELECT
-    user_id, encrypted_metadata, parent_id, $2 AS encrypted_key, chunks, size
+    user_id, encrypted_metadata, parent_id, $2 AS encrypted_key, chunks, size, chunk_size
 FROM uploads u
 WHERE u.id = $1
 RETURNING id;
 
 -- name: MigrateChunks :exec
 INSERT INTO
-    file_chunks (file_id, chunk_index, s3_key, size)
+    file_chunks (file_id, chunk_index, s3_key)
 SELECT 
-    $1 AS file_id, chunk_index, s3_key, size
+    $1 AS file_id, chunk_index, s3_key
 FROM upload_chunks
-WHERE upload_id = $2;
+WHERE upload_id = $2 AND completed = TRUE;
 
 -- name: GetUploadChunk :one
 SELECT * FROM upload_chunks
@@ -187,7 +191,7 @@ ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: GetShare :one
-SELECT s.*, f.chunks, f.size FROM shares s
+SELECT s.*, f.chunks, f.size, f.chunk_size FROM shares s
 INNER JOIN files f ON s.file_id = f.id
 WHERE s.id = $1 AND s.expires_at > NOW();
 

@@ -62,6 +62,7 @@ type File struct {
 	EncryptedKey      []byte             `json:"encryptedKey"`
 	ParentID          int64              `json:"parentId"`
 	Chunks            int32              `json:"chunks"`
+	ChunkSize         int64              `json:"chunkSize"`
 	Size              int64              `json:"size"`
 	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
 	DeletedAt         pgtype.Timestamptz `json:"deletedAt"`
@@ -71,7 +72,6 @@ type FileChunk struct {
 	FileID     int64  `json:"fileId"`
 	ChunkIndex int32  `json:"chunkIndex"`
 	S3Key      string `json:"s3Key"`
-	Size       int64  `json:"size"`
 	Checksum   []byte `json:"checksum"`
 }
 
@@ -118,6 +118,7 @@ type Upload struct {
 	EncryptedMetadata []byte             `json:"encryptedMetadata"`
 	ParentID          int64              `json:"parentId"`
 	Chunks            int32              `json:"chunks"`
+	ChunkSize         int64              `json:"chunkSize"`
 	Size              int64              `json:"size"`
 	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
 	CompletedAt       pgtype.Timestamptz `json:"completedAt"`
@@ -128,7 +129,6 @@ type UploadChunk struct {
 	UploadID   int64  `json:"uploadId"`
 	ChunkIndex int32  `json:"chunkIndex"`
 	S3Key      string `json:"s3Key"`
-	Size       int64  `json:"size"`
 	Completed  bool   `json:"completed"`
 }
 

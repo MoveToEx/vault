@@ -68,20 +68,33 @@ func InitUpload(c *gin.Context) {
 		return
 	}
 
+	user, err := db.Query().GetUser(ctx, userID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting user")
+		return
+	}
+
 	if payload.ParentID == 0 {
-		user, err := db.Query().GetUser(ctx, userID)
-
-		if err != nil {
-			utils.ErrorResponse(c, 500, "Failed when getting user")
-			return
-		}
-
 		payload.ParentID = user.RootFolder.Int64
 	}
 
-	chunks := payload.Size / config.GetConfig().ChunkSize
+	used, err := db.Query().GetUsedCapacity(ctx, userID)
 
-	if payload.Size%config.GetConfig().ChunkSize != 0 {
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when calculating capacity")
+		return
+	}
+
+	if used+payload.Size > user.Capacity {
+		utils.ErrorResponse(c, 400, "Insufficient capacity")
+		return
+	}
+
+	chunkSize := utils.GetChunkSize(payload.Size)
+	chunks := payload.Size / chunkSize
+
+	if payload.Size%chunkSize != 0 {
 		chunks++
 	}
 
@@ -90,6 +103,7 @@ func InitUpload(c *gin.Context) {
 		EncryptedMetadata: payload.EncryptedMetadata,
 		Size:              payload.Size,
 		Chunks:            int32(chunks),
+		ChunkSize:         chunkSize,
 		ParentID:          payload.ParentID,
 		ExpiresAt: pgtype.Timestamptz{
 			Valid: true,
@@ -105,7 +119,7 @@ func InitUpload(c *gin.Context) {
 	utils.SuccessResponse(c, InitUploadResponse{
 		ID:        up.ID,
 		Chunks:    int32(chunks),
-		ChunkSize: config.GetConfig().ChunkSize,
+		ChunkSize: chunkSize,
 	})
 }
 
@@ -154,6 +168,14 @@ func UploadChunkInit(c *gin.Context) {
 		return
 	}
 
+	chunkSize := up.ChunkSize
+
+	if up.Chunks == int32(chunkIndex) && up.Size%up.ChunkSize != 0 {
+		chunkSize = up.Size % up.ChunkSize
+	}
+
+	length := utils.GetEncryptedChunkSize(chunkSize)
+
 	err = db.Query().NewUploadChunk(ctx, sqlc.NewUploadChunkParams{
 		UploadID:   uploadID,
 		ChunkIndex: int32(chunkIndex),
@@ -166,8 +188,9 @@ func UploadChunkInit(c *gin.Context) {
 	}
 
 	req, err := presigner.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(config.GetConfig().S3.BucketName),
-		Key:    aws.String(key),
+		Bucket:        aws.String(config.GetConfig().S3.BucketName),
+		Key:           aws.String(key),
+		ContentLength: aws.Int64(length),
 	})
 
 	if err != nil {
@@ -182,10 +205,6 @@ func UploadChunkInit(c *gin.Context) {
 	})
 }
 
-type UploadChunkCompletePayload struct {
-	Size int64 `json:"size"`
-}
-
 func UploadChunkComplete(c *gin.Context) {
 	userID := c.GetInt64("UserID")
 	uploadID, err := strconv.ParseInt(c.Param("upload_id"), 10, 64)
@@ -198,13 +217,6 @@ func UploadChunkComplete(c *gin.Context) {
 	chunkIndex, err := strconv.ParseInt(c.Param("chunk_index"), 10, 32)
 
 	if err != nil {
-		utils.ErrorResponse(c, 400, "Invalid request")
-		return
-	}
-
-	var payload UploadChunkCompletePayload
-
-	if err := c.ShouldBindJSON(&payload); err != nil {
 		utils.ErrorResponse(c, 400, "Invalid request")
 		return
 	}
@@ -308,7 +320,8 @@ func UploadComplete(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating file")
+		utils.ErrorResponse(c, 500, "Failed when creating file: %v", err)
+		return
 	}
 
 	utils.SuccessResponse(c, nil)

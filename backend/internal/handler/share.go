@@ -286,7 +286,7 @@ func GetShare(c *gin.Context) {
 
 	utils.SuccessResponse(c, GetShareResponse{
 		Chunks:     share.Chunks,
-		ChunkSize:  config.GetConfig().ChunkSize,
+		ChunkSize:  share.ChunkSize,
 		Size:       share.Size,
 		SenderID:   share.SenderID,
 		ReceiverID: share.ReceiverID,

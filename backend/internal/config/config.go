@@ -45,7 +45,6 @@ type Config struct {
 	JWT         JWTConfig
 	S3          S3Config
 	Opaque      OpaqueConfig
-	ChunkSize   int64
 }
 
 func mustDecodeHex(s string) []byte {
@@ -110,7 +109,6 @@ func LoadConfig() error {
 			ServerPrivateKey: mustDecodeBase64(os.Getenv("OPAQUE_SERVER_PRIVATE_KEY")),
 			ServerPublicKey:  mustDecodeBase64(os.Getenv("OPAQUE_SERVER_PUBLIC_KEY")),
 		},
-		ChunkSize: mustParseInt64(os.Getenv("CHUNK_SIZE")),
 	}
 
 	return nil

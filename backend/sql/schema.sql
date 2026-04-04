@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS files (
     parent_id BIGINT NOT NULL,
 
     chunks INT NOT NULL,
+    chunk_size BIGINT NOT NULL,
     size BIGINT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -66,7 +67,6 @@ CREATE TABLE IF NOT EXISTS file_chunks (
     chunk_index INT NOT NULL,
 
     s3_key TEXT NOT NULL UNIQUE,
-    size BIGINT NOT NULL,
     checksum BYTEA,
 
     PRIMARY KEY (file_id, chunk_index)
@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS uploads (
     parent_id BIGINT NOT NULL,
 
     chunks INT NOT NULL,
+    chunk_size BIGINT NOT NULL,
     size BIGINT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -122,7 +123,6 @@ CREATE TABLE IF NOT EXISTS upload_chunks (
     chunk_index INT NOT NULL,
 
     s3_key TEXT NOT NULL,
-    size BIGINT NOT NULL,
 
     completed BOOLEAN NOT NULL DEFAULT FALSE,
 
