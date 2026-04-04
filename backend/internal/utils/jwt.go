@@ -22,6 +22,7 @@ func NewToken(userID int64, permission int64, expiration time.Duration) (string,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Audience:  []string{config.GetConfig().JWT.Audience},
 		},
 	}
 
@@ -38,6 +39,7 @@ func ParseToken(s string) (*Claims, error) {
 			return config.GetConfig().JWT.PublicKey, nil
 		},
 		jwt.WithValidMethods([]string{jwt.SigningMethodEdDSA.Alg()}),
+		jwt.WithAudience(config.GetConfig().JWT.Audience),
 	)
 
 	if err != nil {

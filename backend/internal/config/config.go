@@ -19,6 +19,7 @@ import (
 type JWTConfig struct {
 	PrivateKey ed25519.PrivateKey
 	PublicKey  ed25519.PublicKey
+	Audience   string
 	SessionTTL int
 }
 
@@ -92,6 +93,7 @@ func LoadConfig() error {
 		RedisAddr:   os.Getenv("REDIS_ADDR"),
 		JWT: JWTConfig{
 			PrivateKey: mustDecodeBase64(os.Getenv("JWT_PRIVATE_KEY")),
+			Audience:   os.Getenv("JWT_AUDIENCE"),
 			SessionTTL: 72,
 			PublicKey:  mustDecodeBase64(os.Getenv("JWT_PUBLIC_KEY")),
 		},
