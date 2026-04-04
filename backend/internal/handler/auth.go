@@ -118,7 +118,7 @@ func RegisterFinish(c *gin.Context) {
 		OpaqueRecord:         record.Serialize(),
 
 		Permission: 1,
-		Capacity:   2 * 1024 * 1024,
+		Capacity:   2 * 1024 * 1024 * 1024,
 
 		KdfSalt:        payload.KDF.Salt,
 		KdfMemoryCost:  payload.KDF.MemoryCost,

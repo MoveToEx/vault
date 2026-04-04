@@ -14,6 +14,36 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type GetCapacityResponse struct {
+	Used     int64 `json:"used"`
+	Capacity int64 `json:"capacity"`
+}
+
+func GetCapacity(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	ctx := context.Background()
+
+	user, err := db.Query().GetUser(ctx, userID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting user")
+		return
+	}
+
+	used, err := db.Query().GetUsedCapacity(ctx, userID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting capacity")
+		return
+	}
+
+	utils.SuccessResponse(c, GetCapacityResponse{
+		Used:     used,
+		Capacity: user.Capacity,
+	})
+}
+
 type GetFilesPayload struct {
 	DirID int64 `form:"dir"`
 }

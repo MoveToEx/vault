@@ -34,8 +34,10 @@ import LoginDialog from "./dialogs/login";
 import { useLocation, useNavigate } from "react-router";
 import { useAppDispatch } from "@/stores";
 import { reset as resetKeys } from "@/stores/key";
-import { logout } from "@/lib/utils";
+import { formatSize, logout } from "@/lib/utils";
 import type { FC } from "react";
+import { Progress } from "@base-ui/react";
+import useCapacity from "@/hooks/use-capacity";
 
 const loginHandle = BaseDialog.createHandle<void>();
 
@@ -56,6 +58,23 @@ const items = [
     icon: Share2,
   },
 ];
+
+function Capacity() {
+  const { data } = useCapacity();
+
+  if (!data) return <></>
+
+  return (
+    <Progress.Root className='' value={data ? data.used / data.capacity * 100 : 0}>
+      <Progress.Label className='text-xs'>
+        {formatSize(data.used)} / {formatSize(data.capacity)}
+      </Progress.Label>
+      <Progress.Track className='h-0.5 bg-background'>
+        <Progress.Indicator className='h-0.5 bg-foreground' />
+      </Progress.Track>
+    </Progress.Root>
+  )
+}
 
 function AccountMenu() {
   const { data, error, isLoading, reset, mutate } = useAuth();
@@ -102,8 +121,16 @@ function AccountMenu() {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <SidebarMenuButton className="h-10">
-              <User2 /> {data.username}
+            <SidebarMenuButton className="h-12 flex flex-row">
+              <User2 />
+              <div className='flex flex-1 flex-col flex-nowrap overflow-hidden'>
+                <div className='flex flex-1 flex-row items-center justify-between'>
+                  <span>
+                    {data.username}
+                  </span>
+                </div>
+                <Capacity />
+              </div>
               <ChevronUp className="ml-auto" />
             </SidebarMenuButton>
           }

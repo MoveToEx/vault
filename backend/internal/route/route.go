@@ -26,6 +26,8 @@ func SetupRoutes(r *gin.Engine) {
 	{
 		protected.GET("/auth/get", handler.GetIdentity)
 
+		protected.GET("/me/capacity", handler.GetCapacity)
+
 		protected.POST("/upload/init", handler.InitUpload)
 		protected.GET("/upload", handler.GetUploadSessions)
 		protected.POST("/upload/:upload_id/chunks/:chunk_index/init", handler.UploadChunkInit)
