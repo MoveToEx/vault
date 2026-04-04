@@ -21,7 +21,6 @@ type GetFilesPayload struct {
 type GetFilesResponse struct {
 	ID                int64       `json:"id"`
 	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	Nonce             utils.Bytes `json:"nonce"`
 	Size              int64       `json:"size"`
 }
 
@@ -82,7 +81,6 @@ func GetFiles(c *gin.Context) {
 		result = append(result, GetFilesResponse{
 			ID:                files[i].ID,
 			EncryptedMetadata: files[i].EncryptedMetadata,
-			Nonce:             files[i].MetadataNonce,
 			Size:              files[i].Size,
 		})
 	}
@@ -91,7 +89,6 @@ func GetFiles(c *gin.Context) {
 		result = append(result, GetFilesResponse{
 			ID:                folders[i].ID,
 			EncryptedMetadata: folders[i].EncryptedMetadata,
-			Nonce:             folders[i].MetadataNonce,
 		})
 	}
 
@@ -104,7 +101,6 @@ type GetFileResponse struct {
 	Size              int64       `json:"size"`
 	EncryptedKey      utils.Bytes `json:"encryptedKey"`
 	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	MetadataNonce     utils.Bytes `json:"metadataNonce"`
 }
 
 func GetFile(c *gin.Context) {
@@ -137,7 +133,6 @@ func GetFile(c *gin.Context) {
 		Size:              file.Size,
 		ChunkSize:         config.GetConfig().ChunkSize,
 		EncryptedMetadata: file.EncryptedMetadata,
-		MetadataNonce:     file.MetadataNonce,
 	})
 }
 
@@ -241,7 +236,6 @@ func DeleteFile(c *gin.Context) {
 type NewFolderPayload struct {
 	ParentID          int64       `json:"parentId"`
 	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	MetadataNonce     utils.Bytes `json:"metadataNonce"`
 }
 
 type NewFolderResponse struct {
@@ -272,7 +266,6 @@ func NewFolder(c *gin.Context) {
 
 	folder, err := db.Query().NewFolder(ctx, sqlc.NewFolderParams{
 		EncryptedMetadata: payload.EncryptedMetadata,
-		MetadataNonce:     payload.MetadataNonce,
 		ParentID: pgtype.Int8{
 			Valid: true,
 			Int64: payload.ParentID,

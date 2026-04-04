@@ -1,6 +1,5 @@
 import axios, { type AxiosResponse } from "axios";
 import instance from "./axios"
-import { createComposite, type AEADResult } from "./crypto";
 import { from_base64, to_base64 } from "libsodium-wrappers-sumo";
 import type { KDFParameters, Wrapped } from "./types";
 
@@ -37,7 +36,6 @@ type GetFileResponse = Wrapped<{
   size: number,
   encryptedKey: string,         // [ ] string -> Uint8Array
   encryptedMetadata: string,
-  metadataNonce: string,
 }>;
 
 type PresignResponse = Wrapped<{
@@ -62,7 +60,7 @@ type FinishRegistrationPayload = {
   opaqueRecord: Uint8Array,
   publicKey: Uint8Array,
   privateKey: Uint8Array,
-  rootMetadata: AEADResult,
+  rootMetadata: Uint8Array,
   kdf: KDFParameters,
 }
 
@@ -117,11 +115,10 @@ const api = {
     await instance.delete(`/files/${id}`);
   },
 
-  async newFolder(parent: number, metadata: AEADResult) {
+  async newFolder(parent: number, metadata: Uint8Array) {
     await instance.post('/files/folder', {
       parentId: parent,
-      encryptedMetadata: to_base64(metadata.cipher),
-      metadataNonce: to_base64(metadata.nonce),
+      encryptedMetadata: to_base64(metadata),
     });
   },
 
@@ -142,20 +139,19 @@ const api = {
     return response.data.data;
   },
 
-  async initUpload(size: number, metadata: AEADResult, parentId: number) {
+  async initUpload(size: number, metadata: Uint8Array, parentId: number) {
     const response: AxiosResponse<InitUploadResponse> = await instance.post('/upload/init', {
       size,
-      encryptedMetadata: to_base64(metadata.cipher),
-      metadataNonce: to_base64(metadata.nonce),
+      encryptedMetadata: to_base64(metadata),
       parentId
     });
 
     return response.data.data;
   },
 
-  async completeUpload(id: number, key: AEADResult) {
+  async completeUpload(id: number, encryptedKey: Uint8Array) {
     await instance.post(`/upload/${id}`, {
-      encryptedKey: to_base64(createComposite(key.nonce, key.cipher))
+      encryptedKey: to_base64(encryptedKey)
     });
   },
 
@@ -181,8 +177,7 @@ const api = {
       opaqueRecord: to_base64(payload.opaqueRecord),
       publicKey: to_base64(payload.publicKey),
       encryptedPrivateKey: to_base64(payload.privateKey),
-      encryptedRootMetadata: to_base64(payload.rootMetadata.cipher),
-      rootNonce: to_base64(payload.rootMetadata.nonce),
+      encryptedRootMetadata: to_base64(payload.rootMetadata),
       kdf: {
         ...payload.kdf,
         salt: to_base64(payload.kdf.salt),

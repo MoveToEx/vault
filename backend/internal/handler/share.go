@@ -201,7 +201,6 @@ type GetMySharesResponse struct {
 	ReceiverID        int64       `json:"receiverId"`
 	Receiver          string      `json:"receiver"`
 	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	MetadataNonce     utils.Bytes `json:"metadataNonce"`
 	CreatedAt         time.Time   `json:"createdAt"`
 	ExpiresAt         time.Time   `json:"expiresAt"`
 }
@@ -238,7 +237,6 @@ func GetMyShares(c *gin.Context) {
 			ReceiverID:        shares[i].ReceiverID,
 			Receiver:          shares[i].Receiver,
 			EncryptedMetadata: shares[i].EncryptedMetadata,
-			MetadataNonce:     shares[i].MetadataNonce,
 			CreatedAt:         shares[i].CreatedAt.Time,
 			ExpiresAt:         shares[i].ExpiresAt.Time,
 		})

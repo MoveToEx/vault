@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { useAppSelector } from "@/stores";
-import { aead, kdf } from "@/lib/crypto";
+import { aeadComposite, kdf } from "@/lib/crypto";
 import { from_base64, ready } from "libsodium-wrappers-sumo";
 import api from '@/lib/api'
 import { useState } from "react";
@@ -43,7 +43,7 @@ export default function NewFolderDialog() {
       await ready;
 
       const kek = kdf(from_base64(umk), 'KEK');
-      const metadata = aead(JSON.stringify({
+      const metadata = aeadComposite(JSON.stringify({
         name: data.name,
         type: 'folder'
       }), kek);

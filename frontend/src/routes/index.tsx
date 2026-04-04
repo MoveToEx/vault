@@ -1,9 +1,9 @@
 import NewFolderDialog from "@/components/dialogs/new-folder";
 import UploadDialog from "@/components/dialogs/upload";
 import useFiles from "@/hooks/use-files";
-import { aeadDecrypt, kdf } from "@/lib/crypto";
+import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
 import { useAppDispatch, useAppSelector } from "@/stores"
-import { from_base64 } from "libsodium-wrappers-sumo";
+import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import { Fragment, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatSize, getIcon } from "@/lib/utils";
@@ -44,15 +44,11 @@ function FileList() {
 
     const kek = kdf(from_base64(umk), 'KEK');
 
-    for (const { encryptedMetadata, nonce, size, id } of data) {
-      const plaintext = aeadDecrypt(
-        from_base64(encryptedMetadata),
-        kek,
-        from_base64(nonce)
-      );
+    for (const { encryptedMetadata, size, id } of data) {
+      const plaintext = aeadCompositeDecrypt(from_base64(encryptedMetadata), kek);
 
       const metadata = {
-        ...JSON.parse(new TextDecoder().decode(plaintext)),
+        ...JSON.parse(to_string(plaintext)),
         size,
         id,
       };

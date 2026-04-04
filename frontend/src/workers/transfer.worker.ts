@@ -1,4 +1,4 @@
-import { aead, aeadCompositeDecrypt, aeadDecrypt, kdf } from "@/lib/crypto";
+import { aeadComposite, aeadCompositeDecrypt, kdf } from "@/lib/crypto";
 import type { FileMetadata, TransferCommand, TransferMessage, WithId, WorkerRequest, WorkerResponse } from "@/lib/types";
 import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import axios, { AxiosError } from "axios";
@@ -47,9 +47,8 @@ async function upload(file: File, parentId: number, umk: Uint8Array) {
 
     const kek = kdf(umk, 'KEK');
     const fek = sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
-    const efek = aead(fek, kek);
 
-    const metadata = aead(JSON.stringify({
+    const metadata = aeadComposite(JSON.stringify({
       name: file.name,
       mime: file.type,
       type: 'file'
@@ -91,11 +90,7 @@ async function upload(file: File, parentId: number, umk: Uint8Array) {
 
       const slice = file.slice(i * chunkSize, (i + 1) * chunkSize);
 
-      const { cipher, nonce } = aead(await slice.bytes(), fek);
-
-      const body = new Uint8Array(cipher.length + nonce.length);
-      body.set(nonce);
-      body.set(cipher, nonce.length);
+      const body = aeadComposite(await slice.bytes(), fek);
 
       await axios.put(url, body, {
         headers: {
@@ -133,6 +128,8 @@ async function upload(file: File, parentId: number, umk: Uint8Array) {
         chunkIndex: i,
       });
     }
+
+    const efek = aeadComposite(fek, kek);
 
     await rpc({
       type: 'ack',
@@ -178,7 +175,7 @@ async function download(fileId: number, umk: Uint8Array) {
       size: 0
     });
 
-    const { chunks, chunkSize, size, encryptedKey, encryptedMetadata, metadataNonce } = await rpc({
+    const { chunks, chunkSize, size, encryptedKey, encryptedMetadata } = await rpc({
       type: 'get-file',
       fileId,
       transferId
@@ -188,8 +185,8 @@ async function download(fileId: number, umk: Uint8Array) {
     const fek = aeadCompositeDecrypt(from_base64(encryptedKey), kek);
 
     const metadata: FileMetadata = JSON.parse(
-      new TextDecoder().decode(
-        aeadDecrypt(from_base64(encryptedMetadata), kek, from_base64(metadataNonce))
+      to_string(
+        aeadCompositeDecrypt(from_base64(encryptedMetadata), kek)
       )
     );
 

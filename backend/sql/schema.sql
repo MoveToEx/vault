@@ -49,7 +49,6 @@ CREATE TABLE IF NOT EXISTS files (
     owner_id BIGINT NOT NULL REFERENCES users(id),
     
     encrypted_metadata BYTEA NOT NULL,
-    metadata_nonce BYTEA NOT NULL,
 
     encrypted_key BYTEA NOT NULL,
 
@@ -77,7 +76,6 @@ CREATE TABLE IF NOT EXISTS folders (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 
     encrypted_metadata BYTEA NOT NULL,
-    metadata_nonce BYTEA NOT NULL,
 
     parent_id BIGINT REFERENCES folders(id),
     owner_id BIGINT NOT NULL REFERENCES users(id),
@@ -108,7 +106,6 @@ CREATE TABLE IF NOT EXISTS uploads (
     user_id BIGINT NOT NULL REFERENCES users(id),
 
     encrypted_metadata BYTEA NOT NULL,
-    metadata_nonce BYTEA NOT NULL,
 
     parent_id BIGINT NOT NULL,
 

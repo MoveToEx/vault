@@ -9,7 +9,6 @@ type Item = {
   receiverId: number,
   receiver: string,
   encryptedMetadata: string,
-  metadataNonce: string,
   createdAt: string,
   expiresAt: string,
 };

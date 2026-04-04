@@ -1,5 +1,3 @@
-import type { AEADResult } from "./crypto";
-
 export type Wrapped<T> = {
   error?: string,
   data: T,
@@ -119,7 +117,7 @@ export type WorkerRequest = ({
   chunkIndex: number,
 } | {
   type: 'init',
-  metadata: AEADResult,
+  metadata: Uint8Array,
   parentId: number,
   size: number,
 } | {
@@ -130,7 +128,7 @@ export type WorkerRequest = ({
 } | {
   type: 'ack',
   uploadId: number,
-  encryptedKey: AEADResult,
+  encryptedKey: Uint8Array,
 } | {
   type: 'get-file',
   fileId: number
@@ -172,7 +170,6 @@ export type WorkerResponse = ({
   size: number,
   encryptedKey: string,
   encryptedMetadata: string,
-  metadataNonce: string,
 } | {
   type: 'get-share'
   chunks: number,

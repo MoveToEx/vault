@@ -59,7 +59,6 @@ type File struct {
 	ID                int64              `json:"id"`
 	OwnerID           int64              `json:"ownerId"`
 	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	MetadataNonce     []byte             `json:"metadataNonce"`
 	EncryptedKey      []byte             `json:"encryptedKey"`
 	ParentID          int64              `json:"parentId"`
 	Chunks            int32              `json:"chunks"`
@@ -79,7 +78,6 @@ type FileChunk struct {
 type Folder struct {
 	ID                int64              `json:"id"`
 	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	MetadataNonce     []byte             `json:"metadataNonce"`
 	ParentID          pgtype.Int8        `json:"parentId"`
 	OwnerID           int64              `json:"ownerId"`
 	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
@@ -118,7 +116,6 @@ type Upload struct {
 	ID                int64              `json:"id"`
 	UserID            int64              `json:"userId"`
 	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	MetadataNonce     []byte             `json:"metadataNonce"`
 	ParentID          int64              `json:"parentId"`
 	Chunks            int32              `json:"chunks"`
 	Size              int64              `json:"size"`

@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import useAuth from "@/hooks/use-auth";
 import useMyShares from "@/hooks/use-my-shares";
 import useShares from "@/hooks/use-shares"
-import { aeadDecrypt, kdf } from "@/lib/crypto";
+import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
 import { transferBridge } from "@/lib/transfer-bridge";
 import type { FileMetadata } from "@/lib/types";
 import { useAppDispatch, useAppSelector } from "@/stores";
@@ -165,11 +165,7 @@ function SharedByMe() {
     for (const it of data) {
       const metadata: FileMetadata = JSON.parse(
         to_string(
-          aeadDecrypt(
-            from_base64(it.encryptedMetadata),
-            kek,
-            from_base64(it.metadataNonce),
-          )
+          aeadCompositeDecrypt(from_base64(it.encryptedMetadata), kek)
         )
       );
 

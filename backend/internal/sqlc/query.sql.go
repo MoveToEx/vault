@@ -124,7 +124,7 @@ func (q *Queries) FindUserByUsername(ctx context.Context, key string) ([]FindUse
 }
 
 const getActiveUploadSession = `-- name: GetActiveUploadSession :many
-SELECT u.id, u.user_id, u.encrypted_metadata, u.metadata_nonce, u.parent_id, u.chunks, u.size, u.created_at, u.completed_at, u.expires_at, ARRAY_AGG(uc.chunk_index)::INT[] AS completed FROM uploads u
+SELECT u.id, u.user_id, u.encrypted_metadata, u.parent_id, u.chunks, u.size, u.created_at, u.completed_at, u.expires_at, ARRAY_AGG(uc.chunk_index)::INT[] AS completed FROM uploads u
 INNER JOIN upload_chunks uc ON u.id = uc.upload_id
 WHERE user_id = $1 AND u.completed_at IS NULL
 GROUP BY u.id
@@ -134,7 +134,6 @@ type GetActiveUploadSessionRow struct {
 	ID                int64              `json:"id"`
 	UserID            int64              `json:"userId"`
 	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	MetadataNonce     []byte             `json:"metadataNonce"`
 	ParentID          int64              `json:"parentId"`
 	Chunks            int32              `json:"chunks"`
 	Size              int64              `json:"size"`
@@ -157,7 +156,6 @@ func (q *Queries) GetActiveUploadSession(ctx context.Context, userID int64) ([]G
 			&i.ID,
 			&i.UserID,
 			&i.EncryptedMetadata,
-			&i.MetadataNonce,
 			&i.ParentID,
 			&i.Chunks,
 			&i.Size,
@@ -226,7 +224,7 @@ func (q *Queries) GetChunks(ctx context.Context, arg GetChunksParams) (FileChunk
 }
 
 const getFile = `-- name: GetFile :one
-SELECT id, owner_id, encrypted_metadata, metadata_nonce, encrypted_key, parent_id, chunks, size, created_at, deleted_at FROM files
+SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, size, created_at, deleted_at FROM files
 WHERE id = $1
 `
 
@@ -237,7 +235,6 @@ func (q *Queries) GetFile(ctx context.Context, id int64) (File, error) {
 		&i.ID,
 		&i.OwnerID,
 		&i.EncryptedMetadata,
-		&i.MetadataNonce,
 		&i.EncryptedKey,
 		&i.ParentID,
 		&i.Chunks,
@@ -249,7 +246,7 @@ func (q *Queries) GetFile(ctx context.Context, id int64) (File, error) {
 }
 
 const getFiles = `-- name: GetFiles :many
-SELECT id, owner_id, encrypted_metadata, metadata_nonce, encrypted_key, parent_id, chunks, size, created_at, deleted_at FROM files f
+SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, size, created_at, deleted_at FROM files f
 WHERE parent_id = $1 AND deleted_at ISNULL
 `
 
@@ -266,7 +263,6 @@ func (q *Queries) GetFiles(ctx context.Context, parentID int64) ([]File, error) 
 			&i.ID,
 			&i.OwnerID,
 			&i.EncryptedMetadata,
-			&i.MetadataNonce,
 			&i.EncryptedKey,
 			&i.ParentID,
 			&i.Chunks,
@@ -285,7 +281,7 @@ func (q *Queries) GetFiles(ctx context.Context, parentID int64) ([]File, error) 
 }
 
 const getFolder = `-- name: GetFolder :one
-SELECT id, encrypted_metadata, metadata_nonce, parent_id, owner_id, created_at, deleted_at FROM folders
+SELECT id, encrypted_metadata, parent_id, owner_id, created_at, deleted_at FROM folders
 WHERE id = $1 AND deleted_at ISNULL
 `
 
@@ -295,7 +291,6 @@ func (q *Queries) GetFolder(ctx context.Context, id int64) (Folder, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.EncryptedMetadata,
-		&i.MetadataNonce,
 		&i.ParentID,
 		&i.OwnerID,
 		&i.CreatedAt,
@@ -519,8 +514,7 @@ func (q *Queries) GetShares(ctx context.Context, arg GetSharesParams) ([]GetShar
 const getSharesBySender = `-- name: GetSharesBySender :many
 SELECT
     s.id, s.sender_id, s.receiver_id, u.username AS receiver,
-    f.encrypted_metadata, f.metadata_nonce,
-    s.created_at, s.expires_at
+    f.encrypted_metadata, s.created_at, s.expires_at
 FROM shares s
 INNER JOIN files f ON s.file_id = f.id
 INNER JOIN users u ON s.receiver_id = u.id
@@ -541,7 +535,6 @@ type GetSharesBySenderRow struct {
 	ReceiverID        int64              `json:"receiverId"`
 	Receiver          string             `json:"receiver"`
 	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	MetadataNonce     []byte             `json:"metadataNonce"`
 	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
 	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
 }
@@ -561,7 +554,6 @@ func (q *Queries) GetSharesBySender(ctx context.Context, arg GetSharesBySenderPa
 			&i.ReceiverID,
 			&i.Receiver,
 			&i.EncryptedMetadata,
-			&i.MetadataNonce,
 			&i.CreatedAt,
 			&i.ExpiresAt,
 		); err != nil {
@@ -576,7 +568,7 @@ func (q *Queries) GetSharesBySender(ctx context.Context, arg GetSharesBySenderPa
 }
 
 const getSubfolders = `-- name: GetSubfolders :many
-SELECT id, encrypted_metadata, metadata_nonce, parent_id, owner_id, created_at, deleted_at FROM folders
+SELECT id, encrypted_metadata, parent_id, owner_id, created_at, deleted_at FROM folders
 WHERE parent_id = $1 AND deleted_at ISNULL
 `
 
@@ -592,7 +584,6 @@ func (q *Queries) GetSubfolders(ctx context.Context, parentID pgtype.Int8) ([]Fo
 		if err := rows.Scan(
 			&i.ID,
 			&i.EncryptedMetadata,
-			&i.MetadataNonce,
 			&i.ParentID,
 			&i.OwnerID,
 			&i.CreatedAt,
@@ -632,7 +623,7 @@ func (q *Queries) GetUploadChunk(ctx context.Context, arg GetUploadChunkParams) 
 }
 
 const getUploadSession = `-- name: GetUploadSession :one
-SELECT id, user_id, encrypted_metadata, metadata_nonce, parent_id, chunks, size, created_at, completed_at, expires_at FROM uploads
+SELECT id, user_id, encrypted_metadata, parent_id, chunks, size, created_at, completed_at, expires_at FROM uploads
 WHERE id = $1 AND completed_at IS NULL AND expires_at > NOW()
 `
 
@@ -643,7 +634,6 @@ func (q *Queries) GetUploadSession(ctx context.Context, id int64) (Upload, error
 		&i.ID,
 		&i.UserID,
 		&i.EncryptedMetadata,
-		&i.MetadataNonce,
 		&i.ParentID,
 		&i.Chunks,
 		&i.Size,
@@ -752,9 +742,9 @@ func (q *Queries) MigrateChunks(ctx context.Context, arg MigrateChunksParams) er
 
 const migrateUpload = `-- name: MigrateUpload :one
 INSERT INTO
-    files (owner_id, encrypted_metadata, metadata_nonce, parent_id, encrypted_key, chunks, size)
+    files (owner_id, encrypted_metadata, parent_id, encrypted_key, chunks, size)
 SELECT
-    user_id, encrypted_metadata, metadata_nonce, parent_id, $2 AS encrypted_key, chunks, size
+    user_id, encrypted_metadata, parent_id, $2 AS encrypted_key, chunks, size
 FROM uploads u
 WHERE u.id = $1
 RETURNING id
@@ -774,19 +764,18 @@ func (q *Queries) MigrateUpload(ctx context.Context, arg MigrateUploadParams) (i
 
 const newFile = `-- name: NewFile :one
 INSERT INTO files (
-    owner_id, encrypted_metadata, metadata_nonce, encrypted_key,
+    owner_id, encrypted_metadata, encrypted_key,
     chunks, size
 )
 VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5
 )
-RETURNING id, owner_id, encrypted_metadata, metadata_nonce, encrypted_key, parent_id, chunks, size, created_at, deleted_at
+RETURNING id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, size, created_at, deleted_at
 `
 
 type NewFileParams struct {
 	OwnerID           int64  `json:"ownerId"`
 	EncryptedMetadata []byte `json:"encryptedMetadata"`
-	MetadataNonce     []byte `json:"metadataNonce"`
 	EncryptedKey      []byte `json:"encryptedKey"`
 	Chunks            int32  `json:"chunks"`
 	Size              int64  `json:"size"`
@@ -796,7 +785,6 @@ func (q *Queries) NewFile(ctx context.Context, arg NewFileParams) (File, error) 
 	row := q.db.QueryRow(ctx, newFile,
 		arg.OwnerID,
 		arg.EncryptedMetadata,
-		arg.MetadataNonce,
 		arg.EncryptedKey,
 		arg.Chunks,
 		arg.Size,
@@ -806,7 +794,6 @@ func (q *Queries) NewFile(ctx context.Context, arg NewFileParams) (File, error) 
 		&i.ID,
 		&i.OwnerID,
 		&i.EncryptedMetadata,
-		&i.MetadataNonce,
 		&i.EncryptedKey,
 		&i.ParentID,
 		&i.Chunks,
@@ -818,30 +805,23 @@ func (q *Queries) NewFile(ctx context.Context, arg NewFileParams) (File, error) 
 }
 
 const newFolder = `-- name: NewFolder :one
-INSERT INTO folders(encrypted_metadata, metadata_nonce, parent_id, owner_id)
-VALUES ($1, $2, $3, $4)
-RETURNING id, encrypted_metadata, metadata_nonce, parent_id, owner_id, created_at, deleted_at
+INSERT INTO folders(encrypted_metadata, parent_id, owner_id)
+VALUES ($1, $2, $3)
+RETURNING id, encrypted_metadata, parent_id, owner_id, created_at, deleted_at
 `
 
 type NewFolderParams struct {
 	EncryptedMetadata []byte      `json:"encryptedMetadata"`
-	MetadataNonce     []byte      `json:"metadataNonce"`
 	ParentID          pgtype.Int8 `json:"parentId"`
 	OwnerID           int64       `json:"ownerId"`
 }
 
 func (q *Queries) NewFolder(ctx context.Context, arg NewFolderParams) (Folder, error) {
-	row := q.db.QueryRow(ctx, newFolder,
-		arg.EncryptedMetadata,
-		arg.MetadataNonce,
-		arg.ParentID,
-		arg.OwnerID,
-	)
+	row := q.db.QueryRow(ctx, newFolder, arg.EncryptedMetadata, arg.ParentID, arg.OwnerID)
 	var i Folder
 	err := row.Scan(
 		&i.ID,
 		&i.EncryptedMetadata,
-		&i.MetadataNonce,
 		&i.ParentID,
 		&i.OwnerID,
 		&i.CreatedAt,
@@ -914,11 +894,11 @@ func (q *Queries) NewShare(ctx context.Context, arg NewShareParams) (Share, erro
 
 const newUpload = `-- name: NewUpload :one
 INSERT INTO uploads (
-    user_id, chunks, size, expires_at, parent_id, encrypted_metadata, metadata_nonce
+    user_id, chunks, size, expires_at, parent_id, encrypted_metadata
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6
 )
-RETURNING id, user_id, encrypted_metadata, metadata_nonce, parent_id, chunks, size, created_at, completed_at, expires_at
+RETURNING id, user_id, encrypted_metadata, parent_id, chunks, size, created_at, completed_at, expires_at
 `
 
 type NewUploadParams struct {
@@ -928,7 +908,6 @@ type NewUploadParams struct {
 	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
 	ParentID          int64              `json:"parentId"`
 	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	MetadataNonce     []byte             `json:"metadataNonce"`
 }
 
 func (q *Queries) NewUpload(ctx context.Context, arg NewUploadParams) (Upload, error) {
@@ -939,14 +918,12 @@ func (q *Queries) NewUpload(ctx context.Context, arg NewUploadParams) (Upload, e
 		arg.ExpiresAt,
 		arg.ParentID,
 		arg.EncryptedMetadata,
-		arg.MetadataNonce,
 	)
 	var i Upload
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.EncryptedMetadata,
-		&i.MetadataNonce,
 		&i.ParentID,
 		&i.Chunks,
 		&i.Size,

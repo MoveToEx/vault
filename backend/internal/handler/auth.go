@@ -79,7 +79,6 @@ type RegisterFinishPayload struct {
 	KDF                 KDFParameters `json:"kdf"`
 
 	EncryptedRootMetadata utils.Bytes `json:"encryptedRootMetadata"`
-	RootNonce             utils.Bytes `json:"rootNonce"`
 }
 
 func RegisterFinish(c *gin.Context) {
@@ -134,7 +133,6 @@ func RegisterFinish(c *gin.Context) {
 
 	folder, err := db.Query().NewFolder(ctx, sqlc.NewFolderParams{
 		EncryptedMetadata: payload.EncryptedRootMetadata,
-		MetadataNonce:     payload.RootNonce,
 		OwnerID:           user.ID,
 	})
 

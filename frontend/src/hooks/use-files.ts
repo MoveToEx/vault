@@ -6,7 +6,6 @@ import type { Wrapped } from "@/lib/types";
 type Item = {
   id: number,
   encryptedMetadata: string;
-  nonce: string;
   size: number;
 }
 

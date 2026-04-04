@@ -37,11 +37,11 @@ WHERE id = $1;
 
 -- name: NewFile :one
 INSERT INTO files (
-    owner_id, encrypted_metadata, metadata_nonce, encrypted_key,
+    owner_id, encrypted_metadata, encrypted_key,
     chunks, size
 )
 VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5
 )
 RETURNING *;
 
@@ -52,9 +52,9 @@ WHERE id = $1;
 
 -- name: NewUpload :one
 INSERT INTO uploads (
-    user_id, chunks, size, expires_at, parent_id, encrypted_metadata, metadata_nonce
+    user_id, chunks, size, expires_at, parent_id, encrypted_metadata
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6
 )
 RETURNING *;
 
@@ -88,9 +88,9 @@ WHERE id = $1;
 
 -- name: MigrateUpload :one
 INSERT INTO
-    files (owner_id, encrypted_metadata, metadata_nonce, parent_id, encrypted_key, chunks, size)
+    files (owner_id, encrypted_metadata, parent_id, encrypted_key, chunks, size)
 SELECT
-    user_id, encrypted_metadata, metadata_nonce, parent_id, $2 AS encrypted_key, chunks, size
+    user_id, encrypted_metadata, parent_id, $2 AS encrypted_key, chunks, size
 FROM uploads u
 WHERE u.id = $1
 RETURNING id;
@@ -108,8 +108,8 @@ SELECT * FROM upload_chunks
 WHERE upload_id = $1 AND chunk_index = $2;
 
 -- name: NewFolder :one
-INSERT INTO folders(encrypted_metadata, metadata_nonce, parent_id, owner_id)
-VALUES ($1, $2, $3, $4)
+INSERT INTO folders(encrypted_metadata, parent_id, owner_id)
+VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: SetRootFolder :exec
@@ -178,8 +178,7 @@ LIMIT $2 OFFSET $3;
 -- name: GetSharesBySender :many
 SELECT
     s.id, s.sender_id, s.receiver_id, u.username AS receiver,
-    f.encrypted_metadata, f.metadata_nonce,
-    s.created_at, s.expires_at
+    f.encrypted_metadata, s.created_at, s.expires_at
 FROM shares s
 INNER JOIN files f ON s.file_id = f.id
 INNER JOIN users u ON s.receiver_id = u.id

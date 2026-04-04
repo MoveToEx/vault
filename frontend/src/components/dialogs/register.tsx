@@ -21,7 +21,7 @@ import { ChevronDown, ChevronUp, User } from 'lucide-react'
 import { Spinner } from '../ui/spinner';
 import { OpaqueClient, OpaqueID, RegistrationResponse, getOpaqueConfig, type RegistrationClient } from '@cloudflare/opaque-ts';
 import { Slider } from '../ui/slider';
-import { aead, aeadComposite, kdf } from '@/lib/crypto'
+import { aeadComposite, kdf } from '@/lib/crypto'
 import { argon2id } from '@/workers'
 import sodium from 'libsodium-wrappers-sumo'
 import { mutate } from '@/lib/swr'
@@ -113,7 +113,7 @@ export default function RegisterDialog() {
 
       const kek = kdf(umk, 'KEK');
 
-      const rootMetadata = aead(JSON.stringify({
+      const rootMetadata = aeadComposite(JSON.stringify({
         type: 'folder',
         name: '/'
       }), kek);

@@ -35,7 +35,6 @@ func GetUploadSessions(c *gin.Context) {
 type InitUploadPayload struct {
 	Size              int64       `json:"size"`
 	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	MetadataNonce     utils.Bytes `json:"metadataNonce"`
 	ParentID          int64       `json:"parentId"`
 }
 
@@ -90,7 +89,6 @@ func InitUpload(c *gin.Context) {
 		UserID:            userID,
 		EncryptedMetadata: payload.EncryptedMetadata,
 		Size:              payload.Size,
-		MetadataNonce:     payload.MetadataNonce,
 		Chunks:            int32(chunks),
 		ParentID:          payload.ParentID,
 		ExpiresAt: pgtype.Timestamptz{
