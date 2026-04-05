@@ -5,7 +5,6 @@ import (
 	"backend/internal/db"
 	"backend/internal/sqlc"
 	"backend/internal/utils"
-	"context"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -22,7 +21,7 @@ type GetCapacityResponse struct {
 func GetCapacity(c *gin.Context) {
 	userID := c.GetInt64("UserID")
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	user, err := db.Query().GetUser(ctx, userID)
 
@@ -64,7 +63,7 @@ func GetFiles(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	user, err := db.Query().GetUser(ctx, userID)
 
@@ -143,7 +142,7 @@ func GetFile(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	file, err := db.Query().GetFile(ctx, fileID)
 
@@ -189,7 +188,7 @@ func GetChunk(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	chunk, err := db.Query().GetChunk(ctx, sqlc.GetChunkParams{
 		OwnerID:    userID,
@@ -238,7 +237,7 @@ func DeleteFile(c *gin.Context) {
 		utils.ErrorResponse(c, 400, "Invalid request")
 		return
 	}
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	file, err := db.Query().GetFile(ctx, payload.FileID)
 
@@ -280,7 +279,7 @@ func NewFolder(c *gin.Context) {
 		utils.ErrorResponse(c, 400, "Invalid request")
 		return
 	}
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	parentID := payload.ParentID
 

@@ -5,7 +5,6 @@ import (
 	"backend/internal/db"
 	"backend/internal/sqlc"
 	"backend/internal/utils"
-	"context"
 	"strconv"
 	"time"
 
@@ -20,7 +19,7 @@ import (
 func GetUploadSessions(c *gin.Context) {
 	userID := c.GetInt64("UserID")
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	up, err := db.Query().GetActiveUploadSession(ctx, userID)
 
@@ -54,7 +53,7 @@ func InitUpload(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	cnt, err := db.Query().CountActiveUploadSession(ctx, userID)
 
@@ -159,7 +158,7 @@ func UploadChunkInit(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	presigner := s3.NewPresignClient(config.S3())
 
@@ -235,7 +234,7 @@ func UploadChunkComplete(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	up, err := db.Query().GetUploadSession(ctx, uploadID)
 
@@ -298,7 +297,7 @@ func UploadComplete(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	upload, err := db.Query().GetUploadSession(ctx, uploadID)
 

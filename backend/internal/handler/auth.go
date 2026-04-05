@@ -5,7 +5,6 @@ import (
 	"backend/internal/db"
 	"backend/internal/sqlc"
 	"backend/internal/utils"
-	"context"
 	"crypto/rand"
 	"encoding/json"
 	"time"
@@ -32,7 +31,7 @@ func RegisterStart(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 	svr := config.Opaque()
 
 	req, err := svr.Deserialize.RegistrationRequest(payload.Blinded)
@@ -89,7 +88,7 @@ func RegisterFinish(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	credID, err := config.Redis().GetDel(ctx, "reg/cred_id:"+payload.Username).Bytes()
 
@@ -189,7 +188,7 @@ func LoginStart(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	rec, err := db.Query().GetOpaqueClientRecord(ctx, payload.Username)
 
@@ -252,7 +251,7 @@ func LoginFinish(c *gin.Context) {
 
 	svr := config.Opaque()
 	ke3, err := svr.Deserialize.KE3(payload.KE3)
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	if err != nil {
 		utils.ErrorResponse(c, 400, "Invalid KE3")
@@ -332,7 +331,7 @@ type GetResponse struct {
 func GetIdentity(c *gin.Context) {
 	userID := c.GetInt64("UserID")
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	user, err := db.Query().GetUser(ctx, userID)
 
@@ -372,7 +371,7 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	ref, err := db.Query().GetSession(ctx, payload.RefreshToken)
 

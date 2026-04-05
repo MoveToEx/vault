@@ -5,7 +5,6 @@ import (
 	"backend/internal/db"
 	"backend/internal/sqlc"
 	"backend/internal/utils"
-	"context"
 	"strings"
 	"time"
 
@@ -25,7 +24,7 @@ type FindUserItem struct {
 }
 
 func FindUser(c *gin.Context) {
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	var payload FindUserPayload
 
@@ -86,7 +85,7 @@ type CreateShareResponse struct {
 func CreateShare(c *gin.Context) {
 	userID := c.GetInt64("UserID")
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	var payload CreateSharePayload
 
@@ -157,7 +156,7 @@ type GetSharesResponse struct {
 func GetShares(c *gin.Context) {
 	userID := c.GetInt64("UserID")
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	var payload GetSharesPayload
 
@@ -213,7 +212,7 @@ type GetMySharesResponse struct {
 func GetMyShares(c *gin.Context) {
 	userID := c.GetInt64("UserID")
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	var payload GetMySharesPayload
 
@@ -275,7 +274,7 @@ func GetShare(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	share, err := db.Query().GetShare(ctx, payload.ShareID)
 
@@ -322,7 +321,7 @@ func GetShareChunk(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	chunk, err := db.Query().GetShareChunk(ctx, sqlc.GetShareChunkParams{
 		ID:         payload.ShareID,
@@ -372,7 +371,7 @@ func DeleteShare(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	share, err := db.Query().GetShare(ctx, payload.ShareID)
 

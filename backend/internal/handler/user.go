@@ -3,7 +3,6 @@ package handler
 import (
 	"backend/internal/db"
 	"backend/internal/utils"
-	"context"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +18,7 @@ type GetUserResponse struct {
 }
 
 func GetUser(c *gin.Context) {
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	var payload GetUserPayload
 
