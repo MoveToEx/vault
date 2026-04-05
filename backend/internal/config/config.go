@@ -20,6 +20,7 @@ type JWTConfig struct {
 	PrivateKey ed25519.PrivateKey
 	PublicKey  ed25519.PublicKey
 	Audience   string
+	Issuer     string
 	SessionTTL int
 }
 
@@ -96,6 +97,7 @@ func LoadConfig() error {
 			Audience:   os.Getenv("JWT_AUDIENCE"),
 			SessionTTL: 72,
 			PublicKey:  mustDecodeBase64(os.Getenv("JWT_PUBLIC_KEY")),
+			Issuer:     os.Getenv("JWT_ISSUER"),
 		},
 		S3: S3Config{
 			Endpoint:        os.Getenv("S3_ENDPOINT"),
