@@ -1,7 +1,6 @@
 package route
 
 import (
-	"backend/internal/config"
 	"backend/internal/handler"
 	"backend/internal/middleware"
 
@@ -10,7 +9,6 @@ import (
 
 func SetupRoutes(r *gin.Engine) {
 	public := r.Group("/")
-	public.Use(middleware.CORSMiddleware(config.GetConfig().CORSOrigin))
 
 	{
 		public.POST("/auth/register/start", handler.RegisterStart)
