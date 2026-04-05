@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"backend/internal/utils"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -34,12 +35,19 @@ func AuthMiddleware() gin.HandlerFunc {
 		claims, err := utils.ParseToken(parts[1])
 
 		if err != nil {
-			utils.ErrorResponse(c, 401, "Invalid session: %v", err)
+			utils.ErrorResponse(c, 401, "Invalid session")
 			c.Abort()
 			return
 		}
 
-		c.Set("UserID", claims.Subject)
+		userID, err := strconv.ParseInt(claims.Subject, 10, 64)
+
+		if err != nil {
+			utils.ErrorResponse(c, 401, "Invalid session")
+			c.Abort()
+		}
+
+		c.Set("UserID", userID)
 		c.Set("Permission", claims.Permission)
 
 		c.Next()
