@@ -117,7 +117,7 @@ func InitUpload(c *gin.Context) {
 		Size:              payload.Size,
 		Chunks:            int32(chunks),
 		ChunkSize:         chunkSize,
-		ParentID:          payload.ParentID,
+		ParentID:          parent.ID,
 		ExpiresAt: pgtype.Timestamptz{
 			Valid: true,
 			Time:  time.Now().Add(time.Hour * 12),
