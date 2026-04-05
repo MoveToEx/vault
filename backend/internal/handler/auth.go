@@ -395,7 +395,7 @@ func Refresh(c *gin.Context) {
 
 	refreshToken := rand.Text()
 
-	if err := db.Query().UpdateSession(ctx, sqlc.UpdateSessionParams{
+	if err := db.Query().RotateSession(ctx, sqlc.RotateSessionParams{
 		RefreshToken: ref.RefreshToken,
 		NewToken:     refreshToken,
 	}); err != nil {

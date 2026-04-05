@@ -26,9 +26,9 @@ RETURNING *;
 SELECT * FROM sessions
 WHERE refresh_token = $1;
 
--- name: UpdateSession :exec
+-- name: RotateSession :exec
 UPDATE sessions
-SET refresh_token = @new_token
+SET refresh_token = @new_token, last_used_at = NOW()
 WHERE refresh_token = $1;
 
 -- name: GetUser :one

@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS upload_chunks (
     upload_id BIGINT NOT NULL REFERENCES uploads(id),
     chunk_index INT NOT NULL,
 
-    s3_key TEXT NOT NULL,
+    s3_key TEXT NOT NULL UNIQUE,
 
     completed BOOLEAN NOT NULL DEFAULT FALSE,
 
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS upload_chunks (
 CREATE TABLE IF NOT EXISTS shares (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 
-    file_id BIGINT NOT NULL,
+    file_id BIGINT NOT NULL REFERENCES files(id),
     sender_id BIGINT NOT NULL REFERENCES users(id),
     receiver_id BIGINT NOT NULL REFERENCES users(id),
     

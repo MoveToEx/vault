@@ -1035,6 +1035,22 @@ func (q *Queries) NewUser(ctx context.Context, arg NewUserParams) (User, error) 
 	return i, err
 }
 
+const rotateSession = `-- name: RotateSession :exec
+UPDATE sessions
+SET refresh_token = $2, last_used_at = NOW()
+WHERE refresh_token = $1
+`
+
+type RotateSessionParams struct {
+	RefreshToken string `json:"refreshToken"`
+	NewToken     string `json:"newToken"`
+}
+
+func (q *Queries) RotateSession(ctx context.Context, arg RotateSessionParams) error {
+	_, err := q.db.Exec(ctx, rotateSession, arg.RefreshToken, arg.NewToken)
+	return err
+}
+
 const setFileParent = `-- name: SetFileParent :exec
 UPDATE files
 SET parent_id = $2
@@ -1064,21 +1080,5 @@ type SetRootFolderParams struct {
 
 func (q *Queries) SetRootFolder(ctx context.Context, arg SetRootFolderParams) error {
 	_, err := q.db.Exec(ctx, setRootFolder, arg.RootFolder, arg.ID)
-	return err
-}
-
-const updateSession = `-- name: UpdateSession :exec
-UPDATE sessions
-SET refresh_token = $2
-WHERE refresh_token = $1
-`
-
-type UpdateSessionParams struct {
-	RefreshToken string `json:"refreshToken"`
-	NewToken     string `json:"newToken"`
-}
-
-func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) error {
-	_, err := q.db.Exec(ctx, updateSession, arg.RefreshToken, arg.NewToken)
 	return err
 }

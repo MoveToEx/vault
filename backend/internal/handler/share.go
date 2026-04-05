@@ -114,6 +114,11 @@ func CreateShare(c *gin.Context) {
 		return
 	}
 
+	if file.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Forbidden")
+		return
+	}
+
 	share, err := db.Query().NewShare(ctx, sqlc.NewShareParams{
 		FileID:     file.ID,
 		SenderID:   userID,

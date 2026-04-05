@@ -75,8 +75,10 @@ func InitUpload(c *gin.Context) {
 		return
 	}
 
-	if payload.ParentID == 0 {
-		payload.ParentID = user.RootFolder.Int64
+	parentID := payload.ParentID
+
+	if parentID == 0 {
+		parentID = user.RootFolder.Int64
 	}
 
 	used, err := db.Query().GetUsedCapacity(ctx, userID)
@@ -88,6 +90,18 @@ func InitUpload(c *gin.Context) {
 
 	if used+payload.Size > user.Capacity {
 		utils.ErrorResponse(c, 400, "Insufficient capacity")
+		return
+	}
+
+	parent, err := db.Query().GetFolder(ctx, parentID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting parent folder")
+		return
+	}
+
+	if parent.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
 		return
 	}
 
