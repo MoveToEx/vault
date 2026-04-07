@@ -7,6 +7,7 @@ type Item = {
   id: number;
   encryptedMetadata: string;
   size: number;
+  createdAt: string;
 };
 
 export default function useFiles(dir: number) {

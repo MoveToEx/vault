@@ -6,6 +6,7 @@ import (
 	"backend/internal/sqlc"
 	"backend/internal/utils"
 	"strconv"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -51,6 +52,7 @@ type GetFilesResponse struct {
 	ID                int64       `json:"id"`
 	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
 	Size              int64       `json:"size"`
+	CreatedAt         time.Time   `json:"createdAt"`
 }
 
 func GetFiles(c *gin.Context) {
@@ -111,6 +113,7 @@ func GetFiles(c *gin.Context) {
 			ID:                files[i].ID,
 			EncryptedMetadata: files[i].EncryptedMetadata,
 			Size:              files[i].Size,
+			CreatedAt:         files[i].CreatedAt.Time,
 		})
 	}
 
@@ -118,6 +121,7 @@ func GetFiles(c *gin.Context) {
 		result = append(result, GetFilesResponse{
 			ID:                folders[i].ID,
 			EncryptedMetadata: folders[i].EncryptedMetadata,
+			CreatedAt:         folders[i].CreatedAt.Time,
 		})
 	}
 

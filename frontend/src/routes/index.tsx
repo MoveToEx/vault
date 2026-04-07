@@ -32,17 +32,19 @@ import FilePopupMenu from "@/components/file-popup-menu";
 
 type Item =
   | {
-      type: "file";
-      name: string;
-      mime: string;
-      size: number;
-      id: number;
-    }
+    type: "file";
+    name: string;
+    mime: string;
+    size: number;
+    id: number;
+    createdAt: Date;
+  }
   | {
-      type: "folder";
-      name: string;
-      id: number;
-    };
+    type: "folder";
+    name: string;
+    id: number;
+    createdAt: Date;
+  };
 
 const fileMenuHandle = Menu.createHandle<{ id: number; filename: string }>();
 
@@ -61,7 +63,7 @@ function FileList() {
 
     const kek = kdf(from_base64(umk), "KEK");
 
-    for (const { encryptedMetadata, size, id } of data) {
+    for (const { encryptedMetadata, size, id, createdAt } of data) {
       const plaintext = aeadCompositeDecrypt(
         from_base64(encryptedMetadata),
         kek,
@@ -71,6 +73,7 @@ function FileList() {
         ...JSON.parse(to_string(plaintext)),
         size,
         id,
+        createdAt: new Date(createdAt)
       };
 
       result.push(metadata);
@@ -94,7 +97,7 @@ function FileList() {
         <TableHeader>
           <TableRow>
             <TableHead className="w-32">Name</TableHead>
-            <TableHead>MIME</TableHead>
+            <TableHead>Created at</TableHead>
             <TableHead>Size</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -135,8 +138,7 @@ function FileList() {
                 {val.name}
               </TableCell>
               <TableCell className="text-secondary-foreground">
-                {val.type === "file" && val.mime}
-                {val.type === "folder" && <i>Folder</i>}
+                {val.createdAt.toLocaleString()}
               </TableCell>
               <TableCell>
                 {val.type === "file" && <span>{formatSize(val.size)}</span>}
