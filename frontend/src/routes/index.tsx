@@ -219,7 +219,7 @@ function Breadcrumbs() {
 
 export default function IndexPage() {
   return (
-    <div>
+    <div className='flex flex-col h-full'>
       <RequireUMK />
       <div className="flex flex-row justify-start items-center gap-4 mb-4">
         <UploadDialog />
@@ -227,6 +227,7 @@ export default function IndexPage() {
       </div>
 
       <Breadcrumbs />
+
       <FileList />
     </div>
   );

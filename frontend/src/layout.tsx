@@ -20,8 +20,8 @@ export default function Layout() {
               <AppSidebar />
               <div className="w-full h-screen flex flex-col">
                 <AppTopBar />
-                <ScrollArea className="flex-1 w-full overflow-auto">
-                  <div className="w-full px-2 lg:px-16 md:px-8 py-4 md:py-6 lg:py-8">
+                <ScrollArea className="flex-1 w-full h-full overflow-auto">
+                  <div className="w-full h-full px-2 lg:px-16 md:px-8 py-4 md:py-6 lg:py-8">
                     <Outlet />
                   </div>
                 </ScrollArea>

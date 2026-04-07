@@ -6,15 +6,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { Field, FieldDescription } from "@/components/ui/field";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { from_base64 } from "libsodium-wrappers-sumo";
-import { Upload } from "lucide-react";
+import { FileIcon, Upload } from "lucide-react";
 import { useState } from "react";
 import { Dialog as BaseDialog } from "@base-ui/react";
 import { transferBridge } from "@/lib/transfer-bridge";
 import { toggleTransferList } from "@/stores/ui";
+import DragDrop from "../drag-drop";
 
 const handle = BaseDialog.createHandle();
 
@@ -60,16 +60,22 @@ export default function UploadDialog() {
           <DialogTitle>Upload New File</DialogTitle>
         </DialogHeader>
         <Field>
-          <FieldLabel htmlFor="upload-input">File</FieldLabel>
-          <Input
-            id="upload-input"
-            type="file"
-            onChange={(e) => {
-              if (!e.target.files) return;
-
-              setFile(e.target.files[0]);
-            }}
-          />
+          {file === null && (
+            <DragDrop
+              onChange={(f) => {
+                if (f.length) {
+                  setFile(f[0]);
+                }
+              }} />
+          )}
+          {file !== null && (
+            <div className='flex flex-col gap-2'>
+              <div className='flex flex-row gap-2 items-center'>
+                <FileIcon size={16} />
+                {file.name}
+              </div>
+            </div>
+          )}
           <FieldDescription>
             Will upload to /{path.map((it) => it.folderName).join("/")}
           </FieldDescription>
