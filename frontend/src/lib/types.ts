@@ -125,7 +125,7 @@ export type WorkerRequest = (
       type: "chunk-ack";
       uploadId: number;
       chunkIndex: number;
-      checksum: Uint8Array;
+      size: number;
     }
   | {
       type: "ack";
@@ -197,12 +197,10 @@ export type WorkerResponse = (
   | {
       type: "get-share-chunk";
       url: string;
-      checksum?: string;
     }
   | {
       type: "get-file-chunk";
       url: string;
-      checksum?: string;
     }
   | {
       type: "download";

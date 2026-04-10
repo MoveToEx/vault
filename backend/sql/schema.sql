@@ -67,7 +67,6 @@ CREATE TABLE IF NOT EXISTS file_chunks (
     chunk_index INT NOT NULL,
 
     s3_key TEXT NOT NULL UNIQUE,
-    checksum BYTEA NOT NULL,
 
     PRIMARY KEY (file_id, chunk_index)
 );
@@ -125,7 +124,6 @@ CREATE TABLE IF NOT EXISTS upload_chunks (
     s3_key TEXT NOT NULL UNIQUE,
 
     completed BOOLEAN NOT NULL DEFAULT FALSE,
-    checksum BYTEA NOT NULL,
 
     PRIMARY KEY (upload_id, chunk_index)
 );

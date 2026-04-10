@@ -46,13 +46,6 @@ type PresignResponse = Wrapped<{
   headers: Record<string, string[]>;
 }>;
 
-type ChunkDownloadResponse = Wrapped<{
-  url: string;
-  method?: string;
-  headers?: Record<string, string[]>;
-  checksum?: string;
-}>;
-
 type InitUploadResponse = Wrapped<{
   id: number;
   chunks: number;
@@ -153,7 +146,7 @@ const api = {
   },
 
   async getChunk(id: number, index: number) {
-    const response: AxiosResponse<ChunkDownloadResponse> = await instance.get(
+    const response: AxiosResponse<PresignResponse> = await instance.get(
       `/files/${id}/${index + 1}`,
     );
 
@@ -186,9 +179,9 @@ const api = {
     });
   },
 
-  async completeChunk(id: number, index: number, checksum: Uint8Array) {
+  async completeChunk(id: number, index: number, size: number) {
     await instance.post(`/upload/${id}/chunks/${index + 1}/complete`, {
-      checksum: to_base64(checksum),
+      size,
     });
   },
 
@@ -303,7 +296,7 @@ const api = {
   },
 
   async getShareChunk(shareId: number, index: number) {
-    const response = await instance.get<ChunkDownloadResponse>(
+    const response = await instance.get<PresignResponse>(
       `/share/${shareId}/${index + 1}`,
     );
 

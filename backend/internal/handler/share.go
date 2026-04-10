@@ -306,10 +306,9 @@ type GetShareChunkPayload struct {
 }
 
 type GetShareChunkResponse struct {
-	URL      string              `json:"url"`
-	Method   string              `json:"method"`
-	Headers  map[string][]string `json:"headers"`
-	Checksum utils.Bytes         `json:"checksum,omitempty"`
+	URL     string              `json:"url"`
+	Method  string              `json:"method"`
+	Headers map[string][]string `json:"headers"`
 }
 
 func GetShareChunk(c *gin.Context) {
@@ -351,16 +350,11 @@ func GetShareChunk(c *gin.Context) {
 		return
 	}
 
-	resp := GetShareChunkResponse{
+	utils.SuccessResponse(c, GetShareChunkResponse{
 		URL:     req.URL,
 		Headers: req.SignedHeader,
 		Method:  req.Method,
-	}
-	if len(chunk.Checksum) > 0 {
-		resp.Checksum = utils.Bytes(chunk.Checksum)
-	}
-
-	utils.SuccessResponse(c, resp)
+	})
 }
 
 type DeleteSharePayload struct {

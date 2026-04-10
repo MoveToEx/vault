@@ -104,8 +104,8 @@ class TransferBridge {
           break;
         }
         case "chunk-ack": {
-          const { chunkIndex, checksum, uploadId, $id } = message;
-          await api.completeChunk(uploadId, chunkIndex, checksum);
+          const { chunkIndex, size, uploadId, $id } = message;
+          await api.completeChunk(uploadId, chunkIndex, size);
 
           this.post({ type: "chunk-ack", $id });
           break;
@@ -141,9 +141,9 @@ class TransferBridge {
         }
         case "get-file-chunk": {
           const { fileId, chunkIndex, $id } = message;
-          const { url, checksum } = await api.getChunk(fileId, chunkIndex);
+          const { url } = await api.getChunk(fileId, chunkIndex);
 
-          this.post({ type: "get-file-chunk", url, checksum, $id });
+          this.post({ type: "get-file-chunk", url, $id });
 
           break;
         }

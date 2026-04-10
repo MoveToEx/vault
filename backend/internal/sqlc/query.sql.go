@@ -13,18 +13,17 @@ import (
 
 const completeUploadChunk = `-- name: CompleteUploadChunk :exec
 UPDATE upload_chunks
-SET completed = TRUE, checksum = $3
+SET completed = TRUE
 WHERE upload_id = $1 AND chunk_index = $2
 `
 
 type CompleteUploadChunkParams struct {
-	UploadID   int64  `json:"uploadId"`
-	ChunkIndex int32  `json:"chunkIndex"`
-	Checksum   []byte `json:"checksum"`
+	UploadID   int64 `json:"uploadId"`
+	ChunkIndex int32 `json:"chunkIndex"`
 }
 
 func (q *Queries) CompleteUploadChunk(ctx context.Context, arg CompleteUploadChunkParams) error {
-	_, err := q.db.Exec(ctx, completeUploadChunk, arg.UploadID, arg.ChunkIndex, arg.Checksum)
+	_, err := q.db.Exec(ctx, completeUploadChunk, arg.UploadID, arg.ChunkIndex)
 	return err
 }
 
@@ -178,7 +177,7 @@ func (q *Queries) GetActiveUploadSession(ctx context.Context, userID int64) ([]G
 }
 
 const getChunk = `-- name: GetChunk :one
-SELECT c.file_id, c.chunk_index, c.s3_key, c.checksum FROM file_chunks c
+SELECT c.file_id, c.chunk_index, c.s3_key FROM file_chunks c
 JOIN files f ON c.file_id = f.id
 WHERE f.owner_id = $1 AND f.id = $3 AND c.chunk_index = $2
 `
@@ -192,17 +191,12 @@ type GetChunkParams struct {
 func (q *Queries) GetChunk(ctx context.Context, arg GetChunkParams) (FileChunk, error) {
 	row := q.db.QueryRow(ctx, getChunk, arg.OwnerID, arg.ChunkIndex, arg.FileID)
 	var i FileChunk
-	err := row.Scan(
-		&i.FileID,
-		&i.ChunkIndex,
-		&i.S3Key,
-		&i.Checksum,
-	)
+	err := row.Scan(&i.FileID, &i.ChunkIndex, &i.S3Key)
 	return i, err
 }
 
 const getChunks = `-- name: GetChunks :one
-SELECT c.file_id, c.chunk_index, c.s3_key, c.checksum FROM file_chunks c
+SELECT c.file_id, c.chunk_index, c.s3_key FROM file_chunks c
 JOIN files f ON c.file_id = f.id
 WHERE f.owner_id = $1 AND f.id = $2
 `
@@ -215,12 +209,7 @@ type GetChunksParams struct {
 func (q *Queries) GetChunks(ctx context.Context, arg GetChunksParams) (FileChunk, error) {
 	row := q.db.QueryRow(ctx, getChunks, arg.OwnerID, arg.FileID)
 	var i FileChunk
-	err := row.Scan(
-		&i.FileID,
-		&i.ChunkIndex,
-		&i.S3Key,
-		&i.Checksum,
-	)
+	err := row.Scan(&i.FileID, &i.ChunkIndex, &i.S3Key)
 	return i, err
 }
 
@@ -412,7 +401,7 @@ func (q *Queries) GetShare(ctx context.Context, id int64) (GetShareRow, error) {
 }
 
 const getShareChunk = `-- name: GetShareChunk :one
-SELECT s.id, s.file_id, s.sender_id, s.receiver_id, s.encrypted_fek, s.encrypted_metadata, s.created_at, s.expires_at, c.file_id, c.chunk_index, c.s3_key, c.checksum FROM shares s
+SELECT s.id, s.file_id, s.sender_id, s.receiver_id, s.encrypted_fek, s.encrypted_metadata, s.created_at, s.expires_at, c.file_id, c.chunk_index, c.s3_key FROM shares s
 INNER JOIN files f ON s.file_id = f.id
 INNER JOIN file_chunks c ON c.file_id = f.id
 WHERE s.id = $1 AND c.chunk_index = $2 AND s.expires_at > NOW()
@@ -435,7 +424,6 @@ type GetShareChunkRow struct {
 	FileID_2          int64              `json:"fileId2"`
 	ChunkIndex        int32              `json:"chunkIndex"`
 	S3Key             string             `json:"s3Key"`
-	Checksum          []byte             `json:"checksum"`
 }
 
 func (q *Queries) GetShareChunk(ctx context.Context, arg GetShareChunkParams) (GetShareChunkRow, error) {
@@ -453,7 +441,6 @@ func (q *Queries) GetShareChunk(ctx context.Context, arg GetShareChunkParams) (G
 		&i.FileID_2,
 		&i.ChunkIndex,
 		&i.S3Key,
-		&i.Checksum,
 	)
 	return i, err
 }
@@ -603,7 +590,7 @@ func (q *Queries) GetSubfolders(ctx context.Context, parentID pgtype.Int8) ([]Fo
 }
 
 const getUploadChunk = `-- name: GetUploadChunk :one
-SELECT upload_id, chunk_index, s3_key, completed, checksum FROM upload_chunks
+SELECT upload_id, chunk_index, s3_key, completed FROM upload_chunks
 WHERE upload_id = $1 AND chunk_index = $2
 `
 
@@ -620,7 +607,6 @@ func (q *Queries) GetUploadChunk(ctx context.Context, arg GetUploadChunkParams) 
 		&i.ChunkIndex,
 		&i.S3Key,
 		&i.Completed,
-		&i.Checksum,
 	)
 	return i, err
 }
@@ -739,9 +725,9 @@ func (q *Queries) InvalidateShare(ctx context.Context, id int64) error {
 
 const migrateChunks = `-- name: MigrateChunks :exec
 INSERT INTO
-    file_chunks (file_id, chunk_index, s3_key, checksum)
+    file_chunks (file_id, chunk_index, s3_key)
 SELECT 
-    $1 AS file_id, chunk_index, s3_key, checksum
+    $1 AS file_id, chunk_index, s3_key
 FROM upload_chunks
 WHERE upload_id = $2 AND completed = TRUE
 `

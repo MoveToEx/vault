@@ -170,10 +170,9 @@ func GetFile(c *gin.Context) {
 }
 
 type GetChunkResponse struct {
-	URL      string              `json:"url"`
-	Headers  map[string][]string `json:"headers"`
-	Size     int64               `json:"size"`
-	Checksum utils.Bytes         `json:"checksum,omitempty"`
+	URL     string              `json:"url"`
+	Headers map[string][]string `json:"headers"`
+	Size    int64               `json:"size"`
 }
 
 func GetChunk(c *gin.Context) {
@@ -218,15 +217,10 @@ func GetChunk(c *gin.Context) {
 		return
 	}
 
-	resp := GetChunkResponse{
+	utils.SuccessResponse(c, GetChunkResponse{
 		URL:     req.URL,
 		Headers: req.SignedHeader,
-	}
-	if len(chunk.Checksum) > 0 {
-		resp.Checksum = utils.Bytes(chunk.Checksum)
-	}
-
-	utils.SuccessResponse(c, resp)
+	})
 }
 
 type UpdateFilePayload struct {
