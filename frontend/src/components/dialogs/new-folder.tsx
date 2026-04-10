@@ -56,7 +56,6 @@ export default function NewFolderDialog() {
           type: "folder",
         })),
         from_base64(keys.pubKey),
-        from_base64(keys.privKey)
       );
 
       const parentId = path.length === 0 ? 0 : path[path.length - 1].id;
