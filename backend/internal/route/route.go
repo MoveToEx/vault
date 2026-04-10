@@ -11,17 +11,22 @@ func SetupRoutes(r *gin.Engine) {
 	public := r.Group("/")
 
 	{
-		public.POST("/auth/register/start", handler.RegisterStart)
-		public.POST("/auth/register/finish", handler.RegisterFinish)
-		public.POST("/auth/login/start", handler.LoginStart)
-		public.POST("/auth/login/finish", handler.LoginFinish)
-		public.POST("/auth/refresh", handler.Refresh)
+		auth := public.Group("/auth")
+		auth.POST("/register/finish", handler.RegisterFinish)
+		auth.POST("/login/finish", handler.LoginFinish)
+		auth.POST("/refresh", handler.Refresh)
 	}
 
-	protected := public.Group("/")
-
-	protected.Use(middleware.AuthMiddleware())
 	{
+		auth := public.Group("/auth")
+		auth.Use(middleware.RateLimitMiddleware())
+		auth.POST("/register/start", handler.RegisterStart)
+		auth.POST("/login/start", handler.LoginStart)
+	}
+
+	{
+		protected := public.Group("/")
+		protected.Use(middleware.AuthMiddleware())
 		protected.GET("/auth/get", handler.GetIdentity)
 
 		protected.GET("/me/capacity", handler.GetCapacity)
