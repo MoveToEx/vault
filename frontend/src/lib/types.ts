@@ -10,18 +10,13 @@ export type KDFParameters = {
   parallelism: number;
 };
 
-export type FileMetadata = {
+export type Metadata = {
   name: string;
-  mime: string;
-  type: "file";
-};
-
-export type FolderMetadata = {
+  type: 'folder';
+} | {
   name: string;
-  type: "folder";
-};
-
-export type Metadata = FileMetadata | FolderMetadata;
+  type: 'file'
+}
 
 export type TransferMessage = (
   | {

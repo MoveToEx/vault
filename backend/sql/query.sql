@@ -50,6 +50,11 @@ UPDATE files
 SET encrypted_metadata = $1
 WHERE id = $2;
 
+-- name: SetFolderMetadata :exec
+UPDATE folders
+SET encrypted_metadata = $1
+WHERE id = $2;
+
 
 -- name: SetFileParent :exec
 UPDATE files

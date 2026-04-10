@@ -223,6 +223,102 @@ func GetChunk(c *gin.Context) {
 	})
 }
 
+type UpdateFilePayload struct {
+	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+}
+
+func UpdateFile(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	fileID, err := strconv.ParseInt(c.Param("file_id"), 10, 64)
+
+	if err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	var payload UpdateFilePayload
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	file, err := db.Query().GetFile(ctx, fileID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting file")
+		return
+	}
+
+	if file.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Access denied")
+		return
+	}
+
+	err = db.Query().SetFileMetadata(ctx, sqlc.SetFileMetadataParams{
+		EncryptedMetadata: payload.EncryptedMetadata,
+		ID:                fileID,
+	})
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when updating file")
+		return
+	}
+
+	utils.SuccessResponse(c, 204)
+}
+
+type UpdateFolderPayload struct {
+	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+}
+
+func UpdateFolder(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	folderID, err := strconv.ParseInt(c.Param("folder_id"), 10, 64)
+
+	if err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	var payload UpdateFolderPayload
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	folder, err := db.Query().GetFolder(ctx, folderID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting folder")
+		return
+	}
+
+	if folder.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Access denied")
+		return
+	}
+
+	err = db.Query().SetFolderMetadata(ctx, sqlc.SetFolderMetadataParams{
+		EncryptedMetadata: payload.EncryptedMetadata,
+		ID:                folderID,
+	})
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when updating folder")
+		return
+	}
+
+	utils.SuccessResponse(c, 204)
+}
+
 type DeleteFilesPayload struct {
 	FileID int64 `uri:"file_id"`
 }

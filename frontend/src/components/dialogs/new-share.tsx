@@ -17,7 +17,7 @@ import { File, Info, Share2 } from "lucide-react";
 import { Button } from "../ui/button";
 import api from "@/lib/api";
 import { useAppSelector } from "@/stores";
-import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
+import { aeadCompositeDecrypt, kdf, seal } from "@/lib/crypto";
 import sodium, { from_base64 } from "libsodium-wrappers-sumo";
 import { Alert, AlertDescription } from "../ui/alert";
 import useUsers from "@/hooks/use-users";
@@ -69,8 +69,8 @@ export default function NewShareDialog({
             const { publicKey } = await api.getUser(data.receiver);
 
             await api.createShare({
-              encryptedKey: sodium.crypto_box_seal(fek, publicKey),
-              encryptedMetadata: sodium.crypto_box_seal(metadata, publicKey),
+              encryptedKey: seal(fek, publicKey),
+              encryptedMetadata: seal(metadata, publicKey),
               fileId: payload.id,
               receiver: data.receiver,
             });

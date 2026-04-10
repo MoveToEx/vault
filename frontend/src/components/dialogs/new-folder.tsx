@@ -15,7 +15,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { useAppSelector } from "@/stores";
-import { open } from "@/lib/crypto";
+import { seal } from "@/lib/crypto";
 import { from_base64, from_string, ready } from "libsodium-wrappers-sumo";
 import api from "@/lib/api";
 import { useState } from "react";
@@ -50,7 +50,7 @@ export default function NewFolderDialog() {
     try {
       await ready;
 
-      const metadata = open(
+      const metadata = seal(
         from_string(JSON.stringify({
           name: data.name,
           type: "folder",

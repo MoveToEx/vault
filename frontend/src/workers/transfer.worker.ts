@@ -1,6 +1,6 @@
 import { aeadComposite, aeadCompositeDecrypt, kdf, open, seal } from "@/lib/crypto";
 import type {
-  FileMetadata,
+  Metadata,
   TransferCommand,
   TransferMessage,
   WithId,
@@ -10,6 +10,8 @@ import type {
 import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import axios, { AxiosError } from "axios";
 import sodium from "libsodium-wrappers-sumo";
+
+type FileMetadata = Extract<Metadata, { type: 'file' }>;
 
 async function rpc<R extends WorkerRequest>(
   req: R,

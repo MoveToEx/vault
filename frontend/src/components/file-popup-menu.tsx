@@ -1,4 +1,4 @@
-import { Share2, Trash } from "lucide-react";
+import { Pencil, Share2, Trash } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,22 +24,25 @@ import {
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
 import NewShareDialog from "./dialogs/new-share";
+import RenameDialog, { type RenameDialogPayload } from "./dialogs/rename";
 
 type Payload = {
+  type: "folder" | "file";
   id: number;
-  filename: string;
+  name: string;
 };
 
 const deleteHandle = BaseAlertDialog.createHandle<{
   id: number;
-  filename: string;
+  name: string;
 }>();
 const shareHandle = BaseDialog.createHandle<{ id: number; filename: string }>();
+const renameHandle = BaseDialog.createHandle<RenameDialogPayload>();
 
 function DeleteDialog({
   handle,
 }: {
-  handle: BaseAlertDialog.Handle<{ id: number; filename: string }>;
+  handle: BaseAlertDialog.Handle<{ id: number; name: string }>;
 }) {
   return (
     <AlertDialog handle={handle}>
@@ -87,6 +90,7 @@ export default function FilePopupMenu({
     <div>
       <DeleteDialog handle={deleteHandle} />
       <NewShareDialog handle={shareHandle} />
+      <RenameDialog handle={renameHandle} />
 
       <DropdownMenu<Payload> handle={handle}>
         {({ payload }) => (
@@ -96,7 +100,7 @@ export default function FilePopupMenu({
                 onClick={() => {
                   deleteHandle.openWithPayload({
                     id: payload?.id ?? 0,
-                    filename: payload?.filename ?? "",
+                    name: payload?.name ?? "",
                   });
                 }}
                 className="text-destructive"
@@ -106,11 +110,26 @@ export default function FilePopupMenu({
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
-                  shareHandle.openWithPayload({
-                    id: payload?.id ?? 0,
-                    filename: payload?.filename ?? "",
+                  if (!payload?.id || !payload?.type) return;
+                  renameHandle.openWithPayload({
+                    id: payload.id,
+                    name: payload.name,
+                    type: payload.type,
                   });
                 }}
+              >
+                <Pencil />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (payload?.type !== "file") return;
+                  shareHandle.openWithPayload({
+                    id: payload?.id ?? 0,
+                    filename: payload?.name ?? "",
+                  });
+                }}
+                disabled={payload?.type !== "file"}
               >
                 <Share2 />
                 Share

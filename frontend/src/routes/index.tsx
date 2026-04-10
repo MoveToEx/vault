@@ -46,7 +46,11 @@ type Item =
     createdAt: Date;
   };
 
-const fileMenuHandle = Menu.createHandle<{ id: number; filename: string }>();
+const fileMenuHandle = Menu.createHandle<{
+  type: "folder" | "file";
+  id: number;
+  name: string;
+}>();
 
 function FileList() {
   const keys = useAppSelector((state) => state.key.value);
@@ -165,7 +169,7 @@ function FileList() {
                 )}
                 <Menu.Trigger
                   handle={fileMenuHandle}
-                  payload={{ id: val.id, filename: val.name }}
+                  payload={{ type: val.type, id: val.id, name: val.name }}
                   render={
                     <Button
                       className="duration-[0] invisible group-hover:visible"

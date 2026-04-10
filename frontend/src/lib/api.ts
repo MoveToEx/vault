@@ -118,6 +118,18 @@ const api = {
     await instance.delete(`/files/${id}`);
   },
 
+  async renameFile(id: number, metadata: Uint8Array) {
+    await instance.post(`/files/${id}`, {
+      encryptedMetadata: to_base64(metadata),
+    });
+  },
+
+  async renameFolder(id: number, metadata: Uint8Array) {
+    await instance.post(`/files/folder/${id}`, {
+      encryptedMetadata: to_base64(metadata),
+    });
+  },
+
   async newFolder(parent: number, metadata: Uint8Array) {
     await instance.post("/files/folder", {
       parentId: parent,

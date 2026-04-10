@@ -1083,6 +1083,22 @@ func (q *Queries) SetFileParent(ctx context.Context, arg SetFileParentParams) er
 	return err
 }
 
+const setFolderMetadata = `-- name: SetFolderMetadata :exec
+UPDATE folders
+SET encrypted_metadata = $1
+WHERE id = $2
+`
+
+type SetFolderMetadataParams struct {
+	EncryptedMetadata []byte `json:"encryptedMetadata"`
+	ID                int64  `json:"id"`
+}
+
+func (q *Queries) SetFolderMetadata(ctx context.Context, arg SetFolderMetadataParams) error {
+	_, err := q.db.Exec(ctx, setFolderMetadata, arg.EncryptedMetadata, arg.ID)
+	return err
+}
+
 const setRootFolder = `-- name: SetRootFolder :exec
 UPDATE users
 SET root_folder = $1

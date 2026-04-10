@@ -1,4 +1,4 @@
-import RequireKeys from "@/components/require-umk";
+import RequireUMK from "@/components/require-umk";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -20,7 +20,7 @@ import useMyShares from "@/hooks/use-my-shares";
 import useShares from "@/hooks/use-shares";
 import { aeadCompositeDecrypt, kdf, open } from "@/lib/crypto";
 import { transferBridge } from "@/lib/transfer-bridge";
-import type { FileMetadata } from "@/lib/types";
+import type { Metadata } from "@/lib/types";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleTransferList } from "@/stores/ui";
 import { from_base64, to_string } from "libsodium-wrappers-sumo";
@@ -28,6 +28,8 @@ import { Ban, Download, Share2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Dialog as BaseDialog } from "@base-ui/react";
 import RevokeShareDialog from "@/components/dialogs/revoke-share";
+
+type FileMetadata = Extract<Metadata, { type: 'file' }>;
 
 type ShareMetadata = FileMetadata & {
   createdAt: Date;
@@ -246,7 +248,7 @@ function SharedByMe() {
 export default function SharesPage() {
   return (
     <div>
-      <RequireKeys />
+      <RequireUMK />
       <p>Shared with you</p>
       <SharedWithMe />
 
