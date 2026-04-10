@@ -1,4 +1,4 @@
-import { aeadComposite, aeadCompositeDecrypt, kdf } from "@/lib/crypto";
+import { aeadComposite, aeadCompositeDecrypt, kdf, open, seal } from "@/lib/crypto";
 import type {
   FileMetadata,
   TransferCommand,
@@ -41,7 +41,7 @@ function post<R extends TransferMessage>(message: R) {
   self.postMessage(message);
 }
 
-async function upload(file: File, parentId: number, umk: Uint8Array) {
+async function upload(file: File, parentId: number, umk: Uint8Array, publicKey: Uint8Array) {
   const transferId = crypto.randomUUID();
 
   try {
@@ -58,13 +58,13 @@ async function upload(file: File, parentId: number, umk: Uint8Array) {
     const kek = kdf(umk, "KEK");
     const fek = sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
 
-    const metadata = aeadComposite(
+    const metadata = seal(
       JSON.stringify({
         name: file.name,
         mime: file.type,
         type: "file",
       }),
-      kek,
+      publicKey,
     );
 
     const { id, chunks, chunkSize } = await rpc({
@@ -171,7 +171,7 @@ async function upload(file: File, parentId: number, umk: Uint8Array) {
   }
 }
 
-async function download(fileId: number, umk: Uint8Array) {
+async function download(fileId: number, umk: Uint8Array, publicKey: Uint8Array, privateKey: Uint8Array) {
   await sodium.ready;
   const transferId = crypto.randomUUID();
 
@@ -195,7 +195,7 @@ async function download(fileId: number, umk: Uint8Array) {
     const fek = aeadCompositeDecrypt(from_base64(encryptedKey), kek);
 
     const metadata: FileMetadata = JSON.parse(
-      to_string(aeadCompositeDecrypt(from_base64(encryptedMetadata), kek)),
+      to_string(open(from_base64(encryptedMetadata), publicKey, privateKey)),
     );
 
     post({
@@ -312,11 +312,11 @@ async function downloadShare(
         transferId,
       });
 
-    const fek = sodium.crypto_box_seal_open(encryptedKey, pubKey, privKey);
+    const fek = open(encryptedKey, pubKey, privKey);
 
     const metadata: FileMetadata = JSON.parse(
       to_string(
-        sodium.crypto_box_seal_open(encryptedMetadata, pubKey, privKey),
+        open(encryptedMetadata, pubKey, privKey),
       ),
     );
 
@@ -415,11 +415,11 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
 
   switch (params.type) {
     case "enqueue-upload": {
-      await upload(params.file, params.parentId, params.umk);
+      await upload(params.file, params.parentId, params.umk, params.publicKey);
       break;
     }
     case "enqueue-download": {
-      await download(params.fileId, params.umk);
+      await download(params.fileId, params.umk, params.publicKey, params.privateKey);
       break;
     }
     case "enqueue-download-share": {

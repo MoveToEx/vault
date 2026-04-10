@@ -1,7 +1,7 @@
 import NewFolderDialog from "@/components/dialogs/new-folder";
 import UploadDialog from "@/components/dialogs/upload";
 import useFiles from "@/hooks/use-files";
-import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
+import { open } from "@/lib/crypto";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import { Fragment, useMemo } from "react";
@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatSize, getIcon } from "@/lib/utils";
-import RequireUMK from "@/components/require-umk";
+import RequireKeys from "@/components/require-umk";
 import { pop, popUntil, push, reset } from "@/stores/path";
 import {
   Breadcrumb,
@@ -49,7 +49,7 @@ type Item =
 const fileMenuHandle = Menu.createHandle<{ id: number; filename: string }>();
 
 function FileList() {
-  const umk = useAppSelector((state) => state.key.value.umk);
+  const keys = useAppSelector((state) => state.key.value);
   const path = useAppSelector((state) => state.path.value);
   const dispatch = useAppDispatch();
 
@@ -58,15 +58,14 @@ function FileList() {
   );
 
   const decrypted = useMemo<Item[]>(() => {
-    if (!data || !umk) return [];
+    if (!data || !keys) return [];
     const result: Item[] = [];
 
-    const kek = kdf(from_base64(umk), "KEK");
-
     for (const { encryptedMetadata, size, id, createdAt } of data) {
-      const plaintext = aeadCompositeDecrypt(
+      const plaintext = open(
         from_base64(encryptedMetadata),
-        kek,
+        from_base64(keys.pubKey),
+        from_base64(keys.privKey),
       );
 
       const metadata = {
@@ -87,7 +86,7 @@ function FileList() {
       if (x.name > y.name) return 1;
       return -1;
     });
-  }, [umk, data]);
+  }, [keys, data]);
 
   return (
     <div>
@@ -150,9 +149,13 @@ function FileList() {
                     variant="outline"
                     size="icon-sm"
                     onClick={() => {
+                      if (!keys) return;
+
                       transferBridge.enqueueDownload(
                         val.id,
-                        from_base64(umk ?? ""),
+                        from_base64(keys.umk),
+                        from_base64(keys.pubKey),
+                        from_base64(keys.privKey)
                       );
                       dispatch(toggleTransferList(true));
                     }}
@@ -220,7 +223,7 @@ function Breadcrumbs() {
 export default function IndexPage() {
   return (
     <div className='flex flex-col h-full'>
-      <RequireUMK />
+      <RequireKeys />
       <div className="flex flex-row justify-start items-center gap-4 mb-4">
         <UploadDialog />
         <NewFolderDialog />

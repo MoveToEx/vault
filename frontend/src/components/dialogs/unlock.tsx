@@ -73,6 +73,7 @@ export default function UnlockDialog({
         set({
           umk: to_base64(umk),
           privKey: to_base64(privKey),
+          pubKey: auth.publicKey,
         }),
       );
 

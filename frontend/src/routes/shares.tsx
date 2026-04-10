@@ -1,4 +1,4 @@
-import RequireUMK from "@/components/require-umk";
+import RequireKeys from "@/components/require-umk";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -18,12 +18,12 @@ import {
 import useAuth from "@/hooks/use-auth";
 import useMyShares from "@/hooks/use-my-shares";
 import useShares from "@/hooks/use-shares";
-import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
+import { aeadCompositeDecrypt, kdf, open } from "@/lib/crypto";
 import { transferBridge } from "@/lib/transfer-bridge";
 import type { FileMetadata } from "@/lib/types";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleTransferList } from "@/stores/ui";
-import sodium, { from_base64, to_string } from "libsodium-wrappers-sumo";
+import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import { Ban, Download, Share2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Dialog as BaseDialog } from "@base-ui/react";
@@ -50,22 +50,21 @@ function SharedWithMe() {
   const { data } = useShares(page);
   const { data: user } = useAuth();
 
-  const umk = useAppSelector((state) => state.key.value.umk);
-  const pkey = useAppSelector((state) => state.key.value.privKey);
+  const keys = useAppSelector(state => state.key.value);
   const dispatch = useAppDispatch();
 
   const decrypted = useMemo(() => {
-    if (!data || !user || !pkey) return [];
+    if (!data || !user || !keys) return [];
 
     const result: ShareMetadata[] = [];
 
     for (const it of data) {
       const metadata: FileMetadata = JSON.parse(
         to_string(
-          sodium.crypto_box_seal_open(
+          open(
             from_base64(it.encryptedMetadata),
-            from_base64(user.publicKey),
-            from_base64(pkey),
+            from_base64(keys.pubKey),
+            from_base64(keys.privKey),
           ),
         ),
       );
@@ -80,9 +79,9 @@ function SharedWithMe() {
     }
 
     return result;
-  }, [data, user, pkey]);
+  }, [data, user, keys]);
 
-  if (!user || !umk || !pkey) {
+  if (!user || !keys) {
     return <></>;
   }
 
@@ -126,8 +125,8 @@ function SharedWithMe() {
                   onClick={() => {
                     transferBridge.enqueueDownloadShare(
                       it.id,
-                      from_base64(user.publicKey),
-                      from_base64(pkey),
+                      from_base64(keys.pubKey),
+                      from_base64(keys.privKey),
                     );
                     dispatch(toggleTransferList(true));
                   }}
@@ -153,14 +152,14 @@ function SharedByMe() {
   const { data } = useMyShares(page);
   const { data: user } = useAuth();
 
-  const umk = useAppSelector((state) => state.key.value.umk);
+  const keys = useAppSelector((state) => state.key.value);
 
   const decrypted = useMemo(() => {
-    if (!data || !user || !umk) return [];
+    if (!data || !user || !keys) return [];
 
     const result: MyShareMetadata[] = [];
 
-    const kek = kdf(from_base64(umk), "KEK");
+    const kek = kdf(from_base64(keys.umk), "KEK");
 
     for (const it of data) {
       const metadata: FileMetadata = JSON.parse(
@@ -177,9 +176,9 @@ function SharedByMe() {
     }
 
     return result;
-  }, [data, user, umk]);
+  }, [data, user, keys]);
 
-  if (!user || !umk) {
+  if (!user || !keys) {
     return <></>;
   }
 
@@ -247,7 +246,7 @@ function SharedByMe() {
 export default function SharesPage() {
   return (
     <div>
-      <RequireUMK />
+      <RequireKeys />
       <p>Shared with you</p>
       <SharedWithMe />
 

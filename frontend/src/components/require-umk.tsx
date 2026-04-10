@@ -6,17 +6,17 @@ import useAuth from "@/hooks/use-auth";
 
 const handle = BaseAlertDialog.createHandle<undefined>();
 
-export default function RequireUMK() {
-  const umk = useAppSelector((state) => state.key.value.umk);
+export default function RequireKeys() {
+  const keys = useAppSelector((state) => state.key.value);
   const { data, isLoading } = useAuth();
 
   useEffect(() => {
     if (isLoading || !data) return;
 
-    if (!umk) {
+    if (!keys) {
       handle.open(null);
     }
-  }, [umk, data, isLoading]);
+  }, [keys, data, isLoading]);
 
   return <UnlockDialog handle={handle} />;
 }

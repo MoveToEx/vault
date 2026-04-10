@@ -79,12 +79,15 @@ export type TransferCommand =
       type: "enqueue-upload";
       file: File;
       umk: Uint8Array;
+      publicKey: Uint8Array;
       parentId: number;
     }
   | {
       type: "enqueue-download";
       fileId: number;
       umk: Uint8Array;
+      publicKey: Uint8Array;
+      privateKey: Uint8Array;
     }
   | {
       type: "enqueue-download-share";

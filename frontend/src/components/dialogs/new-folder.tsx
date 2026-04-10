@@ -15,8 +15,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { useAppSelector } from "@/stores";
-import { aeadComposite, kdf } from "@/lib/crypto";
-import { from_base64, ready } from "libsodium-wrappers-sumo";
+import { open } from "@/lib/crypto";
+import { from_base64, from_string, ready } from "libsodium-wrappers-sumo";
 import api from "@/lib/api";
 import { useState } from "react";
 import { AxiosError } from "axios";
@@ -37,26 +37,26 @@ export default function NewFolderDialog() {
       name: "",
     },
   });
-  const umk = useAppSelector((state) => state.key.value.umk);
+  const keys = useAppSelector((state) => state.key.value);
   const path = useAppSelector((state) => state.path.value);
 
   const [loading, setLoading] = useState(false);
 
   const submit = async (data: z.infer<typeof schema>) => {
-    if (!umk) return;
+    if (!keys) return;
 
     setLoading(true);
 
     try {
       await ready;
 
-      const kek = kdf(from_base64(umk), "KEK");
-      const metadata = aeadComposite(
-        JSON.stringify({
+      const metadata = open(
+        from_string(JSON.stringify({
           name: data.name,
           type: "folder",
-        }),
-        kek,
+        })),
+        from_base64(keys.pubKey),
+        from_base64(keys.privKey)
       );
 
       const parentId = path.length === 0 ? 0 : path[path.length - 1].id;

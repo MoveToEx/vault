@@ -30,7 +30,7 @@ func (q *Queries) CompleteUploadChunk(ctx context.Context, arg CompleteUploadChu
 const completeUploadSession = `-- name: CompleteUploadSession :exec
 UPDATE uploads
 SET completed_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND expires_at > NOW()
 `
 
 func (q *Queries) CompleteUploadSession(ctx context.Context, id int64) error {
@@ -40,7 +40,7 @@ func (q *Queries) CompleteUploadSession(ctx context.Context, id int64) error {
 
 const countActiveUploadSession = `-- name: CountActiveUploadSession :one
 SELECT COUNT(*) FROM uploads
-WHERE user_id = $1 AND completed_at IS NULL
+WHERE user_id = $1 AND completed_at IS NULL AND expires_at > NOW()
 `
 
 func (q *Queries) CountActiveUploadSession(ctx context.Context, userID int64) (int64, error) {
@@ -126,7 +126,7 @@ func (q *Queries) FindUserByUsername(ctx context.Context, key string) ([]FindUse
 const getActiveUploadSession = `-- name: GetActiveUploadSession :many
 SELECT u.id, u.user_id, u.encrypted_metadata, u.parent_id, u.chunks, u.chunk_size, u.size, u.created_at, u.completed_at, u.expires_at, ARRAY_AGG(uc.chunk_index)::INT[] AS completed FROM uploads u
 INNER JOIN upload_chunks uc ON u.id = uc.upload_id
-WHERE user_id = $1 AND u.completed_at IS NULL
+WHERE user_id = $1 AND u.completed_at IS NULL AND u.expires_at > NOW()
 GROUP BY u.id
 `
 
@@ -647,15 +647,15 @@ func (q *Queries) GetUploadSession(ctx context.Context, id int64) (Upload, error
 }
 
 const getUsedCapacity = `-- name: GetUsedCapacity :one
-SELECT SUM(size) FROM files
+SELECT COALESCE(SUM(size), 0)::BIGINT FROM files
 WHERE owner_id = $1 AND deleted_at ISNULL
 `
 
 func (q *Queries) GetUsedCapacity(ctx context.Context, ownerID int64) (int64, error) {
 	row := q.db.QueryRow(ctx, getUsedCapacity, ownerID)
-	var sum int64
-	err := row.Scan(&sum)
-	return sum, err
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const getUser = `-- name: GetUser :one
@@ -1048,6 +1048,22 @@ type RotateSessionParams struct {
 
 func (q *Queries) RotateSession(ctx context.Context, arg RotateSessionParams) error {
 	_, err := q.db.Exec(ctx, rotateSession, arg.RefreshToken, arg.NewToken)
+	return err
+}
+
+const setFileMetadata = `-- name: SetFileMetadata :exec
+UPDATE files
+SET encrypted_metadata = $1
+WHERE id = $2
+`
+
+type SetFileMetadataParams struct {
+	EncryptedMetadata []byte `json:"encryptedMetadata"`
+	ID                int64  `json:"id"`
+}
+
+func (q *Queries) SetFileMetadata(ctx context.Context, arg SetFileMetadataParams) error {
+	_, err := q.db.Exec(ctx, setFileMetadata, arg.EncryptedMetadata, arg.ID)
 	return err
 }
 

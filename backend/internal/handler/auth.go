@@ -239,6 +239,7 @@ type LoginFinishResponse struct {
 	RefreshToken        string        `json:"refreshToken"`
 	KDF                 KDFParameters `json:"kdf"`
 	EncryptedPrivateKey utils.Bytes   `json:"encryptedPrivateKey"`
+	PublicKey           utils.Bytes   `json:"publicKey"`
 }
 
 func LoginFinish(c *gin.Context) {
@@ -306,6 +307,7 @@ func LoginFinish(c *gin.Context) {
 	utils.SuccessResponse(c, LoginFinishResponse{
 		RefreshToken:        session.RefreshToken,
 		EncryptedPrivateKey: user.EncryptedPrivateKey,
+		PublicKey:           user.PublicKey,
 		KDF: KDFParameters{
 			Salt:        user.KdfSalt,
 			MemoryCost:  user.KdfMemoryCost,

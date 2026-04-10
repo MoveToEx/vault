@@ -45,13 +45,19 @@ VALUES (
 )
 RETURNING *;
 
+-- name: SetFileMetadata :exec
+UPDATE files
+SET encrypted_metadata = $1
+WHERE id = $2;
+
+
 -- name: SetFileParent :exec
 UPDATE files
 SET parent_id = $2
 WHERE id = $1;
 
 -- name: GetUsedCapacity :one
-SELECT SUM(size) FROM files
+SELECT COALESCE(SUM(size), 0)::BIGINT FROM files
 WHERE owner_id = $1 AND deleted_at ISNULL;
 
 -- name: NewUpload :one
@@ -73,12 +79,12 @@ WHERE upload_id = $1 AND chunk_index = $2;
 
 -- name: CountActiveUploadSession :one
 SELECT COUNT(*) FROM uploads
-WHERE user_id = $1 AND completed_at IS NULL;
+WHERE user_id = $1 AND completed_at IS NULL AND expires_at > NOW();
 
 -- name: GetActiveUploadSession :many
 SELECT u.*, ARRAY_AGG(uc.chunk_index)::INT[] AS completed FROM uploads u
 INNER JOIN upload_chunks uc ON u.id = uc.upload_id
-WHERE user_id = $1 AND u.completed_at IS NULL
+WHERE user_id = $1 AND u.completed_at IS NULL AND u.expires_at > NOW()
 GROUP BY u.id;
 
 -- name: GetUploadSession :one
@@ -88,7 +94,7 @@ WHERE id = $1 AND completed_at IS NULL AND expires_at > NOW();
 -- name: CompleteUploadSession :exec
 UPDATE uploads
 SET completed_at = NOW()
-WHERE id = $1;
+WHERE id = $1 AND expires_at > NOW();
 
 -- name: MigrateUpload :one
 INSERT INTO

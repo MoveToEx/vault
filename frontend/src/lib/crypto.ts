@@ -77,6 +77,14 @@ export function unpackComposite(c: Uint8Array, nonce_length: number) {
   return { nonce, cipher };
 }
 
+export function seal(message: Uint8Array | string, pubKey: Uint8Array) {
+  return sodium.crypto_box_seal(message, pubKey);
+}
+
+export function open(cipher: Uint8Array, pubKey: Uint8Array, privKey: Uint8Array) {
+  return sodium.crypto_box_seal_open(cipher, pubKey, privKey);
+}
+
 export function aeadComposite(msg: Uint8Array | string, key: Uint8Array) {
   const { cipher, nonce } = aead(msg, key);
   return createComposite(nonce, cipher);

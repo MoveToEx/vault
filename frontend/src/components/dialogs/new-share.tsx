@@ -43,11 +43,11 @@ export default function NewShareDialog({
   return (
     <Dialog handle={handle}>
       {function Content({ payload }) {
-        const umk = useAppSelector((state) => state.key.value.umk);
+        const keys = useAppSelector((state) => state.key.value);
         const [loading, setLoading] = useState(false);
 
         const submit = async (data: z.infer<typeof schema>) => {
-          if (!payload?.id || !umk) return;
+          if (!payload?.id || !keys) return;
 
           setLoading(true);
 
@@ -58,7 +58,7 @@ export default function NewShareDialog({
               payload?.id,
             );
 
-            const kek = kdf(from_base64(umk), "KEK");
+            const kek = kdf(from_base64(keys.umk), "KEK");
 
             const fek = aeadCompositeDecrypt(from_base64(encryptedKey), kek);
             const metadata = aeadCompositeDecrypt(

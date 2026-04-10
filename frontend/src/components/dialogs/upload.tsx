@@ -19,7 +19,7 @@ import DragDrop from "../drag-drop";
 const handle = BaseDialog.createHandle();
 
 export default function UploadDialog() {
-  const umk = useAppSelector((state) => state.key.value.umk);
+  const keys = useAppSelector((state) => state.key.value);
   const dispatch = useAppDispatch();
 
   const path = useAppSelector((state) => state.path.value);
@@ -27,11 +27,11 @@ export default function UploadDialog() {
   const [file, setFile] = useState(null as File | null);
 
   const submit = async () => {
-    if (!file || !umk) return;
+    if (!file || !keys) return;
 
     const pathId = path.length === 0 ? 0 : path[path.length - 1].id;
 
-    transferBridge.enqueueUpload(file, pathId, from_base64(umk));
+    transferBridge.enqueueUpload(file, pathId, from_base64(keys.umk), from_base64(keys.pubKey));
 
     dispatch(toggleTransferList(true));
 

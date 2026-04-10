@@ -36,20 +36,23 @@ class TransferBridge {
     });
   }
 
-  enqueueUpload(file: File, dir: number, umk: Uint8Array) {
+  enqueueUpload(file: File, dir: number, umk: Uint8Array, publicKey: Uint8Array) {
     this.post({
       type: "enqueue-upload",
       file,
       parentId: dir,
       umk,
+      publicKey,
     });
   }
 
-  enqueueDownload(fileId: number, umk: Uint8Array) {
+  enqueueDownload(fileId: number, umk: Uint8Array, publicKey: Uint8Array, privateKey: Uint8Array) {
     this.post({
       type: "enqueue-download",
       fileId,
       umk,
+      publicKey,
+      privateKey,
     });
   }
 

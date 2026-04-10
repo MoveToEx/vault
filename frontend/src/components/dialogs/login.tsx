@@ -97,6 +97,7 @@ export default function LoginDialog({
         refreshToken,
         kdf: kdfParams,
         encryptedPrivateKey,
+        publicKey
       } = await api.finishLogin(
         new Uint8Array(fin.ke3.serialize()),
         loginStateID,
@@ -122,6 +123,7 @@ export default function LoginDialog({
         set({
           umk: to_base64(umk),
           privKey: to_base64(privKey),
+          pubKey: to_base64(publicKey)
         }),
       );
 
