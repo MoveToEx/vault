@@ -314,7 +314,7 @@ func NewFolder(c *gin.Context) {
 		EncryptedMetadata: payload.EncryptedMetadata,
 		ParentID: pgtype.Int8{
 			Valid: true,
-			Int64: payload.ParentID,
+			Int64: parent.ID,
 		},
 		OwnerID: userID,
 	})
