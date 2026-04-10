@@ -79,7 +79,7 @@ VALUES ($1, $2, $3, false);
 
 -- name: CompleteUploadChunk :exec
 UPDATE upload_chunks
-SET completed = TRUE
+SET completed = TRUE, checksum = $3
 WHERE upload_id = $1 AND chunk_index = $2;
 
 -- name: CountActiveUploadSession :one
@@ -112,9 +112,9 @@ RETURNING id;
 
 -- name: MigrateChunks :exec
 INSERT INTO
-    file_chunks (file_id, chunk_index, s3_key)
+    file_chunks (file_id, chunk_index, s3_key, checksum)
 SELECT 
-    $1 AS file_id, chunk_index, s3_key
+    $1 AS file_id, chunk_index, s3_key, checksum
 FROM upload_chunks
 WHERE upload_id = $2 AND completed = TRUE;
 

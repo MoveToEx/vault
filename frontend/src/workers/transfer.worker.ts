@@ -11,6 +11,19 @@ import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import axios, { AxiosError } from "axios";
 import sodium from "libsodium-wrappers-sumo";
 
+async function sha256(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array> {
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(buf);
+}
+
+function arraysEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 type FileMetadata = Extract<Metadata, { type: 'file' }>;
 
 async function rpc<R extends WorkerRequest>(
@@ -105,6 +118,7 @@ async function upload(file: File, parentId: number, umk: Uint8Array, publicKey: 
       const slice = file.slice(i * chunkSize, (i + 1) * chunkSize);
 
       const body = aeadComposite(await slice.bytes(), fek);
+      const checksum = await sha256(body);
 
       await axios.put(url, body, {
         headers: {
@@ -132,7 +146,7 @@ async function upload(file: File, parentId: number, umk: Uint8Array, publicKey: 
         type: "chunk-ack",
         uploadId: id,
         chunkIndex: i,
-        size: slice.size,
+        checksum,
         transferId,
       });
 
@@ -215,7 +229,7 @@ async function download(fileId: number, umk: Uint8Array, publicKey: Uint8Array, 
     for (let i = 0; i < chunks; i++) {
       let received = 0;
 
-      const { url } = await rpc({
+      const { url, checksum: checksumB64 } = await rpc({
         type: "get-file-chunk",
         chunkIndex: i,
         fileId,
@@ -250,7 +264,16 @@ async function download(fileId: number, umk: Uint8Array, publicKey: Uint8Array, 
 
       const buf = f.data as Blob;
 
-      const plain = aeadCompositeDecrypt(await buf.bytes(), fek);
+      const ciphertext = await buf.bytes();
+      if (checksumB64) {
+        const expected = from_base64(checksumB64);
+        const actual = await sha256(ciphertext);
+        if (!arraysEqual(actual, expected)) {
+          throw new Error("Chunk checksum mismatch");
+        }
+      }
+
+      const plain = aeadCompositeDecrypt(ciphertext, fek);
 
       result.push(new Uint8Array(plain));
       post({
@@ -337,7 +360,7 @@ async function downloadShare(
     for (let i = 0; i < chunks; i++) {
       let received = 0;
 
-      const { url } = await rpc({
+      const { url, checksum: checksumB64 } = await rpc({
         type: "get-share-chunk",
         chunkIndex: i,
         shareId,
@@ -372,7 +395,16 @@ async function downloadShare(
 
       const buf = f.data as Blob;
 
-      const plain = aeadCompositeDecrypt(await buf.bytes(), fek);
+      const ciphertext = await buf.bytes();
+      if (checksumB64) {
+        const expected = from_base64(checksumB64);
+        const actual = await sha256(ciphertext);
+        if (!arraysEqual(actual, expected)) {
+          throw new Error("Chunk checksum mismatch");
+        }
+      }
+
+      const plain = aeadCompositeDecrypt(ciphertext, fek);
 
       result.push(new Uint8Array(plain));
       post({

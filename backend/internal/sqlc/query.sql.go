@@ -13,17 +13,18 @@ import (
 
 const completeUploadChunk = `-- name: CompleteUploadChunk :exec
 UPDATE upload_chunks
-SET completed = TRUE
+SET completed = TRUE, checksum = $3
 WHERE upload_id = $1 AND chunk_index = $2
 `
 
 type CompleteUploadChunkParams struct {
-	UploadID   int64 `json:"uploadId"`
-	ChunkIndex int32 `json:"chunkIndex"`
+	UploadID   int64  `json:"uploadId"`
+	ChunkIndex int32  `json:"chunkIndex"`
+	Checksum   []byte `json:"checksum"`
 }
 
 func (q *Queries) CompleteUploadChunk(ctx context.Context, arg CompleteUploadChunkParams) error {
-	_, err := q.db.Exec(ctx, completeUploadChunk, arg.UploadID, arg.ChunkIndex)
+	_, err := q.db.Exec(ctx, completeUploadChunk, arg.UploadID, arg.ChunkIndex, arg.Checksum)
 	return err
 }
 
@@ -602,7 +603,7 @@ func (q *Queries) GetSubfolders(ctx context.Context, parentID pgtype.Int8) ([]Fo
 }
 
 const getUploadChunk = `-- name: GetUploadChunk :one
-SELECT upload_id, chunk_index, s3_key, completed FROM upload_chunks
+SELECT upload_id, chunk_index, s3_key, completed, checksum FROM upload_chunks
 WHERE upload_id = $1 AND chunk_index = $2
 `
 
@@ -619,6 +620,7 @@ func (q *Queries) GetUploadChunk(ctx context.Context, arg GetUploadChunkParams) 
 		&i.ChunkIndex,
 		&i.S3Key,
 		&i.Completed,
+		&i.Checksum,
 	)
 	return i, err
 }
@@ -737,9 +739,9 @@ func (q *Queries) InvalidateShare(ctx context.Context, id int64) error {
 
 const migrateChunks = `-- name: MigrateChunks :exec
 INSERT INTO
-    file_chunks (file_id, chunk_index, s3_key)
+    file_chunks (file_id, chunk_index, s3_key, checksum)
 SELECT 
-    $1 AS file_id, chunk_index, s3_key
+    $1 AS file_id, chunk_index, s3_key, checksum
 FROM upload_chunks
 WHERE upload_id = $2 AND completed = TRUE
 `

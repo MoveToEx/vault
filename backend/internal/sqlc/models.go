@@ -130,6 +130,7 @@ type UploadChunk struct {
 	ChunkIndex int32  `json:"chunkIndex"`
 	S3Key      string `json:"s3Key"`
 	Completed  bool   `json:"completed"`
+	Checksum   []byte `json:"checksum"`
 }
 
 type User struct {

@@ -5,6 +5,7 @@ import (
 	"backend/internal/db"
 	"backend/internal/sqlc"
 	"backend/internal/utils"
+	"crypto/sha256"
 	"strconv"
 	"time"
 
@@ -218,6 +219,10 @@ func UploadChunkInit(c *gin.Context) {
 	})
 }
 
+type UploadChunkCompletePayload struct {
+	Checksum utils.Bytes `json:"checksum"`
+}
+
 func UploadChunkComplete(c *gin.Context) {
 	userID := c.GetInt64("UserID")
 	uploadID, err := strconv.ParseInt(c.Param("upload_id"), 10, 64)
@@ -231,6 +236,18 @@ func UploadChunkComplete(c *gin.Context) {
 
 	if err != nil {
 		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	var payload UploadChunkCompletePayload
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	if len(payload.Checksum) != sha256.Size {
+		utils.ErrorResponse(c, 400, "Invalid checksum")
 		return
 	}
 
@@ -266,6 +283,7 @@ func UploadChunkComplete(c *gin.Context) {
 	err = db.Query().CompleteUploadChunk(ctx, sqlc.CompleteUploadChunkParams{
 		UploadID:   uploadID,
 		ChunkIndex: int32(chunkIndex),
+		Checksum:   payload.Checksum,
 	})
 
 	if err != nil {
