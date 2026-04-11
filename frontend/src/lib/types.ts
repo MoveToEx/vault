@@ -1,3 +1,6 @@
+/** Tags for SWR cache keys and `mutate()` invalidation (see `lib/swr.ts`). */
+export type SwrTag = "file" | "user" | "self" | "share" | "log";
+
 export type Wrapped<T> = {
   error?: string;
   data: T;

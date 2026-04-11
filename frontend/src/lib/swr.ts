@@ -1,6 +1,7 @@
 import useSWR, { mutate as SWRMutate, type SWRConfiguration } from "swr";
+import type { SwrTag } from "@/lib/types";
 
-export type Tags = "file" | "user" | "self" | "share";
+export type Tags = SwrTag;
 
 export type Params<T extends unknown[] = [], R = unknown> = {
   id: string;

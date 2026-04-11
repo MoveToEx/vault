@@ -15,14 +15,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { open } from "@/lib/crypto";
-import api from "@/lib/api";
 import type { Metadata } from "@/lib/types";
 import { useAppSelector } from "@/stores";
+import useLogs, { AUDIT_LOG_PAGE_SIZE } from "@/hooks/use-logs";
 import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import { Logs } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-const PAGE_SIZE = 20;
+import { useMemo, useState } from "react";
 
 const ACTION_LABELS: Record<string, string> = {
   register: "Account registration",
@@ -77,34 +75,17 @@ function formatDetails(payload: Record<string, unknown>): string {
 export default function AuditPage() {
   const keys = useAppSelector((s) => s.key.value);
   const [page, setPage] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [rawItems, setRawItems] = useState<
-    Awaited<ReturnType<typeof api.getAuditLogs>>["items"]
-  >([]);
+  const { data, isLoading, error } = useLogs(page);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api.getAuditLogs(PAGE_SIZE, page * PAGE_SIZE);
-      setTotal(data.total);
-      setRawItems(data.items);
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const total = data?.total ?? 0;
 
   const rows: DecryptedRow[] = useMemo(() => {
-    if (!keys) return [];
+    if (!keys || !data) return [];
 
     const pub = from_base64(keys.pubKey);
     const priv = from_base64(keys.privKey);
 
-    return rawItems.map((it) => {
+    return data.items.map((it) => {
       let itemLabel = "—";
       let itemMetaError: string | undefined;
 
@@ -155,11 +136,11 @@ export default function AuditPage() {
         };
       }
     });
-  }, [rawItems, keys]);
+  }, [data, keys]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / AUDIT_LOG_PAGE_SIZE));
   const canPrev = page > 0;
-  const canNext = (page + 1) * PAGE_SIZE < total;
+  const canNext = (page + 1) * AUDIT_LOG_PAGE_SIZE < total;
 
   return (
     <>
@@ -185,9 +166,13 @@ export default function AuditPage() {
               <EmptyTitle>Unlock required</EmptyTitle>
             </EmptyHeader>
           </Empty>
-        ) : loading ? (
+        ) : error ? (
+          <p className="text-sm text-destructive">
+            Could not load audit log. Try again later.
+          </p>
+        ) : isLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : rawItems.length === 0 ? (
+        ) : data?.items.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -253,7 +238,7 @@ export default function AuditPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!canPrev || loading}
+                  disabled={!canPrev || isLoading}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                 >
                   Previous
@@ -261,7 +246,7 @@ export default function AuditPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!canNext || loading}
+                  disabled={!canNext || isLoading}
                   onClick={() => setPage((p) => p + 1)}
                 >
                   Next
