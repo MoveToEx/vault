@@ -164,6 +164,22 @@ SET deleted_at = NOW()
 WHERE id = $1;
 
 
+-- name: InsertLog :exec
+INSERT INTO logs (owner_id, level, message, encrypted_metadata)
+VALUES ($1, $2, $3, $4);
+
+-- name: ListLogsForOwner :many
+SELECT id, level, message, encrypted_metadata, created_at
+FROM logs
+WHERE owner_id = $1
+ORDER BY id DESC
+LIMIT $2 OFFSET $3;
+
+-- name: CountLogsForOwner :one
+SELECT COUNT(*)::bigint
+FROM logs
+WHERE owner_id = $1;
+
 --#region Sharing
 
 -- name: GetUserByName :one

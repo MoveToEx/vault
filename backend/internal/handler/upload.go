@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"backend/internal/audit"
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/sqlc"
@@ -27,6 +28,10 @@ func GetUploadSessions(c *gin.Context) {
 		utils.ErrorResponse(c, 500, "Failed when collecting sessions")
 		return
 	}
+
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action": "list_upload_sessions",
+	}, nil)
 
 	utils.SuccessResponse(c, up)
 }
@@ -129,6 +134,13 @@ func InitUpload(c *gin.Context) {
 		return
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":   "upload_init",
+		"uploadId": up.ID,
+		"size":     payload.Size,
+		"parentId": parent.ID,
+	}, payload.EncryptedMetadata)
+
 	utils.SuccessResponse(c, InitUploadResponse{
 		ID:        up.ID,
 		Chunks:    int32(chunks),
@@ -211,6 +223,12 @@ func UploadChunkInit(c *gin.Context) {
 		return
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":     "upload_chunk_presign",
+		"uploadId":   uploadID,
+		"chunkIndex": chunkIndex,
+	}, up.EncryptedMetadata)
+
 	utils.SuccessResponse(c, UploadChunkInitResponse{
 		URL:     req.URL,
 		Method:  req.Method,
@@ -273,6 +291,12 @@ func UploadChunkComplete(c *gin.Context) {
 		return
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":     "upload_chunk_complete",
+		"uploadId":   uploadID,
+		"chunkIndex": chunkIndex,
+	}, up.EncryptedMetadata)
+
 	utils.SuccessResponse(c, nil)
 }
 
@@ -301,10 +325,17 @@ func UploadComplete(c *gin.Context) {
 
 	upload, err := db.Query().GetUploadSession(ctx, uploadID)
 
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting session")
+		return
+	}
+
 	if upload.UserID != userID {
 		utils.ErrorResponse(c, 403, "Ownership mismatch")
 		return
 	}
+
+	var completedFileID int64
 
 	err = db.Transaction(ctx, func(tx *sqlc.Queries) error {
 		if err := tx.CompleteUploadSession(ctx, uploadID); err != nil {
@@ -319,6 +350,8 @@ func UploadComplete(c *gin.Context) {
 		if err != nil {
 			return err
 		}
+
+		completedFileID = fid
 
 		err = tx.MigrateChunks(ctx, sqlc.MigrateChunksParams{
 			FileID:   fid,
@@ -336,6 +369,12 @@ func UploadComplete(c *gin.Context) {
 		utils.ErrorResponse(c, 500, "Failed when creating file: %v", err)
 		return
 	}
+
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":   "upload_complete",
+		"uploadId": uploadID,
+		"fileId":   completedFileID,
+	}, upload.EncryptedMetadata)
 
 	utils.SuccessResponse(c, nil)
 }

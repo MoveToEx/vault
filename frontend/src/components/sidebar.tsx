@@ -48,7 +48,7 @@ const items = [
     icon: Home,
   },
   {
-    title: "Audit log",
+    title: "Audit",
     url: "/#/audit",
     icon: Logs,
   },

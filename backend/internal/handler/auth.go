@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"backend/internal/audit"
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/sqlc"
@@ -153,6 +154,10 @@ func RegisterFinish(c *gin.Context) {
 		return
 	}
 
+	audit.AppendWithPublicKey(ctx, user.ID, user.PublicKey, sqlc.LogLevelInfo, map[string]any{
+		"action": "register",
+	}, nil)
+
 	utils.SuccessResponse(c, nil)
 }
 
@@ -304,6 +309,10 @@ func LoginFinish(c *gin.Context) {
 		return
 	}
 
+	audit.AppendWithPublicKey(ctx, user.ID, user.PublicKey, sqlc.LogLevelInfo, map[string]any{
+		"action": "login",
+	}, nil)
+
 	utils.SuccessResponse(c, LoginFinishResponse{
 		RefreshToken:        session.RefreshToken,
 		EncryptedPrivateKey: user.EncryptedPrivateKey,
@@ -403,6 +412,10 @@ func Refresh(c *gin.Context) {
 		utils.ErrorResponse(c, 500, "Failed when rotating refresh token")
 		return
 	}
+
+	audit.Append(c.Request.Context(), ref.UserID, sqlc.LogLevelInfo, map[string]any{
+		"action": "session_refresh",
+	}, nil)
 
 	utils.SuccessResponse(c, RefreshResponse{
 		Token:        token,

@@ -306,6 +306,23 @@ const api = {
   async revokeShare(shareId: number) {
     await instance.delete(`/share/${shareId}`);
   },
+
+  async getAuditLogs(limit: number, offset: number) {
+    const response = await instance.get<
+      Wrapped<{
+        total: number;
+        items: Array<{
+          id: number;
+          level: string;
+          message: string;
+          encryptedMetadata?: string;
+          createdAt: string;
+        }>;
+      }>
+    >("/audit/logs", { params: { limit, offset } });
+
+    return response.data.data;
+  },
 };
 
 export default api;

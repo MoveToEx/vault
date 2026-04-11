@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"backend/internal/audit"
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/sqlc"
@@ -67,6 +68,17 @@ func FindUser(c *gin.Context) {
 		}
 	}
 
+	userID := c.GetInt64("UserID")
+	searchBy := "username"
+	if strings.Contains(payload.Key, "@") {
+		searchBy = "email"
+	}
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":     "share_user_lookup",
+		"searchBy":   searchBy,
+		"matchCount": len(result),
+	}, nil)
+
 	utils.SuccessResponse(c, result)
 }
 
@@ -132,6 +144,14 @@ func CreateShare(c *gin.Context) {
 		return
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":       "share_create",
+		"shareId":      share.ID,
+		"fileId":       file.ID,
+		"receiverId":   receiver.ID,
+		"receiverName": receiver.Username,
+	}, file.EncryptedMetadata)
+
 	utils.SuccessResponse(c, CreateShareResponse{
 		ID: share.ID,
 	})
@@ -191,6 +211,12 @@ func GetShares(c *gin.Context) {
 		})
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action": "share_incoming_list",
+		"limit":  payload.Limit,
+		"offset": payload.Offset,
+	}, nil)
+
 	utils.SuccessResponse(c, result)
 }
 
@@ -246,6 +272,12 @@ func GetMyShares(c *gin.Context) {
 		})
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action": "share_outgoing_list",
+		"limit":  payload.Limit,
+		"offset": payload.Offset,
+	}, nil)
+
 	utils.SuccessResponse(c, result)
 }
 
@@ -287,6 +319,11 @@ func GetShare(c *gin.Context) {
 		utils.ErrorResponse(c, 403, "Ownership mismatch")
 		return
 	}
+
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":  "share_get_metadata",
+		"shareId": payload.ShareID,
+	}, share.EncryptedMetadata)
 
 	utils.SuccessResponse(c, GetShareResponse{
 		Chunks:     share.Chunks,
@@ -350,6 +387,12 @@ func GetShareChunk(c *gin.Context) {
 		return
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":     "share_download_chunk",
+		"shareId":    payload.ShareID,
+		"chunkIndex": payload.ChunkIndex,
+	}, chunk.EncryptedMetadata)
+
 	utils.SuccessResponse(c, GetShareChunkResponse{
 		URL:     req.URL,
 		Headers: req.SignedHeader,
@@ -385,12 +428,19 @@ func DeleteShare(c *gin.Context) {
 		return
 	}
 
+	meta := share.EncryptedMetadata
+
 	err = db.Query().InvalidateShare(ctx, payload.ShareID)
 
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when updating row")
 		return
 	}
+
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":  "share_revoke",
+		"shareId": payload.ShareID,
+	}, meta)
 
 	utils.SuccessResponse(c, nil)
 }

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"backend/internal/audit"
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/sqlc"
@@ -37,6 +38,10 @@ func GetCapacity(c *gin.Context) {
 		utils.ErrorResponse(c, 500, "Failed when getting capacity")
 		return
 	}
+
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action": "get_capacity",
+	}, nil)
 
 	utils.SuccessResponse(c, GetCapacityResponse{
 		Used:     used,
@@ -125,6 +130,11 @@ func GetFiles(c *gin.Context) {
 		})
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action": "list_folder",
+		"dirId":  payload.DirID,
+	}, cur.EncryptedMetadata)
+
 	utils.SuccessResponse(c, result)
 }
 
@@ -159,6 +169,11 @@ func GetFile(c *gin.Context) {
 		utils.ErrorResponse(c, 403, "Ownership mismatch")
 		return
 	}
+
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action": "get_file_metadata",
+		"fileId": fileID,
+	}, file.EncryptedMetadata)
 
 	utils.SuccessResponse(c, GetFileResponse{
 		Chunks:            file.Chunks,
@@ -217,6 +232,22 @@ func GetChunk(c *gin.Context) {
 		return
 	}
 
+	fileRow, err := db.Query().GetFile(ctx, fileID)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting file")
+		return
+	}
+	if fileRow.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
+
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":     "get_file_chunk",
+		"fileId":     fileID,
+		"chunkIndex": chunkIndex,
+	}, fileRow.EncryptedMetadata)
+
 	utils.SuccessResponse(c, GetChunkResponse{
 		URL:     req.URL,
 		Headers: req.SignedHeader,
@@ -268,6 +299,11 @@ func UpdateFile(c *gin.Context) {
 		return
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action": "update_file",
+		"fileId": fileID,
+	}, payload.EncryptedMetadata)
+
 	utils.SuccessResponse(c, 204)
 }
 
@@ -316,6 +352,11 @@ func UpdateFolder(c *gin.Context) {
 		return
 	}
 
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":   "update_folder",
+		"folderId": folderID,
+	}, payload.EncryptedMetadata)
+
 	utils.SuccessResponse(c, 204)
 }
 
@@ -351,12 +392,19 @@ func DeleteFile(c *gin.Context) {
 		return
 	}
 
+	meta := file.EncryptedMetadata
+
 	err = db.Query().DeleteFile(ctx, payload.FileID)
 
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when updating row")
 		return
 	}
+
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action": "delete_file",
+		"fileId": payload.FileID,
+	}, meta)
 
 	utils.SuccessResponse(c, nil)
 }
@@ -419,6 +467,12 @@ func NewFolder(c *gin.Context) {
 		utils.ErrorResponse(c, 500, "Failed when creating folder")
 		return
 	}
+
+	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":   "create_folder",
+		"folderId": folder.ID,
+		"parentId": parent.ID,
+	}, payload.EncryptedMetadata)
 
 	utils.SuccessResponse(c, NewFolderResponse{
 		ID: folder.ID,

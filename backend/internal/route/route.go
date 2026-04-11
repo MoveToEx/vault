@@ -29,6 +29,8 @@ func SetupRoutes(r *gin.Engine) {
 		protected.Use(middleware.AuthMiddleware())
 		protected.GET("/auth/get", handler.GetIdentity)
 
+		protected.GET("/audit/logs", handler.ListAuditLogs)
+
 		protected.GET("/me/capacity", handler.GetCapacity)
 
 		protected.POST("/upload/init", handler.InitUpload)

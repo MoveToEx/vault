@@ -50,6 +50,19 @@ func (q *Queries) CountActiveUploadSession(ctx context.Context, userID int64) (i
 	return count, err
 }
 
+const countLogsForOwner = `-- name: CountLogsForOwner :one
+SELECT COUNT(*)::bigint
+FROM logs
+WHERE owner_id = $1
+`
+
+func (q *Queries) CountLogsForOwner(ctx context.Context, ownerID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countLogsForOwner, ownerID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const deleteFile = `-- name: DeleteFile :exec
 UPDATE files
 SET deleted_at = NOW()
@@ -712,6 +725,28 @@ func (q *Queries) GetUserByName(ctx context.Context, username string) (User, err
 	return i, err
 }
 
+const insertLog = `-- name: InsertLog :exec
+INSERT INTO logs (owner_id, level, message, encrypted_metadata)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertLogParams struct {
+	OwnerID           int64    `json:"ownerId"`
+	Level             LogLevel `json:"level"`
+	Message           []byte   `json:"message"`
+	EncryptedMetadata []byte   `json:"encryptedMetadata"`
+}
+
+func (q *Queries) InsertLog(ctx context.Context, arg InsertLogParams) error {
+	_, err := q.db.Exec(ctx, insertLog,
+		arg.OwnerID,
+		arg.Level,
+		arg.Message,
+		arg.EncryptedMetadata,
+	)
+	return err
+}
+
 const invalidateShare = `-- name: InvalidateShare :exec
 UPDATE shares
 SET expires_at = NOW()
@@ -721,6 +756,54 @@ WHERE id = $1
 func (q *Queries) InvalidateShare(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, invalidateShare, id)
 	return err
+}
+
+const listLogsForOwner = `-- name: ListLogsForOwner :many
+SELECT id, level, message, encrypted_metadata, created_at
+FROM logs
+WHERE owner_id = $1
+ORDER BY id DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListLogsForOwnerParams struct {
+	OwnerID int64 `json:"ownerId"`
+	Limit   int32 `json:"limit"`
+	Offset  int32 `json:"offset"`
+}
+
+type ListLogsForOwnerRow struct {
+	ID                int64              `json:"id"`
+	Level             LogLevel           `json:"level"`
+	Message           []byte             `json:"message"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+}
+
+func (q *Queries) ListLogsForOwner(ctx context.Context, arg ListLogsForOwnerParams) ([]ListLogsForOwnerRow, error) {
+	rows, err := q.db.Query(ctx, listLogsForOwner, arg.OwnerID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLogsForOwnerRow{}
+	for rows.Next() {
+		var i ListLogsForOwnerRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Level,
+			&i.Message,
+			&i.EncryptedMetadata,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const migrateChunks = `-- name: MigrateChunks :exec

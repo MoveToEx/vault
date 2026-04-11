@@ -84,11 +84,12 @@ type Folder struct {
 }
 
 type Log struct {
-	ID        int64              `json:"id"`
-	OwnerID   pgtype.Int8        `json:"ownerId"`
-	Level     LogLevel           `json:"level"`
-	Message   string             `json:"message"`
-	CreatedAt pgtype.Timestamptz `json:"createdAt"`
+	ID                int64              `json:"id"`
+	OwnerID           int64              `json:"ownerId"`
+	Level             LogLevel           `json:"level"`
+	Message           []byte             `json:"message"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
 }
 
 type Session struct {

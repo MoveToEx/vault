@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"backend/internal/audit"
 	"backend/internal/db"
+	"backend/internal/sqlc"
 	"backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -33,6 +35,13 @@ func GetUser(c *gin.Context) {
 		utils.ErrorResponse(c, 500, "Failed when getting user")
 		return
 	}
+
+	viewerID := c.GetInt64("UserID")
+	audit.Append(ctx, viewerID, sqlc.LogLevelInfo, map[string]any{
+		"action":       "user_profile_lookup",
+		"targetUserId": user.ID,
+		"username":     payload.Username,
+	}, nil)
 
 	utils.SuccessResponse(c, GetUserResponse{
 		ID:        user.ID,

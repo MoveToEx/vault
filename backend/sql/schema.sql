@@ -84,13 +84,16 @@ CREATE TABLE IF NOT EXISTS folders (
 
 CREATE TABLE IF NOT EXISTS logs (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    owner_id BIGINT REFERENCES users(id),
+    owner_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
     level LOG_LEVEL NOT NULL DEFAULT 'info',
-    message TEXT NOT NULL,
+    message BYTEA NOT NULL,
+    encrypted_metadata BYTEA,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS logs_owner_id_id_idx ON logs (owner_id, id DESC);
 
 ALTER TABLE users
 ADD FOREIGN KEY(root_folder) REFERENCES folders(id)
