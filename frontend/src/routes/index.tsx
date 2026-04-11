@@ -1,241 +1,50 @@
-import NewFolderDialog from "@/components/dialogs/new-folder";
-import UploadDialog from "@/components/dialogs/upload";
-import useFiles from "@/hooks/use-files";
-import { open } from "@/lib/crypto";
-import { useAppDispatch, useAppSelector } from "@/stores";
-import { from_base64, to_string } from "libsodium-wrappers-sumo";
-import { Fragment, useMemo } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { formatSize, getIcon } from "@/lib/utils";
-import RequireKeys from "@/components/require-umk";
-import { pop, popUntil, push, reset } from "@/stores/path";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
-import { Download, EllipsisVertical, Folder, FolderUp } from "lucide-react";
-import { transferBridge } from "@/lib/transfer-bridge";
-import { toggleTransferList } from "@/stores/ui";
-import { Menu } from "@base-ui/react";
-import FilePopupMenu from "@/components/file-popup-menu";
+import { buttonVariants } from "@/components/ui/button";
+import { Link } from "react-router";
+import { FolderLock, Share2, Shield } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-type Item =
-  | {
-    type: "file";
-    name: string;
-    mime: string;
-    size: number;
-    id: number;
-    createdAt: Date;
-  }
-  | {
-    type: "folder";
-    name: string;
-    id: number;
-    createdAt: Date;
-  };
-
-const fileMenuHandle = Menu.createHandle<{
-  type: "folder" | "file";
-  id: number;
-  name: string;
-}>();
-
-function FileList() {
-  const keys = useAppSelector((state) => state.key.value);
-  const path = useAppSelector((state) => state.path.value);
-  const dispatch = useAppDispatch();
-
-  const { data, isLoading } = useFiles(
-    path.length === 0 ? 0 : path[path.length - 1].id,
-  );
-
-  const decrypted = useMemo<Item[]>(() => {
-    if (!data || !keys) return [];
-    const result: Item[] = [];
-
-    for (const { encryptedMetadata, size, id, createdAt } of data) {
-      const plaintext = open(
-        from_base64(encryptedMetadata),
-        from_base64(keys.pubKey),
-        from_base64(keys.privKey),
-      );
-
-      const metadata = {
-        ...JSON.parse(to_string(plaintext)),
-        size,
-        id,
-        createdAt: new Date(createdAt)
-      };
-
-      result.push(metadata);
-    }
-
-    return result.sort((x, y) => {
-      if (x.type != y.type) {
-        if (x.type === "folder") return -1;
-        return 1;
-      }
-      if (x.name > y.name) return 1;
-      return -1;
-    });
-  }, [keys, data]);
-
+export default function HomePage() {
   return (
-    <div>
-      <FilePopupMenu handle={fileMenuHandle} />
-
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-32">Name</TableHead>
-            <TableHead>Created at</TableHead>
-            <TableHead>Size</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-
-        <TableBody>
-          {path.length > 0 && !isLoading && (
-            <TableRow className="h-12" onDoubleClick={() => dispatch(pop())}>
-              <TableCell className="font-medium">
-                <FolderUp size={16} className="inline mx-2" />
-                ..
-              </TableCell>
-              <TableCell />
-              <TableCell />
-              <TableCell />
-            </TableRow>
-          )}
-          {decrypted.map((val) => (
-            <TableRow
-              key={`${val.type}:${val.id}`}
-              className="group h-12"
-              onDoubleClick={() => {
-                if (val.type === "folder") {
-                  dispatch(
-                    push({
-                      folderName: val.name,
-                      id: val.id,
-                    }),
-                  );
-                }
-              }}
-            >
-              <TableCell className="font-medium">
-                {val.type === "folder" && (
-                  <Folder size={16} className="inline mx-2" />
-                )}
-                {val.type === "file" && getIcon(val.name)}
-                {val.name}
-              </TableCell>
-              <TableCell className="text-secondary-foreground">
-                {val.createdAt.toLocaleString()}
-              </TableCell>
-              <TableCell>
-                {val.type === "file" && <span>{formatSize(val.size)}</span>}
-              </TableCell>
-              <TableCell className="flex flex-row items-center justify-start gap-2">
-                {val.type === "file" && (
-                  <Button
-                    className="duration-[0] invisible group-hover:visible"
-                    variant="outline"
-                    size="icon-sm"
-                    onClick={() => {
-                      if (!keys) return;
-
-                      transferBridge.enqueueDownload(
-                        val.id,
-                        from_base64(keys.umk),
-                        from_base64(keys.pubKey),
-                        from_base64(keys.privKey)
-                      );
-                      dispatch(toggleTransferList(true));
-                    }}
-                  >
-                    <Download />
-                  </Button>
-                )}
-                <Menu.Trigger
-                  handle={fileMenuHandle}
-                  payload={{ type: val.type, id: val.id, name: val.name }}
-                  render={
-                    <Button
-                      className="duration-[0] invisible group-hover:visible"
-                      variant="outline"
-                      size="icon-sm"
-                    >
-                      <EllipsisVertical />
-                    </Button>
-                  }
-                />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-function Breadcrumbs() {
-  const path = useAppSelector((state) => state.path.value);
-  const dispatch = useAppDispatch();
-
-  return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink
-            className="w-8 text-center select-none cursor-pointer"
-            onClick={() => dispatch(reset())}
-          >
-            /
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-
-        {path.map((it) => (
-          <Fragment key={it.id}>
-            <BreadcrumbSeparator />
-
-            <BreadcrumbItem>
-              <BreadcrumbLink
-                className="select-none cursor-pointer"
-                onClick={() => dispatch(popUntil(it.id))}
-              >
-                {it.folderName}
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-          </Fragment>
-        ))}
-      </BreadcrumbList>
-    </Breadcrumb>
-  );
-}
-
-export default function IndexPage() {
-  return (
-    <div className='flex flex-col h-full'>
-      <RequireKeys />
-      <div className="flex flex-row justify-start items-center gap-4 mb-4">
-        <UploadDialog />
-        <NewFolderDialog />
+    <div className="mx-auto max-w-2xl flex flex-col gap-8 py-4">
+      <div className="space-y-3">
+        <h1 className="text-3xl font-semibold tracking-tight">Vault</h1>
+        <p className="text-muted-foreground text-lg leading-relaxed">
+          A private workspace for your files: encrypt uploads at rest, browse
+          folders, and share with others—without exposing your data to the
+          server in plaintext.
+        </p>
       </div>
 
-      <Breadcrumbs />
+      <ul className="space-y-4 text-sm text-muted-foreground">
+        <li className="flex gap-3">
+          <FolderLock className="mt-0.5 size-5 shrink-0 text-foreground" />
+          <span>
+            <strong className="text-foreground font-medium">Drive</strong> —
+            unlock with your password to upload, download, and organize
+            encrypted files and folders.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <Share2 className="mt-0.5 size-5 shrink-0 text-foreground" />
+          <span>
+            <strong className="text-foreground font-medium">Share</strong> —
+            grant access to specific files for other users when you choose.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <Shield className="mt-0.5 size-5 shrink-0 text-foreground" />
+          <span>
+            <strong className="text-foreground font-medium">Audit</strong> —
+            review activity tied to your account for transparency.
+          </span>
+        </li>
+      </ul>
 
-      <FileList />
+      <div>
+        <Link to="/drive" className={cn(buttonVariants())}>
+          Open Drive
+        </Link>
+      </div>
     </div>
   );
 }

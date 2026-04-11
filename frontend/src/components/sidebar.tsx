@@ -1,6 +1,7 @@
 import {
   ChevronUp,
   ExternalLink,
+  FolderOpen,
   Home,
   Lock,
   LogIn,
@@ -46,6 +47,11 @@ const items = [
     title: "Home",
     url: "/#/",
     icon: Home,
+  },
+  {
+    title: "Drive",
+    url: "/#/drive",
+    icon: FolderOpen,
   },
   {
     title: "Audit",
