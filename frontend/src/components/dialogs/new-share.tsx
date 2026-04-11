@@ -28,7 +28,7 @@ import { toast } from "sonner";
 
 type Payload = {
   id: number;
-  filename: string;
+  name: string;
 };
 
 const schema = z.object({
@@ -125,7 +125,7 @@ export default function NewShareDialog({
               <Alert className="border-0">
                 <File />
                 <AlertDescription>
-                  Will share {payload?.filename}
+                  Will share {payload?.name}
                 </AlertDescription>
               </Alert>
               <Alert className="border-0">

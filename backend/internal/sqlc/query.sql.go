@@ -76,16 +76,16 @@ func (q *Queries) DeleteFile(ctx context.Context, id int64) error {
 
 const deleteFiles = `-- name: DeleteFiles :exec
 WITH RECURSIVE t(id, parent_id) AS (
-        SELECT id, parent_id
-        FROM folders f
+        SELECT f.id, f.parent_id
+        FROM folders f 
         WHERE f.id = $1
     UNION
-        SELECT parent.id, parent.parent_id
-        FROM folders parent, t cur
-        WHERE parent.id = cur.parent_id
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
 )
-DELETE FROM files
-WHERE parent_id IN (
+DELETE FROM files f
+WHERE f.parent_id IN (
     SELECT id FROM t
 )
 `
@@ -97,16 +97,16 @@ func (q *Queries) DeleteFiles(ctx context.Context, id int64) error {
 
 const deleteFolders = `-- name: DeleteFolders :exec
 WITH RECURSIVE t(id, parent_id) AS (
-        SELECT id, parent_id
-        FROM folders f
+        SELECT f.id, f.parent_id
+        FROM folders f 
         WHERE f.id = $1
     UNION
-        SELECT parent.id, parent.parent_id
-        FROM folders parent, t cur
-        WHERE parent.id = cur.parent_id
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
 )
-DELETE FROM folders
-WHERE id IN (
+DELETE FROM folders f
+WHERE f.id IN (
     SELECT id FROM t
 )
 `
@@ -1250,13 +1250,13 @@ func (q *Queries) SetRootFolder(ctx context.Context, arg SetRootFolderParams) er
 
 const traverseFiles = `-- name: TraverseFiles :many
 WITH RECURSIVE t(id, parent_id) AS (
-        SELECT id, parent_id
-        FROM folders f
+        SELECT f.id, f.parent_id
+        FROM folders f 
         WHERE f.id = $1
     UNION
-        SELECT parent.id, parent.parent_id
-        FROM folders parent, t cur
-        WHERE parent.id = cur.parent_id
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
 )
 SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at, deleted_at
 FROM files
@@ -1298,13 +1298,13 @@ func (q *Queries) TraverseFiles(ctx context.Context, id int64) ([]File, error) {
 
 const traverseTree = `-- name: TraverseTree :many
 WITH RECURSIVE t(id, parent_id) AS (
-        SELECT id, parent_id
-        FROM folders f
+        SELECT f.id, f.parent_id
+        FROM folders f 
         WHERE f.id = $1
     UNION
-        SELECT parent.id, parent.parent_id
-        FROM folders parent, t cur
-        WHERE parent.id = cur.parent_id
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
 )
 SELECT id FROM t
 `

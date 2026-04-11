@@ -117,6 +117,9 @@ const api = {
   async deleteFile(id: number) {
     await instance.delete(`/files/${id}`);
   },
+  async deleteFolder(id: number) {
+    await instance.delete(`/folder/${id}`);
+  },
 
   async renameFile(id: number, metadata: Uint8Array) {
     await instance.post(`/files/${id}`, {
@@ -125,13 +128,13 @@ const api = {
   },
 
   async renameFolder(id: number, metadata: Uint8Array) {
-    await instance.post(`/files/folder/${id}`, {
+    await instance.put(`/folder/${id}`, {
       encryptedMetadata: to_base64(metadata),
     });
   },
 
   async newFolder(parent: number, metadata: Uint8Array) {
-    await instance.post("/files/folder", {
+    await instance.post("/folder", {
       parentId: parent,
       encryptedMetadata: to_base64(metadata),
     });
@@ -155,7 +158,7 @@ const api = {
 
   async presignUploadChunk(id: number, index: number) {
     const response: AxiosResponse<PresignResponse> = await instance.post(
-      `/upload/${id}/chunks/${index + 1}/init`,
+      `/upload/${id}/${index + 1}/init`,
     );
     return response.data.data;
   },
@@ -180,7 +183,7 @@ const api = {
   },
 
   async completeChunk(id: number, index: number, size: number) {
-    await instance.post(`/upload/${id}/chunks/${index + 1}/complete`, {
+    await instance.post(`/upload/${id}/${index + 1}/complete`, {
       size,
     });
   },

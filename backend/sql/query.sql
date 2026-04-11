@@ -182,25 +182,25 @@ WHERE owner_id = $1;
 
 -- name: TraverseTree :many
 WITH RECURSIVE t(id, parent_id) AS (
-        SELECT id, parent_id
-        FROM folders f
+        SELECT f.id, f.parent_id
+        FROM folders f 
         WHERE f.id = $1
     UNION
-        SELECT parent.id, parent.parent_id
-        FROM folders parent, t cur
-        WHERE parent.id = cur.parent_id
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
 )
 SELECT id FROM t;
 
 -- name: TraverseFiles :many
 WITH RECURSIVE t(id, parent_id) AS (
-        SELECT id, parent_id
-        FROM folders f
+        SELECT f.id, f.parent_id
+        FROM folders f 
         WHERE f.id = $1
     UNION
-        SELECT parent.id, parent.parent_id
-        FROM folders parent, t cur
-        WHERE parent.id = cur.parent_id
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
 )
 SELECT *
 FROM files
@@ -222,34 +222,33 @@ SELECT COUNT(*) FROM t;
 
 -- name: DeleteFiles :exec
 WITH RECURSIVE t(id, parent_id) AS (
-        SELECT id, parent_id
-        FROM folders f
+        SELECT f.id, f.parent_id
+        FROM folders f 
         WHERE f.id = $1
     UNION
-        SELECT parent.id, parent.parent_id
-        FROM folders parent, t cur
-        WHERE parent.id = cur.parent_id
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
 )
-DELETE FROM files
-WHERE parent_id IN (
+DELETE FROM files f
+WHERE f.parent_id IN (
     SELECT id FROM t
 );
 
 -- name: DeleteFolders :exec
 WITH RECURSIVE t(id, parent_id) AS (
-        SELECT id, parent_id
-        FROM folders f
+        SELECT f.id, f.parent_id
+        FROM folders f 
         WHERE f.id = $1
     UNION
-        SELECT parent.id, parent.parent_id
-        FROM folders parent, t cur
-        WHERE parent.id = cur.parent_id
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
 )
-DELETE FROM folders
-WHERE id IN (
+DELETE FROM folders f
+WHERE f.id IN (
     SELECT id FROM t
 );
-
 
 --#region Sharing
 

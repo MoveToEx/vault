@@ -35,16 +35,18 @@ func SetupRoutes(r *gin.Engine) {
 
 		protected.POST("/upload/init", handler.InitUpload)
 		protected.GET("/upload", handler.GetUploadSessions)
-		protected.POST("/upload/:upload_id/chunks/:chunk_index/init", handler.UploadChunkInit)
-		protected.POST("/upload/:upload_id/chunks/:chunk_index/complete", handler.UploadChunkComplete)
+		protected.POST("/upload/:upload_id/:chunk_index/init", handler.UploadChunkInit)
+		protected.POST("/upload/:upload_id/:chunk_index/complete", handler.UploadChunkComplete)
 		protected.POST("/upload/:upload_id", handler.UploadComplete)
 
+		protected.POST("/folder", handler.NewFolder)
+		protected.PUT("/folder/:folder_id", handler.UpdateFolder)
+		protected.DELETE("/folder/:folder_id", handler.DeleteFolder)
+
 		protected.GET("/files", handler.GetFiles)
-		protected.POST("/files/folder", handler.NewFolder)
 		protected.GET("/files/:file_id", handler.GetFile)
 		protected.GET("/files/:file_id/:chunk_index", handler.GetChunk)
 		protected.POST("/files/:file_id", handler.UpdateFile)
-		protected.POST("/files/folder/:folder_id", handler.UpdateFolder)
 		protected.DELETE("/files/:file_id", handler.DeleteFile)
 
 		protected.GET("/share/lookup", handler.FindUser)

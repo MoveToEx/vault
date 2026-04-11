@@ -524,9 +524,12 @@ func DeleteFolder(c *gin.Context) {
 
 	meta := folder.EncryptedMetadata
 
-	err = db.Query().DeleteFolders(ctx, payload.FolderID)
+	if err := db.Query().DeleteFiles(ctx, payload.FolderID); err != nil {
+		utils.ErrorResponse(c, 500, "Failed when deleting files")
+		return
+	}
 
-	if err != nil {
+	if err := db.Query().DeleteFolders(ctx, payload.FolderID); err != nil {
 		utils.ErrorResponse(c, 500, "Failed when deleting folder")
 		return
 	}

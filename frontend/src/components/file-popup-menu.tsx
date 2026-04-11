@@ -25,6 +25,7 @@ import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
 import NewShareDialog from "./dialogs/new-share";
 import RenameDialog, { type RenameDialogPayload } from "./dialogs/rename";
+import type { Metadata } from "@/lib/types";
 
 type Payload = {
   type: "folder" | "file";
@@ -32,17 +33,18 @@ type Payload = {
   name: string;
 };
 
-const deleteHandle = BaseAlertDialog.createHandle<{
-  id: number;
-  name: string;
-}>();
-const shareHandle = BaseDialog.createHandle<{ id: number; filename: string }>();
+type DeletePayload = {
+  id: number
+} & Metadata;
+
+const deleteHandle = BaseAlertDialog.createHandle<DeletePayload>();
+const shareHandle = BaseDialog.createHandle<{ id: number; name: string }>();
 const renameHandle = BaseDialog.createHandle<RenameDialogPayload>();
 
 function DeleteDialog({
   handle,
 }: {
-  handle: BaseAlertDialog.Handle<{ id: number; name: string }>;
+  handle: BaseAlertDialog.Handle<DeletePayload>;
 }) {
   return (
     <AlertDialog handle={handle}>
@@ -64,8 +66,15 @@ function DeleteDialog({
                 disabled={loading}
                 className="bg-destructive"
                 onClick={async () => {
+                  if (!payload) return;
+
                   setLoading(true);
-                  await api.deleteFile(payload?.id ?? 0);
+                  if (payload.type === 'file') {
+                    await api.deleteFile(payload.id);
+                  }
+                  else if (payload.type === 'folder') {
+                    await api.deleteFolder(payload.id);
+                  }
                   setLoading(false);
                   await mutate("file");
                   handle.close();
@@ -98,10 +107,9 @@ export default function FilePopupMenu({
             <DropdownMenuGroup>
               <DropdownMenuItem
                 onClick={() => {
-                  deleteHandle.openWithPayload({
-                    id: payload?.id ?? 0,
-                    name: payload?.name ?? "",
-                  });
+                  if (!payload) return;
+
+                  deleteHandle.openWithPayload(payload);
                 }}
                 className="text-destructive"
               >
@@ -110,12 +118,8 @@ export default function FilePopupMenu({
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
-                  if (!payload?.id || !payload?.type) return;
-                  renameHandle.openWithPayload({
-                    id: payload.id,
-                    name: payload.name,
-                    type: payload.type,
-                  });
+                  if (!payload) return;
+                  renameHandle.openWithPayload(payload);
                 }}
               >
                 <Pencil />
@@ -123,11 +127,9 @@ export default function FilePopupMenu({
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
-                  if (payload?.type !== "file") return;
-                  shareHandle.openWithPayload({
-                    id: payload?.id ?? 0,
-                    filename: payload?.name ?? "",
-                  });
+                  if (!payload || payload.type !== 'file') return;
+                  
+                  shareHandle.openWithPayload(payload);
                 }}
                 disabled={payload?.type !== "file"}
               >
