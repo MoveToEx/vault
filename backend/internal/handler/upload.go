@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"backend/internal/audit"
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/sqlc"
@@ -29,7 +28,7 @@ func GetUploadSessions(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "list_upload_sessions",
 	}, nil)
 
@@ -134,7 +133,7 @@ func InitUpload(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":   "upload_init",
 		"uploadId": up.ID,
 		"size":     payload.Size,
@@ -223,7 +222,7 @@ func UploadChunkInit(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":     "upload_chunk_presign",
 		"uploadId":   uploadID,
 		"chunkIndex": chunkIndex,
@@ -291,7 +290,7 @@ func UploadChunkComplete(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action":     "upload_chunk_complete",
 		"uploadId":   uploadID,
 		"chunkIndex": chunkIndex,
@@ -370,7 +369,7 @@ func UploadComplete(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":   "upload_complete",
 		"uploadId": uploadID,
 		"fileId":   completedFileID,

@@ -1,4 +1,4 @@
-package audit
+package crypto
 
 import (
 	"crypto/rand"

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"backend/internal/audit"
 	"backend/internal/db"
 	"backend/internal/sqlc"
 	"backend/internal/utils"
@@ -37,7 +36,7 @@ func GetUser(c *gin.Context) {
 	}
 
 	viewerID := c.GetInt64("UserID")
-	audit.Append(ctx, viewerID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, viewerID, sqlc.LogLevelTrace, map[string]any{
 		"action":       "user_profile_lookup",
 		"targetUserId": user.ID,
 		"username":     payload.Username,

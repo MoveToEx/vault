@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"backend/internal/audit"
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/sqlc"
@@ -73,7 +72,7 @@ func FindUser(c *gin.Context) {
 	if strings.Contains(payload.Key, "@") {
 		searchBy = "email"
 	}
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action":     "share_user_lookup",
 		"searchBy":   searchBy,
 		"matchCount": len(result),
@@ -144,7 +143,7 @@ func CreateShare(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":       "share_create",
 		"shareId":      share.ID,
 		"fileId":       file.ID,
@@ -211,7 +210,7 @@ func GetShares(c *gin.Context) {
 		})
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "share_incoming_list",
 		"limit":  payload.Limit,
 		"offset": payload.Offset,
@@ -272,7 +271,7 @@ func GetMyShares(c *gin.Context) {
 		})
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "share_outgoing_list",
 		"limit":  payload.Limit,
 		"offset": payload.Offset,
@@ -320,7 +319,7 @@ func GetShare(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":  "share_get_metadata",
 		"shareId": payload.ShareID,
 	}, share.EncryptedMetadata)
@@ -387,7 +386,7 @@ func GetShareChunk(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action":     "share_download_chunk",
 		"shareId":    payload.ShareID,
 		"chunkIndex": payload.ChunkIndex,
@@ -437,7 +436,7 @@ func DeleteShare(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":  "share_revoke",
 		"shareId": payload.ShareID,
 	}, meta)

@@ -180,6 +180,77 @@ SELECT COUNT(*)::bigint
 FROM logs
 WHERE owner_id = $1;
 
+-- name: TraverseTree :many
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+SELECT id FROM t;
+
+-- name: TraverseFiles :many
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+SELECT *
+FROM files
+WHERE id IN (
+    SELECT id FROM t
+);
+
+-- name: GetFolderDepth :one
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+SELECT COUNT(*) FROM t;
+
+-- name: DeleteFiles :exec
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+DELETE FROM files
+WHERE parent_id IN (
+    SELECT id FROM t
+);
+
+-- name: DeleteFolders :exec
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+DELETE FROM folders
+WHERE id IN (
+    SELECT id FROM t
+);
+
+
 --#region Sharing
 
 -- name: GetUserByName :one

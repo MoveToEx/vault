@@ -146,17 +146,6 @@ export default function AuditPage() {
     <>
       <RequireUMK />
       <div className="flex flex-col gap-6 max-w-5xl mx-auto">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-            <Logs className="size-7" aria-hidden />
-            Audit log
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Activity is stored encrypted for your account. Only you can read
-            these entries after unlock.
-          </p>
-        </div>
-
         {!keys ? (
           <Empty>
             <EmptyHeader>

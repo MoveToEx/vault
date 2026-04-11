@@ -74,6 +74,48 @@ func (q *Queries) DeleteFile(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteFiles = `-- name: DeleteFiles :exec
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+DELETE FROM files
+WHERE parent_id IN (
+    SELECT id FROM t
+)
+`
+
+func (q *Queries) DeleteFiles(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteFiles, id)
+	return err
+}
+
+const deleteFolders = `-- name: DeleteFolders :exec
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+DELETE FROM folders
+WHERE id IN (
+    SELECT id FROM t
+)
+`
+
+func (q *Queries) DeleteFolders(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteFolders, id)
+	return err
+}
+
 const findUserByEmail = `-- name: FindUserByEmail :many
 SELECT id, username, public_key FROM users
 WHERE email ILIKE CONCAT('%', $1::TEXT, '%')
@@ -302,6 +344,26 @@ func (q *Queries) GetFolder(ctx context.Context, id int64) (Folder, error) {
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const getFolderDepth = `-- name: GetFolderDepth :one
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+SELECT COUNT(*) FROM t
+`
+
+func (q *Queries) GetFolderDepth(ctx context.Context, id int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getFolderDepth, id)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const getKDFParameters = `-- name: GetKDFParameters :one
@@ -1184,4 +1246,85 @@ type SetRootFolderParams struct {
 func (q *Queries) SetRootFolder(ctx context.Context, arg SetRootFolderParams) error {
 	_, err := q.db.Exec(ctx, setRootFolder, arg.RootFolder, arg.ID)
 	return err
+}
+
+const traverseFiles = `-- name: TraverseFiles :many
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at, deleted_at
+FROM files
+WHERE id IN (
+    SELECT id FROM t
+)
+`
+
+func (q *Queries) TraverseFiles(ctx context.Context, id int64) ([]File, error) {
+	rows, err := q.db.Query(ctx, traverseFiles, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []File{}
+	for rows.Next() {
+		var i File
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerID,
+			&i.EncryptedMetadata,
+			&i.EncryptedKey,
+			&i.ParentID,
+			&i.Chunks,
+			&i.ChunkSize,
+			&i.Size,
+			&i.CreatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const traverseTree = `-- name: TraverseTree :many
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT id, parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT parent.id, parent.parent_id
+        FROM folders parent, t cur
+        WHERE parent.id = cur.parent_id
+)
+SELECT id FROM t
+`
+
+func (q *Queries) TraverseTree(ctx context.Context, id int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, traverseTree, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

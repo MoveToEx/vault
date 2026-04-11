@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"backend/internal/audit"
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/sqlc"
@@ -39,7 +38,7 @@ func GetCapacity(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "get_capacity",
 	}, nil)
 
@@ -130,7 +129,7 @@ func GetFiles(c *gin.Context) {
 		})
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "list_folder",
 		"dirId":  payload.DirID,
 	}, cur.EncryptedMetadata)
@@ -170,7 +169,7 @@ func GetFile(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "get_file_metadata",
 		"fileId": fileID,
 	}, file.EncryptedMetadata)
@@ -242,7 +241,7 @@ func GetChunk(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":     "get_file_chunk",
 		"fileId":     fileID,
 		"chunkIndex": chunkIndex,
@@ -299,7 +298,7 @@ func UpdateFile(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "update_file",
 		"fileId": fileID,
 	}, payload.EncryptedMetadata)
@@ -352,7 +351,7 @@ func UpdateFolder(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":   "update_folder",
 		"folderId": folderID,
 	}, payload.EncryptedMetadata)
@@ -401,7 +400,7 @@ func DeleteFile(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "delete_file",
 		"fileId": payload.FileID,
 	}, meta)
@@ -454,6 +453,18 @@ func NewFolder(c *gin.Context) {
 		return
 	}
 
+	depth, err := db.Query().GetFolderDepth(ctx, parent.ID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when calculating folder depth")
+		return
+	}
+
+	if depth > 32 {
+		utils.ErrorResponse(c, 400, "Folder too deep")
+		return
+	}
+
 	folder, err := db.Query().NewFolder(ctx, sqlc.NewFolderParams{
 		EncryptedMetadata: payload.EncryptedMetadata,
 		ParentID: pgtype.Int8{
@@ -468,7 +479,7 @@ func NewFolder(c *gin.Context) {
 		return
 	}
 
-	audit.Append(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":   "create_folder",
 		"folderId": folder.ID,
 		"parentId": parent.ID,
@@ -477,4 +488,53 @@ func NewFolder(c *gin.Context) {
 	utils.SuccessResponse(c, NewFolderResponse{
 		ID: folder.ID,
 	})
+}
+
+type DeleteFolderPayload struct {
+	FolderID int64 `uri:"folder_id"`
+}
+
+func DeleteFolder(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	var payload DeleteFolderPayload
+
+	if err := c.ShouldBindUri(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	if payload.FolderID == 0 {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+	ctx := c.Request.Context()
+
+	folder, err := db.Query().GetFolder(ctx, payload.FolderID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting folder")
+		return
+	}
+
+	if folder.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
+
+	meta := folder.EncryptedMetadata
+
+	err = db.Query().DeleteFolders(ctx, payload.FolderID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when deleting folder")
+		return
+	}
+
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":   "delete_folder",
+		"folderId": payload.FolderID,
+	}, meta)
+
+	utils.SuccessResponse(c, nil)
 }

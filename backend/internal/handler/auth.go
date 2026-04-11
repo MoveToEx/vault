@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"backend/internal/audit"
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/sqlc"
@@ -154,7 +153,7 @@ func RegisterFinish(c *gin.Context) {
 		return
 	}
 
-	audit.AppendWithPublicKey(ctx, user.ID, user.PublicKey, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLogWithPublicKey(ctx, user.ID, user.PublicKey, sqlc.LogLevelInfo, map[string]any{
 		"action": "register",
 	}, nil)
 
@@ -309,7 +308,7 @@ func LoginFinish(c *gin.Context) {
 		return
 	}
 
-	audit.AppendWithPublicKey(ctx, user.ID, user.PublicKey, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLogWithPublicKey(ctx, user.ID, user.PublicKey, sqlc.LogLevelInfo, map[string]any{
 		"action": "login",
 	}, nil)
 
@@ -413,7 +412,7 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	audit.Append(c.Request.Context(), ref.UserID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(c.Request.Context(), ref.UserID, sqlc.LogLevelInfo, map[string]any{
 		"action": "session_refresh",
 	}, nil)
 
