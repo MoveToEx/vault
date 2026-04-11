@@ -10,7 +10,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Dialog as BaseDialog } from "@base-ui/react";
 import {
   Dialog,
   DialogContent,
@@ -31,12 +30,12 @@ import {
   type AuthClient,
 } from "@cloudflare/opaque-ts";
 import { KE2 } from "@cloudflare/opaque-ts/lib/src/messages";
-import RegisterDialog from "./register";
 import { useLocalStorage } from "usehooks-ts";
 import { mutate } from "@/lib/swr";
 import { argon2id } from "@/workers";
-import { useAppDispatch } from "@/stores";
+import { useAppDispatch, useAppSelector } from "@/stores";
 import { set } from "@/stores/key";
+import { toggleLoginDialog, toggleRegisterDialog } from "@/stores/ui";
 import sodium, { from_string, to_base64 } from "libsodium-wrappers-sumo";
 import api from "@/lib/api";
 import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
@@ -46,14 +45,11 @@ const schema = z.object({
   password: z.string(),
 });
 
-export default function LoginDialog({
-  handle,
-}: {
-  handle: BaseDialog.Handle<void>;
-}) {
+export default function LoginDialog() {
   const [loading, setLoading] = useState(false);
   const [, setRefreshToken] = useLocalStorage("vault-refresh-token", "");
   const dispatch = useAppDispatch();
+  const open = useAppSelector((s) => s.ui.loginDialogOpen);
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -128,7 +124,7 @@ export default function LoginDialog({
       );
 
       mutate("self");
-      handle.close();
+      dispatch(toggleLoginDialog(false));
     } catch (e) {
       if (e instanceof AxiosError) {
         form.setError("root", {
@@ -144,7 +140,10 @@ export default function LoginDialog({
   };
 
   return (
-    <Dialog handle={handle}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => dispatch(toggleLoginDialog(next))}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -201,7 +200,16 @@ export default function LoginDialog({
             <div className="flex flex-row justify-end">
               <span>
                 No account yet?
-                <RegisterDialog />
+                <Button
+                  variant="link"
+                  type="button"
+                  onClick={() => {
+                    dispatch(toggleLoginDialog(false));
+                    dispatch(toggleRegisterDialog(true));
+                  }}
+                >
+                  Register
+                </Button>
               </span>
             </div>
           </div>

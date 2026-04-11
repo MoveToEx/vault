@@ -2,6 +2,8 @@ import { Outlet } from "react-router";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/sidebar";
 import AppTopBar from "@/components/topbar";
+import RegisterDialog from "@/components/dialogs/register";
+import LoginDialog from "@/components/dialogs/login";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ScrollArea } from "./components/ui/scroll-area";
@@ -17,6 +19,8 @@ export default function Layout() {
           <SidebarProvider>
             <div className="h-screen w-screen flex flex-row">
               <Toaster position="top-center" />
+              <LoginDialog />
+              <RegisterDialog />
               <AppSidebar />
               <div className="w-full h-screen flex flex-col">
                 <AppTopBar />

@@ -30,17 +30,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import useAuth from "@/hooks/use-auth";
 import { Spinner } from "@/components/ui/spinner";
-import { Dialog as BaseDialog } from "@base-ui/react";
-import LoginDialog from "./dialogs/login";
 import { useLocation, useNavigate } from "react-router";
 import { useAppDispatch } from "@/stores";
 import { reset as resetKeys } from "@/stores/key";
+import { toggleLoginDialog } from "@/stores/ui";
 import { formatSize, logout } from "@/lib/utils";
 import type { FC } from "react";
 import { Progress } from "@base-ui/react";
 import useCapacity from "@/hooks/use-capacity";
-
-const loginHandle = BaseDialog.createHandle<void>();
 
 const items = [
   {
@@ -90,40 +87,25 @@ function AccountMenu() {
 
   if (isLoading) {
     return (
-      <>
-        <LoginDialog handle={loginHandle} />
-        <BaseDialog.Trigger
-          handle={loginHandle}
-          disabled
-          render={
-            <SidebarMenuButton className="h-10">
-              <Spinner /> Loading
-            </SidebarMenuButton>
-          }
-        />
-      </>
+      <SidebarMenuButton className="h-10" disabled>
+        <Spinner /> Loading
+      </SidebarMenuButton>
     );
   }
 
   if (error || !data) {
     return (
-      <>
-        <LoginDialog handle={loginHandle} />
-        <BaseDialog.Trigger
-          handle={loginHandle}
-          render={
-            <SidebarMenuButton className="h-10">
-              <LogIn /> Login
-            </SidebarMenuButton>
-          }
-        />
-      </>
+      <SidebarMenuButton
+        className="h-10"
+        onClick={() => dispatch(toggleLoginDialog(true))}
+      >
+        <LogIn /> Login
+      </SidebarMenuButton>
     );
   }
 
   return (
     <>
-      <LoginDialog handle={loginHandle} />
       <DropdownMenu>
         <DropdownMenuTrigger
           render={

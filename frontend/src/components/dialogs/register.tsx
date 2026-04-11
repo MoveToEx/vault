@@ -17,9 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Dialog as BaseDialog } from "@base-ui/react";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -39,6 +37,8 @@ import { aeadComposite, kdf, seal } from "@/lib/crypto";
 import { argon2id } from "@/workers";
 import sodium from "libsodium-wrappers-sumo";
 import { mutate } from "@/lib/swr";
+import { useAppDispatch, useAppSelector } from "@/stores";
+import { toggleRegisterDialog } from "@/stores/ui";
 
 const registerSchema = z.object({
   email: z.email(),
@@ -60,9 +60,9 @@ const registerSchema = z.object({
   kdfParallelism: z.number().min(1).max(4),
 });
 
-const registerHandle = BaseDialog.createHandle();
-
 export default function RegisterDialog() {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector((s) => s.ui.registerDialogOpen);
   const [loading, setLoading] = useState(false);
   const [showKDF, setShowKDF] = useState(false);
 
@@ -161,7 +161,7 @@ export default function RegisterDialog() {
       });
 
       toast.success("Signed up");
-      registerHandle.close();
+      dispatch(toggleRegisterDialog(false));
 
       mutate("file");
     } catch (e) {
@@ -180,12 +180,12 @@ export default function RegisterDialog() {
 
   return (
     <Dialog
-      handle={registerHandle}
-      onOpenChangeComplete={() => {
-        form.reset();
+      open={open}
+      onOpenChange={(next) => dispatch(toggleRegisterDialog(next))}
+      onOpenChangeComplete={(completeOpen) => {
+        if (!completeOpen) form.reset();
       }}
     >
-      <DialogTrigger render={<Button variant="link">Register</Button>} />
       <DialogContent>
         <DialogHeader>
           <DialogTitle>

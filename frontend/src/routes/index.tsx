@@ -1,9 +1,17 @@
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import useAuth from "@/hooks/use-auth";
 import { Link } from "react-router";
 import { FolderLock, Share2, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppDispatch } from "@/stores";
+import { toggleLoginDialog, toggleRegisterDialog } from "@/stores/ui";
 
 export default function HomePage() {
+  const dispatch = useAppDispatch();
+  const { data, error, isLoading } = useAuth();
+  const loggedIn = !isLoading && !error && !!data;
+
   return (
     <div className="mx-auto max-w-2xl flex flex-col gap-8 py-4">
       <div className="space-y-3">
@@ -40,10 +48,30 @@ export default function HomePage() {
         </li>
       </ul>
 
-      <div>
-        <Link to="/drive" className={cn(buttonVariants())}>
-          Open Drive
-        </Link>
+      <div className="flex flex-wrap items-center gap-2">
+        {isLoading ? (
+          <Spinner />
+        ) : loggedIn ? (
+          <Link to="/drive" className={cn(buttonVariants())}>
+            Open Drive
+          </Link>
+        ) : (
+          <>
+            <Button
+              type="button"
+              onClick={() => dispatch(toggleLoginDialog(true))}
+            >
+              Login
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => dispatch(toggleRegisterDialog(true))}
+            >
+              Register
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
