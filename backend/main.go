@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
@@ -26,6 +27,11 @@ func main() {
 
 	if err != nil {
 		log.Fatalln("Failed when connecting to database: ", err)
+		return
+	}
+
+	if err := db.Migrate(ctx, stdlib.OpenDBFromPool(conn)); err != nil {
+		log.Fatalln("Failed when applying migrations: ", err)
 		return
 	}
 
