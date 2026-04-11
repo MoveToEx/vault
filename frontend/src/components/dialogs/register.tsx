@@ -35,7 +35,7 @@ import {
   type RegistrationClient,
 } from "@cloudflare/opaque-ts";
 import { Slider } from "../ui/slider";
-import { aeadComposite, kdf } from "@/lib/crypto";
+import { aeadComposite, kdf, seal } from "@/lib/crypto";
 import { argon2id } from "@/workers";
 import sodium from "libsodium-wrappers-sumo";
 import { mutate } from "@/lib/swr";
@@ -131,17 +131,17 @@ export default function RegisterDialog() {
         hashLength: 32,
       });
 
+      const { publicKey, privateKey } = sodium.crypto_box_keypair();
+
       const kek = kdf(umk, "KEK");
 
-      const rootMetadata = aeadComposite(
+      const rootMetadata = seal(
         JSON.stringify({
           type: "folder",
           name: "/",
         }),
-        kek,
+        publicKey,
       );
-
-      const { publicKey, privateKey } = sodium.crypto_box_keypair();
 
       const epk = aeadComposite(privateKey, kek);
 
