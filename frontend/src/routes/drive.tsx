@@ -157,7 +157,6 @@ function FileList() {
 
                       transferBridge.enqueueDownload(
                         val.id,
-                        from_base64(keys.umk),
                         from_base64(keys.pubKey),
                         from_base64(keys.privKey),
                       );

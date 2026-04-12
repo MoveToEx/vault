@@ -31,7 +31,7 @@ export default function UploadDialog() {
 
     const pathId = path.length === 0 ? 0 : path[path.length - 1].id;
 
-    transferBridge.enqueueUpload(file, pathId, from_base64(keys.umk), from_base64(keys.pubKey));
+    transferBridge.enqueueUpload(file, pathId, from_base64(keys.pubKey));
 
     dispatch(toggleTransferList(true));
 

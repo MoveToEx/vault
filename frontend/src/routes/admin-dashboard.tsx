@@ -4,7 +4,7 @@ import useTaggedSWR from "@/lib/swr";
 import { Spinner } from "@/components/ui/spinner";
 
 export default function AdminDashboardPage() {
-  const { data, isLoading, error, mutate } = useTaggedSWR({
+  const { data, isLoading, error } = useTaggedSWR({
     id: "admin-stats",
     tags: ["admin"],
     args: [],
@@ -48,18 +48,9 @@ export default function AdminDashboardPage() {
           className="rounded-lg border bg-card text-card-foreground p-5 shadow-sm"
         >
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p>
+          <p className="mt-2 text-2xl tabular-nums">{value}</p>
         </div>
       ))}
-      <div className="sm:col-span-2">
-        <button
-          type="button"
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-          onClick={() => mutate()}
-        >
-          Refresh
-        </button>
-      </div>
     </div>
   );
 }

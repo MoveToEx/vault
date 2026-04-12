@@ -18,7 +18,7 @@ import {
 import useAuth from "@/hooks/use-auth";
 import useMyShares from "@/hooks/use-my-shares";
 import useShares from "@/hooks/use-shares";
-import { aeadCompositeDecrypt, kdf, open } from "@/lib/crypto";
+import { open } from "@/lib/crypto";
 import { transferBridge } from "@/lib/transfer-bridge";
 import type { Metadata } from "@/lib/types";
 import { useAppDispatch, useAppSelector } from "@/stores";
@@ -161,11 +161,15 @@ function SharedByMe() {
 
     const result: MyShareMetadata[] = [];
 
-    const kek = kdf(from_base64(keys.umk), "KEK");
-
     for (const it of data) {
       const metadata: FileMetadata = JSON.parse(
-        to_string(aeadCompositeDecrypt(from_base64(it.encryptedMetadata), kek)),
+        to_string(
+          open(
+            from_base64(it.encryptedMetadata),
+            from_base64(keys.pubKey),
+            from_base64(keys.privKey),
+          ),
+        ),
       );
 
       result.push({

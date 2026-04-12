@@ -12,37 +12,37 @@ import (
 )
 
 type AdminStatsResponse struct {
-	UserCount              int64 `json:"userCount"`
-	FileCount              int64 `json:"fileCount"`
-	TotalStoredBytes       int64 `json:"totalStoredBytes"`
-	ActiveUploadSessions   int64 `json:"activeUploadSessions"`
+	UserCount            int64 `json:"userCount"`
+	FileCount            int64 `json:"fileCount"`
+	TotalStoredBytes     int64 `json:"totalStoredBytes"`
+	ActiveUploadSessions int64 `json:"activeUploadSessions"`
 }
 
 func AdminStats(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	userCount, err := db.Query().AdminCountUsers(ctx)
+	userCount, err := db.Query().CountUsers(ctx)
 
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when loading statistics")
 		return
 	}
 
-	fileCount, err := db.Query().AdminCountFiles(ctx)
+	fileCount, err := db.Query().CountFiles(ctx)
 
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when loading statistics")
 		return
 	}
 
-	totalBytes, err := db.Query().AdminTotalStoredBytes(ctx)
+	totalBytes, err := db.Query().GetTotalSize(ctx)
 
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when loading statistics")
 		return
 	}
 
-	activeUploads, err := db.Query().AdminCountActiveUploadSessions(ctx)
+	activeUploads, err := db.Query().CountActiveUploads(ctx)
 
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when loading statistics")
@@ -253,9 +253,9 @@ func AdminPatchUserCapacity(c *gin.Context) {
 	}
 
 	utils.AppendLog(ctx, adminID, sqlc.LogLevelInfo, map[string]any{
-		"action":      "admin_user_capacity",
+		"action":       "admin_user_capacity",
 		"targetUserId": id,
-		"capacity":    payload.Capacity,
+		"capacity":     payload.Capacity,
 	}, nil)
 
 	utils.SuccessResponse(c, nil)

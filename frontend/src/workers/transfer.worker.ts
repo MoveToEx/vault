@@ -1,4 +1,4 @@
-import { aeadComposite, aeadCompositeDecrypt, kdf, open, seal } from "@/lib/crypto";
+import { aeadComposite, aeadCompositeDecrypt, open, seal } from "@/lib/crypto";
 import type {
   Metadata,
   TransferCommand,
@@ -43,7 +43,7 @@ function post<R extends TransferMessage>(message: R) {
   self.postMessage(message);
 }
 
-async function upload(file: File, parentId: number, umk: Uint8Array, publicKey: Uint8Array) {
+async function upload(file: File, parentId: number, publicKey: Uint8Array) {
   const transferId = crypto.randomUUID();
 
   try {
@@ -57,7 +57,6 @@ async function upload(file: File, parentId: number, umk: Uint8Array, publicKey: 
       size: file.size,
     });
 
-    const kek = kdf(umk, "KEK");
     const fek = sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
 
     const metadata = seal(
@@ -143,7 +142,7 @@ async function upload(file: File, parentId: number, umk: Uint8Array, publicKey: 
       });
     }
 
-    const efek = aeadComposite(fek, kek);
+    const efek = seal(fek, publicKey);
 
     await rpc({
       type: "ack",
@@ -173,7 +172,7 @@ async function upload(file: File, parentId: number, umk: Uint8Array, publicKey: 
   }
 }
 
-async function download(fileId: number, umk: Uint8Array, publicKey: Uint8Array, privateKey: Uint8Array) {
+async function download(fileId: number, publicKey: Uint8Array, privateKey: Uint8Array) {
   await sodium.ready;
   const transferId = crypto.randomUUID();
 
@@ -193,8 +192,7 @@ async function download(fileId: number, umk: Uint8Array, publicKey: Uint8Array, 
         transferId,
       });
 
-    const kek = kdf(umk, "KEK");
-    const fek = aeadCompositeDecrypt(from_base64(encryptedKey), kek);
+    const fek = open(from_base64(encryptedKey), publicKey, privateKey);
 
     const metadata: FileMetadata = JSON.parse(
       to_string(open(from_base64(encryptedMetadata), publicKey, privateKey)),
@@ -417,11 +415,11 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
 
   switch (params.type) {
     case "enqueue-upload": {
-      await upload(params.file, params.parentId, params.umk, params.publicKey);
+      await upload(params.file, params.parentId, params.publicKey);
       break;
     }
     case "enqueue-download": {
-      await download(params.fileId, params.umk, params.publicKey, params.privateKey);
+      await download(params.fileId, params.publicKey, params.privateKey);
       break;
     }
     case "enqueue-download-share": {

@@ -13,12 +13,6 @@ export default function AdminSection() {
   return (
     <RequireAdmin>
       <div className="flex flex-col gap-8 max-w-5xl mx-auto w-full">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Administration</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Site-wide statistics, configuration, and user accounts.
-          </p>
-        </div>
         <nav className="flex flex-wrap gap-2 border-b pb-3">
           {links.map(({ to, label, icon: Icon, end }) => (
             <NavLink

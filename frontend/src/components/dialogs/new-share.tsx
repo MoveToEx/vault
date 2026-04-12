@@ -17,7 +17,7 @@ import { File, Info, Share2 } from "lucide-react";
 import { Button } from "../ui/button";
 import api from "@/lib/api";
 import { useAppSelector } from "@/stores";
-import { aeadCompositeDecrypt, kdf, seal } from "@/lib/crypto";
+import { open, seal } from "@/lib/crypto";
 import sodium, { from_base64 } from "libsodium-wrappers-sumo";
 import { Alert, AlertDescription } from "../ui/alert";
 import useUsers from "@/hooks/use-users";
@@ -58,12 +58,14 @@ export default function NewShareDialog({
               payload?.id,
             );
 
-            const kek = kdf(from_base64(keys.umk), "KEK");
+            const pubKey = from_base64(keys.pubKey);
+            const privKey = from_base64(keys.privKey);
 
-            const fek = aeadCompositeDecrypt(from_base64(encryptedKey), kek);
-            const metadata = aeadCompositeDecrypt(
+            const fek = open(from_base64(encryptedKey), pubKey, privKey);
+            const metadata = open(
               from_base64(encryptedMetadata),
-              kek,
+              pubKey,
+              privKey,
             );
 
             const { publicKey } = await api.getUser(data.receiver);
