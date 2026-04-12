@@ -178,14 +178,20 @@ VALUES ($1, $2, $3, $4);
 -- name: ListLogsForOwner :many
 SELECT id, level, message, encrypted_metadata, created_at
 FROM logs
-WHERE owner_id = $1
+WHERE owner_id = sqlc.arg(owner_id)
+  AND (sqlc.arg(level_filter)::text = '' OR level::text = sqlc.arg(level_filter))
+  AND (sqlc.arg(created_after)::timestamptz IS NULL OR created_at >= sqlc.arg(created_after))
+  AND (sqlc.arg(created_before)::timestamptz IS NULL OR created_at <= sqlc.arg(created_before))
 ORDER BY id DESC
-LIMIT $2 OFFSET $3;
+LIMIT sqlc.arg(limit_rows) OFFSET sqlc.arg(offset_rows);
 
 -- name: CountLogsForOwner :one
 SELECT COUNT(*)::bigint
 FROM logs
-WHERE owner_id = $1;
+WHERE owner_id = sqlc.arg(owner_id)
+  AND (sqlc.arg(level_filter)::text = '' OR level::text = sqlc.arg(level_filter))
+  AND (sqlc.arg(created_after)::timestamptz IS NULL OR created_at >= sqlc.arg(created_after))
+  AND (sqlc.arg(created_before)::timestamptz IS NULL OR created_at <= sqlc.arg(created_before));
 
 -- name: TraverseChunks :many
 WITH RECURSIVE t(id, parent_id) AS (

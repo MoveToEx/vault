@@ -39,7 +39,7 @@ func GetCapacity(c *gin.Context) {
 		return
 	}
 
-	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action": "get_capacity",
 	}, nil)
 
@@ -242,7 +242,7 @@ func GetChunk(c *gin.Context) {
 		return
 	}
 
-	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action":     "get_file_chunk",
 		"fileId":     fileID,
 		"chunkIndex": chunkIndex,

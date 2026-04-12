@@ -459,7 +459,7 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	utils.AppendLog(c.Request.Context(), ref.UserID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(c.Request.Context(), ref.UserID, sqlc.LogLevelTrace, map[string]any{
 		"action": "session_refresh",
 	}, nil)
 
@@ -583,7 +583,7 @@ func PasswordChangeFinish(c *gin.Context) {
 		return
 	}
 
-	utils.AppendLogWithPublicKey(ctx, userID, u.PublicKey, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLogWithPublicKey(ctx, userID, u.PublicKey, sqlc.LogLevelCritical, map[string]any{
 		"action": "password_change",
 	}, nil)
 

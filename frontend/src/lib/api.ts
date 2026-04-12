@@ -319,7 +319,16 @@ const api = {
     await instance.delete(`/share/${shareId}`);
   },
 
-  async getAuditLogs(limit: number, offset: number) {
+  async getAuditLogs(
+    limit: number,
+    offset: number,
+    filters?: { level?: string; from?: string; to?: string },
+  ) {
+    const params: Record<string, string | number> = { limit, offset };
+    if (filters?.level) params.level = filters.level;
+    if (filters?.from) params.from = filters.from;
+    if (filters?.to) params.to = filters.to;
+
     const response = await instance.get<
       Wrapped<{
         total: number;
@@ -331,7 +340,7 @@ const api = {
           createdAt: string;
         }>;
       }>
-    >("/audit/logs", { params: { limit, offset } });
+    >("/audit/logs", { params });
 
     return response.data.data;
   },

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuditLogItem struct {
@@ -21,6 +22,13 @@ type AuditLogItem struct {
 type ListAuditLogsResponse struct {
 	Total int64          `json:"total"`
 	Items []AuditLogItem `json:"items"`
+}
+
+var validAuditLevels = map[string]struct{}{
+	string(sqlc.LogLevelTrace):    {},
+	string(sqlc.LogLevelInfo):     {},
+	string(sqlc.LogLevelWarning):  {},
+	string(sqlc.LogLevelCritical): {},
 }
 
 func ListAuditLogs(c *gin.Context) {
@@ -40,18 +48,61 @@ func ListAuditLogs(c *gin.Context) {
 		}
 	}
 
+	levelFilter := c.Query("level")
+	if levelFilter != "" {
+		if _, ok := validAuditLevels[levelFilter]; !ok {
+			utils.ErrorResponse(c, 400, "Invalid level filter")
+			return
+		}
+	}
+
+	var createdAfter pgtype.Timestamptz
+	if from := c.Query("from"); from != "" {
+		t, err := time.Parse(time.RFC3339, from)
+		if err != nil {
+			utils.ErrorResponse(c, 400, "Invalid from time (use RFC3339)")
+			return
+		}
+		createdAfter = pgtype.Timestamptz{Time: t.UTC(), Valid: true}
+	}
+
+	var createdBefore pgtype.Timestamptz
+	if to := c.Query("to"); to != "" {
+		t, err := time.Parse(time.RFC3339, to)
+		if err != nil {
+			utils.ErrorResponse(c, 400, "Invalid to time (use RFC3339)")
+			return
+		}
+		createdBefore = pgtype.Timestamptz{Time: t.UTC(), Valid: true}
+	}
+
+	if createdAfter.Valid && createdBefore.Valid && createdAfter.Time.After(createdBefore.Time) {
+		utils.ErrorResponse(c, 400, "from must be before or equal to to")
+		return
+	}
+
 	ctx := c.Request.Context()
 
-	total, err := db.Query().CountLogsForOwner(ctx, userID)
+	countArg := sqlc.CountLogsForOwnerParams{
+		OwnerID:       userID,
+		LevelFilter:   levelFilter,
+		CreatedAfter:  createdAfter,
+		CreatedBefore: createdBefore,
+	}
+
+	total, err := db.Query().CountLogsForOwner(ctx, countArg)
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when counting logs")
 		return
 	}
 
 	rows, err := db.Query().ListLogsForOwner(ctx, sqlc.ListLogsForOwnerParams{
-		OwnerID: userID,
-		Limit:   limit,
-		Offset:  offset,
+		OwnerID:       userID,
+		LevelFilter:   levelFilter,
+		CreatedAfter:  createdAfter,
+		CreatedBefore: createdBefore,
+		OffsetRows:    offset,
+		LimitRows:     limit,
 	})
 
 	if err != nil {

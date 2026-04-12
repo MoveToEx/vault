@@ -77,10 +77,25 @@ const countLogsForOwner = `-- name: CountLogsForOwner :one
 SELECT COUNT(*)::bigint
 FROM logs
 WHERE owner_id = $1
+  AND ($2::text = '' OR level::text = $2)
+  AND ($3::timestamptz IS NULL OR created_at >= $3)
+  AND ($4::timestamptz IS NULL OR created_at <= $4)
 `
 
-func (q *Queries) CountLogsForOwner(ctx context.Context, ownerID int64) (int64, error) {
-	row := q.db.QueryRow(ctx, countLogsForOwner, ownerID)
+type CountLogsForOwnerParams struct {
+	OwnerID       int64              `json:"ownerId"`
+	LevelFilter   string             `json:"levelFilter"`
+	CreatedAfter  pgtype.Timestamptz `json:"createdAfter"`
+	CreatedBefore pgtype.Timestamptz `json:"createdBefore"`
+}
+
+func (q *Queries) CountLogsForOwner(ctx context.Context, arg CountLogsForOwnerParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countLogsForOwner,
+		arg.OwnerID,
+		arg.LevelFilter,
+		arg.CreatedAfter,
+		arg.CreatedBefore,
+	)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -1104,14 +1119,20 @@ const listLogsForOwner = `-- name: ListLogsForOwner :many
 SELECT id, level, message, encrypted_metadata, created_at
 FROM logs
 WHERE owner_id = $1
+  AND ($2::text = '' OR level::text = $2)
+  AND ($3::timestamptz IS NULL OR created_at >= $3)
+  AND ($4::timestamptz IS NULL OR created_at <= $4)
 ORDER BY id DESC
-LIMIT $2 OFFSET $3
+LIMIT $6 OFFSET $5
 `
 
 type ListLogsForOwnerParams struct {
-	OwnerID int64 `json:"ownerId"`
-	Limit   int32 `json:"limit"`
-	Offset  int32 `json:"offset"`
+	OwnerID       int64              `json:"ownerId"`
+	LevelFilter   string             `json:"levelFilter"`
+	CreatedAfter  pgtype.Timestamptz `json:"createdAfter"`
+	CreatedBefore pgtype.Timestamptz `json:"createdBefore"`
+	OffsetRows    int32              `json:"offsetRows"`
+	LimitRows     int32              `json:"limitRows"`
 }
 
 type ListLogsForOwnerRow struct {
@@ -1123,7 +1144,14 @@ type ListLogsForOwnerRow struct {
 }
 
 func (q *Queries) ListLogsForOwner(ctx context.Context, arg ListLogsForOwnerParams) ([]ListLogsForOwnerRow, error) {
-	rows, err := q.db.Query(ctx, listLogsForOwner, arg.OwnerID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listLogsForOwner,
+		arg.OwnerID,
+		arg.LevelFilter,
+		arg.CreatedAfter,
+		arg.CreatedBefore,
+		arg.OffsetRows,
+		arg.LimitRows,
+	)
 	if err != nil {
 		return nil, err
 	}
