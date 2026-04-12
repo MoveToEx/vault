@@ -12,11 +12,6 @@ RETURNING *;
 SELECT id, username, opaque_record, credential_identifier FROM users
 WHERE username = $1;
 
--- name: GetKDFParameters :one
-SELECT id, kdf_memory_cost, kdf_parallelism, kdf_salt, kdf_time_cost
-FROM users
-WHERE id = $1;
-
 -- name: NewSession :one
 INSERT INTO sessions (refresh_token, user_id, expires_at)
 VALUES ($1, $2, $3)
@@ -54,12 +49,6 @@ WHERE id = $2;
 UPDATE folders
 SET encrypted_metadata = $1
 WHERE id = $2;
-
-
--- name: SetFileParent :exec
-UPDATE files
-SET parent_id = $2
-WHERE id = $1;
 
 -- name: GetUsedCapacity :one
 SELECT COALESCE(SUM(size), 0)::BIGINT FROM files
@@ -157,11 +146,6 @@ SELECT c.* FROM file_chunks c
 JOIN files f ON c.file_id = f.id
 WHERE f.owner_id = $1 AND f.id = @file_id AND c.chunk_index = $2;
 
--- name: GetChunks :one
-SELECT c.* FROM file_chunks c
-JOIN files f ON c.file_id = f.id
-WHERE f.owner_id = $1 AND f.id = @file_id;
-
 -- name: GetFileS3Keys :many
 SELECT s3_key FROM file_chunks
 WHERE file_id = $1;
@@ -170,42 +154,14 @@ WHERE file_id = $1;
 DELETE FROM files
 WHERE id = $1 AND owner_id = $2;
 
--- name: ListFileChunk :many
-SELECT s3_key FROM file_chunks WHERE file_id = $1;
-
--- name: ListFileIDsUnderFolder :many
-WITH RECURSIVE t(id, parent_id) AS (
-        SELECT f.id, f.parent_id
-        FROM folders f
-        WHERE f.id = $1
-    UNION
-        SELECT f.id, f.parent_id
-        FROM folders f
-        JOIN t cur ON f.parent_id = cur.id
-)
-SELECT f.id FROM files f WHERE f.parent_id IN (SELECT id FROM t);
-
 -- name: ListUploadChunks :many
 SELECT s3_key FROM upload_chunks WHERE upload_id = $1;
-
--- name: ListExpiredIncompleteUploadIDs :many
-SELECT id FROM uploads
-WHERE completed_at IS NULL AND expires_at <= NOW()
-ORDER BY expires_at ASC
-LIMIT 500;
 
 -- name: GetExpiredUploads :many
 SELECT * FROM uploads
 WHERE completed_at ISNULL AND expires_at <= NOW()
 ORDER BY expires_at ASC
 LIMIT 500;
-
--- name: GetIncompleteExpiredUpload :one
-SELECT * FROM uploads
-WHERE id = $1 AND completed_at IS NULL AND expires_at <= NOW();
-
--- name: DeleteUploadChunk :exec
-DELETE FROM upload_chunks WHERE upload_id = $1 AND chunk_index = $2;
 
 -- name: DeleteUploadChunks :exec
 DELETE FROM upload_chunks WHERE upload_id = $1;
@@ -230,34 +186,6 @@ LIMIT $2 OFFSET $3;
 SELECT COUNT(*)::bigint
 FROM logs
 WHERE owner_id = $1;
-
--- name: TraverseTree :many
-WITH RECURSIVE t(id, parent_id) AS (
-        SELECT f.id, f.parent_id
-        FROM folders f 
-        WHERE f.id = $1
-    UNION
-        SELECT f.id, f.parent_id
-        FROM folders f
-        JOIN t cur ON f.parent_id = cur.id
-)
-SELECT id FROM t;
-
--- name: TraverseFiles :many
-WITH RECURSIVE t(id, parent_id) AS (
-        SELECT f.id, f.parent_id
-        FROM folders f 
-        WHERE f.id = $1
-    UNION
-        SELECT f.id, f.parent_id
-        FROM folders f
-        JOIN t cur ON f.parent_id = cur.id
-)
-SELECT *
-FROM files
-WHERE id IN (
-    SELECT id FROM t
-);
 
 -- name: TraverseChunks :many
 WITH RECURSIVE t(id, parent_id) AS (
@@ -421,9 +349,6 @@ WHERE id = $1;
 DELETE FROM shares
 WHERE sender_id = $1 OR receiver_id = $1;
 
--- name: ListUploadIDsByUser :many
-SELECT id FROM uploads WHERE user_id = $1;
-
 -- name: ListIncompleteUploadIDsByUser :many
 SELECT id FROM uploads WHERE user_id = $1 AND completed_at IS NULL;
 
@@ -472,11 +397,6 @@ WHERE id = $1;
 
 -- name: GetUserLiteByUsername :one
 SELECT id, is_active FROM users
-WHERE username = $1;
-
--- name: PromoteUserToAdminByUsername :exec
-UPDATE users
-SET permission = 2, updated_at = NOW()
 WHERE username = $1;
 
 -- name: CountOtherActiveAdmins :one
