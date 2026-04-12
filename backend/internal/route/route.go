@@ -30,6 +30,11 @@ func SetupRoutes(r *gin.Engine) {
 		protected := public.Group("/")
 		protected.Use(middleware.AuthMiddleware())
 		protected.GET("/auth/get", handler.GetIdentity)
+		protected.POST("/me/password/start", handler.PasswordChangeStart)
+		protected.POST("/me/password/finish", handler.PasswordChangeFinish)
+		protected.GET("/me/sessions", handler.ListSessions)
+		protected.DELETE("/me/sessions/:session_id", handler.RevokeSession)
+		protected.DELETE("/me/account", handler.DeleteAccount)
 
 		protected.GET("/audit/logs", handler.ListAuditLogs)
 

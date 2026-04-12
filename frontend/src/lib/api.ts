@@ -394,6 +394,62 @@ const api = {
   async patchAdminUserActive(userId: number, isActive: boolean) {
     await instance.patch(`/admin/users/${userId}/active`, { isActive });
   },
+
+  async listSessions() {
+    const refresh = JSON.parse(
+      localStorage.getItem("vault-refresh-token") ?? '""',
+    ) as string;
+    const response = await instance.get<
+      Wrapped<
+        Array<{
+          id: number;
+          createdAt: string;
+          expiresAt: string;
+          lastUsedAt?: string;
+          current: boolean;
+        }>
+      >
+    >("/me/sessions", {
+      headers: refresh ? { "X-Vault-Refresh-Token": refresh } : {},
+    });
+    return response.data.data;
+  },
+
+  async revokeSession(sessionId: number) {
+    await instance.delete(`/me/sessions/${sessionId}`);
+  },
+
+  async passwordChangeStart(blinded: Uint8Array) {
+    const response = await instance.post<InitRegistrationResponse>(
+      "/me/password/start",
+      {
+        blinded: to_base64(blinded),
+      },
+    );
+
+    return from_base64(response.data.data.message);
+  },
+
+  async passwordChangeFinish(payload: {
+    opaqueRecord: Uint8Array;
+    privateKey: Uint8Array;
+    kdf: KDFParameters;
+  }) {
+    await instance.post("/me/password/finish", {
+      opaqueRecord: to_base64(payload.opaqueRecord),
+      encryptedPrivateKey: to_base64(payload.privateKey),
+      kdf: {
+        ...payload.kdf,
+        salt: to_base64(payload.kdf.salt),
+      },
+    });
+  },
+
+  async deleteAccount(confirmUsername: string) {
+    await instance.delete("/me/account", {
+      data: { confirmUsername },
+    });
+  },
 };
 
 export default api;

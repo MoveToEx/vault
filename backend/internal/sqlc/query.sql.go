@@ -187,6 +187,21 @@ func (q *Queries) DeleteIncompleteUpload(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteSessionByIDForUser = `-- name: DeleteSessionByIDForUser :exec
+DELETE FROM sessions
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteSessionByIDForUserParams struct {
+	ID     int64 `json:"id"`
+	UserID int64 `json:"userId"`
+}
+
+func (q *Queries) DeleteSessionByIDForUser(ctx context.Context, arg DeleteSessionByIDForUserParams) error {
+	_, err := q.db.Exec(ctx, deleteSessionByIDForUser, arg.ID, arg.UserID)
+	return err
+}
+
 const deleteSessionsByUser = `-- name: DeleteSessionsByUser :exec
 DELETE FROM sessions
 WHERE user_id = $1
@@ -194,6 +209,16 @@ WHERE user_id = $1
 
 func (q *Queries) DeleteSessionsByUser(ctx context.Context, userID int64) error {
 	_, err := q.db.Exec(ctx, deleteSessionsByUser, userID)
+	return err
+}
+
+const deleteSharesForUser = `-- name: DeleteSharesForUser :exec
+DELETE FROM shares
+WHERE sender_id = $1 OR receiver_id = $1
+`
+
+func (q *Queries) DeleteSharesForUser(ctx context.Context, senderID int64) error {
+	_, err := q.db.Exec(ctx, deleteSharesForUser, senderID)
 	return err
 }
 
@@ -217,6 +242,34 @@ DELETE FROM upload_chunks WHERE upload_id = $1
 
 func (q *Queries) DeleteUploadChunks(ctx context.Context, uploadID int64) error {
 	_, err := q.db.Exec(ctx, deleteUploadChunks, uploadID)
+	return err
+}
+
+const deleteUploadChunksByUser = `-- name: DeleteUploadChunksByUser :exec
+DELETE FROM upload_chunks
+WHERE upload_id IN (SELECT id FROM uploads WHERE user_id = $1)
+`
+
+func (q *Queries) DeleteUploadChunksByUser(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteUploadChunksByUser, userID)
+	return err
+}
+
+const deleteUploadsByUser = `-- name: DeleteUploadsByUser :exec
+DELETE FROM uploads WHERE user_id = $1
+`
+
+func (q *Queries) DeleteUploadsByUser(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteUploadsByUser, userID)
+	return err
+}
+
+const deleteUserByID = `-- name: DeleteUserByID :exec
+DELETE FROM users WHERE id = $1
+`
+
+func (q *Queries) DeleteUserByID(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteUserByID, id)
 	return err
 }
 
@@ -1189,6 +1242,30 @@ func (q *Queries) ListFileIDsUnderFolder(ctx context.Context, id int64) ([]int64
 	return items, nil
 }
 
+const listIncompleteUploadIDsByUser = `-- name: ListIncompleteUploadIDsByUser :many
+SELECT id FROM uploads WHERE user_id = $1 AND completed_at IS NULL
+`
+
+func (q *Queries) ListIncompleteUploadIDsByUser(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, listIncompleteUploadIDsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLogsForOwner = `-- name: ListLogsForOwner :many
 SELECT id, level, message, encrypted_metadata, created_at
 FROM logs
@@ -1237,6 +1314,44 @@ func (q *Queries) ListLogsForOwner(ctx context.Context, arg ListLogsForOwnerPara
 	return items, nil
 }
 
+const listSessionsByUser = `-- name: ListSessionsByUser :many
+SELECT id, created_at, expires_at, last_used_at FROM sessions
+WHERE user_id = $1
+ORDER BY created_at DESC
+`
+
+type ListSessionsByUserRow struct {
+	ID         int64              `json:"id"`
+	CreatedAt  pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt  pgtype.Timestamptz `json:"expiresAt"`
+	LastUsedAt pgtype.Timestamptz `json:"lastUsedAt"`
+}
+
+func (q *Queries) ListSessionsByUser(ctx context.Context, userID int64) ([]ListSessionsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listSessionsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSessionsByUserRow{}
+	for rows.Next() {
+		var i ListSessionsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.LastUsedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUploadChunks = `-- name: ListUploadChunks :many
 SELECT s3_key FROM upload_chunks WHERE upload_id = $1
 `
@@ -1254,6 +1369,30 @@ func (q *Queries) ListUploadChunks(ctx context.Context, uploadID int64) ([]strin
 			return nil, err
 		}
 		items = append(items, s3_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUploadIDsByUser = `-- name: ListUploadIDsByUser :many
+SELECT id FROM uploads WHERE user_id = $1
+`
+
+func (q *Queries) ListUploadIDsByUser(ctx context.Context, userID int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, listUploadIDsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -1873,5 +2012,43 @@ type UpdateUserCapacityParams struct {
 
 func (q *Queries) UpdateUserCapacity(ctx context.Context, arg UpdateUserCapacityParams) error {
 	_, err := q.db.Exec(ctx, updateUserCapacity, arg.ID, arg.Capacity)
+	return err
+}
+
+const updateUserCredentials = `-- name: UpdateUserCredentials :exec
+UPDATE users SET
+    opaque_record = $2,
+    credential_identifier = $3,
+    kdf_salt = $4,
+    kdf_memory_cost = $5,
+    kdf_time_cost = $6,
+    kdf_parallelism = $7,
+    encrypted_private_key = $8,
+    updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserCredentialsParams struct {
+	ID                   int64  `json:"id"`
+	OpaqueRecord         []byte `json:"opaqueRecord"`
+	CredentialIdentifier []byte `json:"credentialIdentifier"`
+	KdfSalt              []byte `json:"kdfSalt"`
+	KdfMemoryCost        int32  `json:"kdfMemoryCost"`
+	KdfTimeCost          int32  `json:"kdfTimeCost"`
+	KdfParallelism       int32  `json:"kdfParallelism"`
+	EncryptedPrivateKey  []byte `json:"encryptedPrivateKey"`
+}
+
+func (q *Queries) UpdateUserCredentials(ctx context.Context, arg UpdateUserCredentialsParams) error {
+	_, err := q.db.Exec(ctx, updateUserCredentials,
+		arg.ID,
+		arg.OpaqueRecord,
+		arg.CredentialIdentifier,
+		arg.KdfSalt,
+		arg.KdfMemoryCost,
+		arg.KdfTimeCost,
+		arg.KdfParallelism,
+		arg.EncryptedPrivateKey,
+	)
 	return err
 }

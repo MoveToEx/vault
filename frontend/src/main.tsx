@@ -11,6 +11,7 @@ import AdminSection from "./routes/admin.tsx";
 import AdminDashboardPage from "./routes/admin-dashboard.tsx";
 import AdminSiteConfigPage from "./routes/admin-config.tsx";
 import AdminUsersPage from "./routes/admin-users.tsx";
+import UserSettingsPage from "./routes/user-settings.tsx";
 
 const router = createHashRouter([
   {
@@ -32,6 +33,10 @@ const router = createHashRouter([
       {
         path: "share",
         Component: SharesPage,
+      },
+      {
+        path: "user/settings",
+        Component: UserSettingsPage,
       },
       {
         path: "admin",

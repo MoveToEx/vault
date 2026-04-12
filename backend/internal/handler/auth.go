@@ -468,3 +468,124 @@ func Refresh(c *gin.Context) {
 		RefreshToken: refreshToken,
 	})
 }
+
+// PasswordChangeStart begins an OPAQUE credential update (same protocol as registration start).
+func PasswordChangeStart(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	var payload RegisterStartPayload
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	u, err := db.Query().GetUser(ctx, userID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when loading user")
+		return
+	}
+
+	if !u.IsActive {
+		utils.ErrorResponse(c, 403, "Account is disabled")
+		return
+	}
+
+	svr := config.Opaque()
+
+	req, err := svr.Deserialize.RegistrationRequest(payload.Blinded)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when deserializing registration")
+		return
+	}
+
+	credID := opaque.RandomBytes(64)
+	pks, err := svr.Deserialize.DecodeAkePublicKey(config.GetConfig().Opaque.ServerPublicKey)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when decoding AKE key")
+		return
+	}
+
+	status := config.Redis().Set(ctx, "reg/cred_id:"+u.Username, credID, time.Minute*10)
+
+	if status.Err() != nil {
+		utils.ErrorResponse(c, 500, "Failed when recording state")
+		return
+	}
+
+	response := svr.RegistrationResponse(req, pks, credID, config.GetConfig().Opaque.SecretOPRFSeed)
+
+	utils.SuccessResponse(c, RegisterStartResponse{
+		Message: response.Serialize(),
+	})
+}
+
+type PasswordChangeFinishPayload struct {
+	OpaqueRecord        utils.Bytes   `json:"opaqueRecord"`
+	EncryptedPrivateKey utils.Bytes   `json:"encryptedPrivateKey"`
+	KDF                 KDFParameters `json:"kdf"`
+}
+
+func PasswordChangeFinish(c *gin.Context) {
+	var payload PasswordChangeFinishPayload
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	userID := c.GetInt64("UserID")
+	ctx := c.Request.Context()
+
+	u, err := db.Query().GetUser(ctx, userID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when loading user")
+		return
+	}
+
+	if !u.IsActive {
+		utils.ErrorResponse(c, 403, "Account is disabled")
+		return
+	}
+
+	credID, err := config.Redis().GetDel(ctx, "reg/cred_id:"+u.Username).Bytes()
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when recovering credential ID")
+		return
+	}
+
+	svr := config.Opaque()
+
+	record, err := svr.Deserialize.RegistrationRecord(payload.OpaqueRecord)
+
+	if err != nil {
+		utils.ErrorResponse(c, 400, "Invalid record")
+		return
+	}
+
+	if err := db.Query().UpdateUserCredentials(ctx, sqlc.UpdateUserCredentialsParams{
+		ID:                   userID,
+		OpaqueRecord:         record.Serialize(),
+		CredentialIdentifier: credID,
+		KdfSalt:              payload.KDF.Salt,
+		KdfMemoryCost:        payload.KDF.MemoryCost,
+		KdfTimeCost:          payload.KDF.TimeCost,
+		KdfParallelism:       payload.KDF.Parallelism,
+		EncryptedPrivateKey:  payload.EncryptedPrivateKey,
+	}); err != nil {
+		utils.ErrorResponse(c, 500, "Failed when updating credentials")
+		return
+	}
+
+	utils.AppendLogWithPublicKey(ctx, userID, u.PublicKey, sqlc.LogLevelInfo, map[string]any{
+		"action": "password_change",
+	}, nil)
+
+	utils.SuccessResponse(c, nil)
+}

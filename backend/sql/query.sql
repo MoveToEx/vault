@@ -396,6 +396,47 @@ WHERE id = $1;
 DELETE FROM sessions
 WHERE user_id = $1;
 
+-- name: ListSessionsByUser :many
+SELECT id, created_at, expires_at, last_used_at FROM sessions
+WHERE user_id = $1
+ORDER BY created_at DESC;
+
+-- name: DeleteSessionByIDForUser :exec
+DELETE FROM sessions
+WHERE id = $1 AND user_id = $2;
+
+-- name: UpdateUserCredentials :exec
+UPDATE users SET
+    opaque_record = $2,
+    credential_identifier = $3,
+    kdf_salt = $4,
+    kdf_memory_cost = $5,
+    kdf_time_cost = $6,
+    kdf_parallelism = $7,
+    encrypted_private_key = $8,
+    updated_at = NOW()
+WHERE id = $1;
+
+-- name: DeleteSharesForUser :exec
+DELETE FROM shares
+WHERE sender_id = $1 OR receiver_id = $1;
+
+-- name: ListUploadIDsByUser :many
+SELECT id FROM uploads WHERE user_id = $1;
+
+-- name: ListIncompleteUploadIDsByUser :many
+SELECT id FROM uploads WHERE user_id = $1 AND completed_at IS NULL;
+
+-- name: DeleteUploadChunksByUser :exec
+DELETE FROM upload_chunks
+WHERE upload_id IN (SELECT id FROM uploads WHERE user_id = $1);
+
+-- name: DeleteUploadsByUser :exec
+DELETE FROM uploads WHERE user_id = $1;
+
+-- name: DeleteUserByID :exec
+DELETE FROM users WHERE id = $1;
+
 -- name: CountUsers :one
 SELECT COUNT(*)::BIGINT FROM users;
 
