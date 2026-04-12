@@ -59,6 +59,13 @@ func InitUpload(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
+	siteCfg, err := db.Query().GetSiteConfig(ctx)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when reading site configuration")
+		return
+	}
+
 	cnt, err := db.Query().CountActiveUploadSession(ctx, userID)
 
 	if err != nil {
@@ -124,7 +131,7 @@ func InitUpload(c *gin.Context) {
 		ParentID:          parent.ID,
 		ExpiresAt: pgtype.Timestamptz{
 			Valid: true,
-			Time:  time.Now().Add(time.Hour * 4),
+			Time:  time.Now().Add(time.Duration(siteCfg.UploadExpirySeconds) * time.Second),
 		},
 	})
 

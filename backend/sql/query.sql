@@ -373,3 +373,73 @@ SET expires_at = NOW()
 WHERE id = $1;
 
 --#endregion
+
+--#region Site config & admin
+
+-- name: GetSiteConfig :one
+SELECT id, upload_expiry_seconds, registration_open, default_user_capacity_bytes, updated_at FROM site_config
+WHERE id = 1;
+
+-- name: UpdateSiteConfig :exec
+UPDATE site_config SET
+    upload_expiry_seconds = $1,
+    registration_open = $2,
+    default_user_capacity_bytes = $3,
+    updated_at = NOW()
+WHERE id = 1;
+
+-- name: GetUserAuthByID :one
+SELECT is_active, permission FROM users
+WHERE id = $1;
+
+-- name: DeleteSessionsByUser :exec
+DELETE FROM sessions
+WHERE user_id = $1;
+
+-- name: CountUsers :one
+SELECT COUNT(*)::BIGINT FROM users;
+
+-- name: CountFiles :one
+SELECT COUNT(*)::BIGINT FROM files;
+
+-- name: GetTotalSize :one
+SELECT COALESCE(SUM(size), 0)::BIGINT AS total FROM files;
+
+-- name: CountActiveUploads :one
+SELECT COUNT(*)::BIGINT FROM uploads
+WHERE completed_at IS NULL AND expires_at > NOW();
+
+-- name: CountUsersAdmin :one
+SELECT COUNT(*)::BIGINT FROM users;
+
+-- name: ListUsersAdmin :many
+SELECT id, email, username, permission, capacity, is_active, is_locked,
+    created_at, last_login_at
+FROM users
+ORDER BY id ASC
+LIMIT $1 OFFSET $2;
+
+-- name: UpdateUserCapacity :exec
+UPDATE users
+SET capacity = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: SetUserActive :exec
+UPDATE users
+SET is_active = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: GetUserLiteByUsername :one
+SELECT id, is_active FROM users
+WHERE username = $1;
+
+-- name: PromoteUserToAdminByUsername :exec
+UPDATE users
+SET permission = 2, updated_at = NOW()
+WHERE username = $1;
+
+-- name: CountOtherActiveAdmins :one
+SELECT COUNT(*)::BIGINT FROM users
+WHERE permission = 2 AND is_active = TRUE AND id <> $1;
+
+--#endregion

@@ -39,6 +39,7 @@ import sodium from "libsodium-wrappers-sumo";
 import { mutate } from "@/lib/swr";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleRegisterDialog } from "@/stores/ui";
+import usePublicSiteConfig from "@/hooks/use-public-site-config";
 
 const registerSchema = z.object({
   email: z.email(),
@@ -66,6 +67,8 @@ export default function RegisterDialog() {
   const [loading, setLoading] = useState(false);
   const [showKDF, setShowKDF] = useState(false);
 
+  const { data: conf } = usePublicSiteConfig(open);
+
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -77,7 +80,7 @@ export default function RegisterDialog() {
       kdfTimeCost: 3,
       kdfParallelism: 1,
     },
-    disabled: loading,
+    disabled: loading || !conf?.registrationOpen,
   });
 
   const onSubmit = async (data: z.infer<typeof registerSchema>) => {
@@ -192,6 +195,12 @@ export default function RegisterDialog() {
             <span className="text-xl">Register</span>
           </DialogTitle>
         </DialogHeader>
+
+        {!conf?.registrationOpen && (
+          <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/5 p-3">
+            New registrations are disabled on this server.
+          </p>
+        )}
 
         <form
           onSubmit={(e) => {

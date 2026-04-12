@@ -50,6 +50,29 @@ func (q *Queries) CountActiveUploadSession(ctx context.Context, userID int64) (i
 	return count, err
 }
 
+const countActiveUploads = `-- name: CountActiveUploads :one
+SELECT COUNT(*)::BIGINT FROM uploads
+WHERE completed_at IS NULL AND expires_at > NOW()
+`
+
+func (q *Queries) CountActiveUploads(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveUploads)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countFiles = `-- name: CountFiles :one
+SELECT COUNT(*)::BIGINT FROM files
+`
+
+func (q *Queries) CountFiles(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countFiles)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countLogsForOwner = `-- name: CountLogsForOwner :one
 SELECT COUNT(*)::bigint
 FROM logs
@@ -58,6 +81,40 @@ WHERE owner_id = $1
 
 func (q *Queries) CountLogsForOwner(ctx context.Context, ownerID int64) (int64, error) {
 	row := q.db.QueryRow(ctx, countLogsForOwner, ownerID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countOtherActiveAdmins = `-- name: CountOtherActiveAdmins :one
+SELECT COUNT(*)::BIGINT FROM users
+WHERE permission = 2 AND is_active = TRUE AND id <> $1
+`
+
+func (q *Queries) CountOtherActiveAdmins(ctx context.Context, id int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countOtherActiveAdmins, id)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT COUNT(*)::BIGINT FROM users
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsers)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countUsersAdmin = `-- name: CountUsersAdmin :one
+SELECT COUNT(*)::BIGINT FROM users
+`
+
+func (q *Queries) CountUsersAdmin(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersAdmin)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -127,6 +184,16 @@ WHERE id = $1 AND completed_at IS NULL
 
 func (q *Queries) DeleteIncompleteUpload(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteIncompleteUpload, id)
+	return err
+}
+
+const deleteSessionsByUser = `-- name: DeleteSessionsByUser :exec
+DELETE FROM sessions
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteSessionsByUser(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deleteSessionsByUser, userID)
 	return err
 }
 
@@ -753,6 +820,28 @@ func (q *Queries) GetSharesBySender(ctx context.Context, arg GetSharesBySenderPa
 	return items, nil
 }
 
+const getSiteConfig = `-- name: GetSiteConfig :one
+
+
+SELECT id, upload_expiry_seconds, registration_open, default_user_capacity_bytes, updated_at FROM site_config
+WHERE id = 1
+`
+
+// #endregion
+// #region Site config & admin
+func (q *Queries) GetSiteConfig(ctx context.Context) (SiteConfig, error) {
+	row := q.db.QueryRow(ctx, getSiteConfig)
+	var i SiteConfig
+	err := row.Scan(
+		&i.ID,
+		&i.UploadExpirySeconds,
+		&i.RegistrationOpen,
+		&i.DefaultUserCapacityBytes,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getSubfolders = `-- name: GetSubfolders :many
 SELECT id, encrypted_metadata, parent_id, owner_id, created_at, deleted_at FROM folders
 WHERE parent_id = $1 AND deleted_at ISNULL
@@ -783,6 +872,17 @@ func (q *Queries) GetSubfolders(ctx context.Context, parentID pgtype.Int8) ([]Fo
 		return nil, err
 	}
 	return items, nil
+}
+
+const getTotalSize = `-- name: GetTotalSize :one
+SELECT COALESCE(SUM(size), 0)::BIGINT AS total FROM files
+`
+
+func (q *Queries) GetTotalSize(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getTotalSize)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
 }
 
 const getUploadChunk = `-- name: GetUploadChunk :one
@@ -904,6 +1004,23 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 	return i, err
 }
 
+const getUserAuthByID = `-- name: GetUserAuthByID :one
+SELECT is_active, permission FROM users
+WHERE id = $1
+`
+
+type GetUserAuthByIDRow struct {
+	IsActive   bool  `json:"isActive"`
+	Permission int64 `json:"permission"`
+}
+
+func (q *Queries) GetUserAuthByID(ctx context.Context, id int64) (GetUserAuthByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserAuthByID, id)
+	var i GetUserAuthByIDRow
+	err := row.Scan(&i.IsActive, &i.Permission)
+	return i, err
+}
+
 const getUserByName = `-- name: GetUserByName :one
 
 SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
@@ -935,6 +1052,23 @@ func (q *Queries) GetUserByName(ctx context.Context, username string) (User, err
 		&i.UpdatedAt,
 		&i.LastLoginAt,
 	)
+	return i, err
+}
+
+const getUserLiteByUsername = `-- name: GetUserLiteByUsername :one
+SELECT id, is_active FROM users
+WHERE username = $1
+`
+
+type GetUserLiteByUsernameRow struct {
+	ID       int64 `json:"id"`
+	IsActive bool  `json:"isActive"`
+}
+
+func (q *Queries) GetUserLiteByUsername(ctx context.Context, username string) (GetUserLiteByUsernameRow, error) {
+	row := q.db.QueryRow(ctx, getUserLiteByUsername, username)
+	var i GetUserLiteByUsernameRow
+	err := row.Scan(&i.ID, &i.IsActive)
 	return i, err
 }
 
@@ -1120,6 +1254,61 @@ func (q *Queries) ListUploadChunks(ctx context.Context, uploadID int64) ([]strin
 			return nil, err
 		}
 		items = append(items, s3_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersAdmin = `-- name: ListUsersAdmin :many
+SELECT id, email, username, permission, capacity, is_active, is_locked,
+    created_at, last_login_at
+FROM users
+ORDER BY id ASC
+LIMIT $1 OFFSET $2
+`
+
+type ListUsersAdminParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListUsersAdminRow struct {
+	ID          int64              `json:"id"`
+	Email       string             `json:"email"`
+	Username    string             `json:"username"`
+	Permission  int64              `json:"permission"`
+	Capacity    int64              `json:"capacity"`
+	IsActive    bool               `json:"isActive"`
+	IsLocked    bool               `json:"isLocked"`
+	CreatedAt   pgtype.Timestamptz `json:"createdAt"`
+	LastLoginAt pgtype.Timestamptz `json:"lastLoginAt"`
+}
+
+func (q *Queries) ListUsersAdmin(ctx context.Context, arg ListUsersAdminParams) ([]ListUsersAdminRow, error) {
+	rows, err := q.db.Query(ctx, listUsersAdmin, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUsersAdminRow{}
+	for rows.Next() {
+		var i ListUsersAdminRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Username,
+			&i.Permission,
+			&i.Capacity,
+			&i.IsActive,
+			&i.IsLocked,
+			&i.CreatedAt,
+			&i.LastLoginAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -1426,6 +1615,17 @@ func (q *Queries) NewUser(ctx context.Context, arg NewUserParams) (User, error) 
 	return i, err
 }
 
+const promoteUserToAdminByUsername = `-- name: PromoteUserToAdminByUsername :exec
+UPDATE users
+SET permission = 2, updated_at = NOW()
+WHERE username = $1
+`
+
+func (q *Queries) PromoteUserToAdminByUsername(ctx context.Context, username string) error {
+	_, err := q.db.Exec(ctx, promoteUserToAdminByUsername, username)
+	return err
+}
+
 const rotateSession = `-- name: RotateSession :exec
 UPDATE sessions
 SET refresh_token = $2, last_used_at = NOW()
@@ -1503,6 +1703,22 @@ type SetRootFolderParams struct {
 
 func (q *Queries) SetRootFolder(ctx context.Context, arg SetRootFolderParams) error {
 	_, err := q.db.Exec(ctx, setRootFolder, arg.RootFolder, arg.ID)
+	return err
+}
+
+const setUserActive = `-- name: SetUserActive :exec
+UPDATE users
+SET is_active = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type SetUserActiveParams struct {
+	ID       int64 `json:"id"`
+	IsActive bool  `json:"isActive"`
+}
+
+func (q *Queries) SetUserActive(ctx context.Context, arg SetUserActiveParams) error {
+	_, err := q.db.Exec(ctx, setUserActive, arg.ID, arg.IsActive)
 	return err
 }
 
@@ -1622,4 +1838,40 @@ func (q *Queries) TraverseTree(ctx context.Context, id int64) ([]int64, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateSiteConfig = `-- name: UpdateSiteConfig :exec
+UPDATE site_config SET
+    upload_expiry_seconds = $1,
+    registration_open = $2,
+    default_user_capacity_bytes = $3,
+    updated_at = NOW()
+WHERE id = 1
+`
+
+type UpdateSiteConfigParams struct {
+	UploadExpirySeconds      int32 `json:"uploadExpirySeconds"`
+	RegistrationOpen         bool  `json:"registrationOpen"`
+	DefaultUserCapacityBytes int64 `json:"defaultUserCapacityBytes"`
+}
+
+func (q *Queries) UpdateSiteConfig(ctx context.Context, arg UpdateSiteConfigParams) error {
+	_, err := q.db.Exec(ctx, updateSiteConfig, arg.UploadExpirySeconds, arg.RegistrationOpen, arg.DefaultUserCapacityBytes)
+	return err
+}
+
+const updateUserCapacity = `-- name: UpdateUserCapacity :exec
+UPDATE users
+SET capacity = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type UpdateUserCapacityParams struct {
+	ID       int64 `json:"id"`
+	Capacity int64 `json:"capacity"`
+}
+
+func (q *Queries) UpdateUserCapacity(ctx context.Context, arg UpdateUserCapacityParams) error {
+	_, err := q.db.Exec(ctx, updateUserCapacity, arg.ID, arg.Capacity)
+	return err
 }

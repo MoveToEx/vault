@@ -9,6 +9,7 @@ import {
   Logs,
   Settings,
   Share2,
+  Shield,
   User2,
 } from "lucide-react";
 import {
@@ -38,6 +39,7 @@ import { formatSize, logout } from "@/lib/utils";
 import type { FC } from "react";
 import { Progress } from "@base-ui/react";
 import useCapacity from "@/hooks/use-capacity";
+import { PERMISSION_ADMIN } from "@/components/require-admin";
 
 const items = [
   {
@@ -61,6 +63,12 @@ const items = [
     icon: Share2,
   },
 ];
+
+const adminNavItem = {
+  title: "Admin",
+  url: "/#/admin",
+  icon: Shield,
+};
 
 function Capacity() {
   const { data } = useCapacity();
@@ -197,6 +205,8 @@ function SidebarItem({
 }
 
 export default function AppSidebar() {
+  const { data: authUser } = useAuth();
+
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
@@ -205,6 +215,13 @@ export default function AppSidebar() {
             {items.map(({ url, icon, title }) => (
               <SidebarItem url={url} title={title} Icon={icon} key={title} />
             ))}
+            {authUser && authUser.permission === PERMISSION_ADMIN && (
+              <SidebarItem
+                url={adminNavItem.url}
+                title={adminNavItem.title}
+                Icon={adminNavItem.icon}
+              />
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

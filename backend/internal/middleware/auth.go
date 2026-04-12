@@ -1,11 +1,15 @@
 package middleware
 
 import (
+	"backend/internal/db"
+	"backend/internal/permission"
 	"backend/internal/utils"
+	"errors"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 )
 
 func AuthMiddleware() gin.HandlerFunc {
@@ -45,10 +49,58 @@ func AuthMiddleware() gin.HandlerFunc {
 		if err != nil {
 			utils.ErrorResponse(c, 401, "Invalid session")
 			c.Abort()
+			return
+		}
+
+		ctx := c.Request.Context()
+		authRow, err := db.Query().GetUserAuthByID(ctx, userID)
+
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				utils.ErrorResponse(c, 401, "Invalid session")
+			} else {
+				utils.ErrorResponse(c, 500, "Failed when validating session")
+			}
+			c.Abort()
+			return
+		}
+
+		if !authRow.IsActive {
+			utils.ErrorResponse(c, 403, "Account is disabled")
+			c.Abort()
+			return
 		}
 
 		c.Set("UserID", userID)
-		c.Set("Permission", claims.Permission)
+		c.Set("Permission", authRow.Permission)
+
+		c.Next()
+	}
+}
+
+func AdminMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		p, ok := c.Get("Permission")
+
+		if !ok {
+			utils.ErrorResponse(c, 401, "Invalid session")
+			c.Abort()
+			return
+		}
+
+		perm, ok := p.(int64)
+
+		if !ok {
+			utils.ErrorResponse(c, 500, "Invalid session state")
+			c.Abort()
+			return
+		}
+
+		if !permission.IsAdmin(perm) {
+			utils.ErrorResponse(c, 403, "Admin access required")
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}

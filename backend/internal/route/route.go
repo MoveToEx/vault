@@ -10,6 +10,8 @@ import (
 func SetupRoutes(r *gin.Engine) {
 	public := r.Group("/")
 
+	public.GET("/public/site-config", handler.GetPublicSiteConfig)
+
 	{
 		auth := public.Group("/auth")
 		auth.POST("/register/finish", handler.RegisterFinish)
@@ -58,5 +60,14 @@ func SetupRoutes(r *gin.Engine) {
 		protected.DELETE("/share/:share_id", handler.DeleteShare)
 
 		protected.GET("/user/:username", handler.GetUser)
+
+		admin := protected.Group("/admin")
+		admin.Use(middleware.AdminMiddleware())
+		admin.GET("/stats", handler.AdminStats)
+		admin.GET("/site-config", handler.AdminGetSiteConfig)
+		admin.PATCH("/site-config", handler.AdminPatchSiteConfig)
+		admin.GET("/users", handler.AdminListUsers)
+		admin.PATCH("/users/:user_id/capacity", handler.AdminPatchUserCapacity)
+		admin.PATCH("/users/:user_id/active", handler.AdminPatchUserActive)
 	}
 }

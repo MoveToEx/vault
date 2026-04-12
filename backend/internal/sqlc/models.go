@@ -111,6 +111,14 @@ type Share struct {
 	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
 }
 
+type SiteConfig struct {
+	ID                       int16              `json:"id"`
+	UploadExpirySeconds      int32              `json:"uploadExpirySeconds"`
+	RegistrationOpen         bool               `json:"registrationOpen"`
+	DefaultUserCapacityBytes int64              `json:"defaultUserCapacityBytes"`
+	UpdatedAt                pgtype.Timestamptz `json:"updatedAt"`
+}
+
 type Upload struct {
 	ID                int64              `json:"id"`
 	UserID            int64              `json:"userId"`

@@ -1,5 +1,7 @@
 import axios, { type AxiosResponse } from "axios";
 import instance from "./axios";
+
+const BASE_URL = import.meta.env.VITE_BASE_URL ?? "http://localhost:8000/";
 import { from_base64, to_base64 } from "libsodium-wrappers-sumo";
 import type { KDFParameters, Wrapped } from "./types";
 
@@ -107,6 +109,13 @@ type GetShareResposne = {
 };
 
 const api = {
+  async getPublicSiteConfig() {
+    const response = await axios.get<Wrapped<{ registrationOpen: boolean }>>(
+      `${BASE_URL}public/site-config`,
+    );
+    return response.data.data;
+  },
+
   async refresh(refreshToken: string) {
     const response = await axios.post<RefreshResponse>("/auth/refresh", {
       refreshToken,
@@ -325,6 +334,65 @@ const api = {
     >("/audit/logs", { params: { limit, offset } });
 
     return response.data.data;
+  },
+
+  async getAdminStats() {
+    const response = await instance.get<
+      Wrapped<{
+        userCount: number;
+        fileCount: number;
+        totalStoredBytes: number;
+        activeUploadSessions: number;
+      }>
+    >("/admin/stats");
+    return response.data.data;
+  },
+
+  async getAdminSiteConfig() {
+    const response = await instance.get<
+      Wrapped<{
+        uploadExpirySeconds: number;
+        registrationOpen: boolean;
+        defaultUserCapacityBytes: number;
+      }>
+    >("/admin/site-config");
+    return response.data.data;
+  },
+
+  async patchAdminSiteConfig(payload: {
+    uploadExpirySeconds: number;
+    registrationOpen: boolean;
+    defaultUserCapacityBytes: number;
+  }) {
+    await instance.patch("/admin/site-config", payload);
+  },
+
+  async listAdminUsers(limit: number, offset: number) {
+    const response = await instance.get<
+      Wrapped<{
+        total: number;
+        items: Array<{
+          id: number;
+          email: string;
+          username: string;
+          permission: number;
+          capacity: number;
+          isActive: boolean;
+          isLocked: boolean;
+          createdAt: string;
+          lastLoginAt: string;
+        }>;
+      }>
+    >("/admin/users", { params: { limit, offset } });
+    return response.data.data;
+  },
+
+  async patchAdminUserCapacity(userId: number, capacity: number) {
+    await instance.patch(`/admin/users/${userId}/capacity`, { capacity });
+  },
+
+  async patchAdminUserActive(userId: number, isActive: boolean) {
+    await instance.patch(`/admin/users/${userId}/active`, { isActive });
   },
 };
 

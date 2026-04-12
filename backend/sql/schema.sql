@@ -143,3 +143,11 @@ CREATE TABLE IF NOT EXISTS shares (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
 );
+
+CREATE TABLE IF NOT EXISTS site_config (
+    id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    upload_expiry_seconds INTEGER NOT NULL DEFAULT 10800,
+    registration_open BOOLEAN NOT NULL DEFAULT TRUE,
+    default_user_capacity_bytes BIGINT NOT NULL DEFAULT 2147483648,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

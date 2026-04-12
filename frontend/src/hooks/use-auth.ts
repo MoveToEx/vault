@@ -10,6 +10,7 @@ type AuthResponse = {
   encryptedPrivateKey: string;
   rootFolder: number;
   createdAt: string;
+  permission: number;
   kdfSalt: string;
   kdfMemoryCost: number;
   kdfTimeCost: number;

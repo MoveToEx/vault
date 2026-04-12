@@ -7,6 +7,10 @@ import DrivePage from "./routes/drive.tsx";
 import Layout from "./layout.tsx";
 import AuditPage from "./routes/audit.tsx";
 import SharesPage from "./routes/shares.tsx";
+import AdminSection from "./routes/admin.tsx";
+import AdminDashboardPage from "./routes/admin-dashboard.tsx";
+import AdminSiteConfigPage from "./routes/admin-config.tsx";
+import AdminUsersPage from "./routes/admin-users.tsx";
 
 const router = createHashRouter([
   {
@@ -28,6 +32,15 @@ const router = createHashRouter([
       {
         path: "share",
         Component: SharesPage,
+      },
+      {
+        path: "admin",
+        Component: AdminSection,
+        children: [
+          { index: true, Component: AdminDashboardPage },
+          { path: "config", Component: AdminSiteConfigPage },
+          { path: "users", Component: AdminUsersPage },
+        ],
       },
     ],
   },

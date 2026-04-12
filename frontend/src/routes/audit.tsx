@@ -47,6 +47,9 @@ const ACTION_LABELS: Record<string, string> = {
   share_download_chunk: "Downloaded shared chunk",
   share_revoke: "Revoked share",
   user_profile_lookup: "Viewed user profile",
+  admin_site_config_update: "Updated site configuration (admin)",
+  admin_user_capacity: "Changed user storage capacity (admin)",
+  admin_user_active: "Changed user active status (admin)",
 };
 
 type DecryptedRow = {

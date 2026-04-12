@@ -3,6 +3,7 @@ package handler
 import (
 	"backend/internal/config"
 	"backend/internal/db"
+	"backend/internal/permission"
 	"backend/internal/sqlc"
 	"backend/internal/utils"
 	"crypto/rand"
@@ -32,6 +33,19 @@ func RegisterStart(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
+
+	siteCfg, err := db.Query().GetSiteConfig(ctx)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when reading site configuration")
+		return
+	}
+
+	if !siteCfg.RegistrationOpen {
+		utils.ErrorResponse(c, 403, "Registration is closed")
+		return
+	}
+
 	svr := config.Opaque()
 
 	req, err := svr.Deserialize.RegistrationRequest(payload.Blinded)
@@ -106,6 +120,13 @@ func RegisterFinish(c *gin.Context) {
 		return
 	}
 
+	siteCfg, err := db.Query().GetSiteConfig(ctx)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when reading site configuration")
+		return
+	}
+
 	user, err := db.Query().NewUser(ctx, sqlc.NewUserParams{
 		Email:    payload.Email,
 		Username: payload.Username,
@@ -116,8 +137,8 @@ func RegisterFinish(c *gin.Context) {
 		CredentialIdentifier: credID,
 		OpaqueRecord:         record.Serialize(),
 
-		Permission: 1,
-		Capacity:   2 * 1024 * 1024 * 1024,
+		Permission: permission.User,
+		Capacity:   siteCfg.DefaultUserCapacityBytes,
 
 		KdfSalt:        payload.KDF.Salt,
 		KdfMemoryCost:  payload.KDF.MemoryCost,
@@ -198,6 +219,13 @@ func LoginStart(c *gin.Context) {
 
 	if err != nil {
 		utils.ErrorResponse(c, 400, "Invalid credential")
+		return
+	}
+
+	lite, err := db.Query().GetUserLiteByUsername(ctx, payload.Username)
+
+	if err != nil || !lite.IsActive {
+		utils.ErrorResponse(c, 403, "Invalid credential")
 		return
 	}
 
@@ -294,6 +322,11 @@ func LoginFinish(c *gin.Context) {
 		return
 	}
 
+	if !user.IsActive {
+		utils.ErrorResponse(c, 403, "Account is disabled")
+		return
+	}
+
 	session, err := db.Query().NewSession(ctx, sqlc.NewSessionParams{
 		RefreshToken: rand.Text(),
 		UserID:       state.UserID,
@@ -332,6 +365,7 @@ type GetResponse struct {
 	EncryptedPrivateKey utils.Bytes `json:"encryptedPrivateKey"`
 	RootFolder          int64       `json:"rootFolder"`
 	CreatedAt           time.Time   `json:"createdAt"`
+	Permission          int64       `json:"permission"`
 	KDFSalt             utils.Bytes `json:"kdfSalt"`
 	KDFMemoryCost       int32       `json:"kdfMemoryCost"`
 	KDFTimeCost         int32       `json:"kdfTimeCost"`
@@ -357,6 +391,7 @@ func GetIdentity(c *gin.Context) {
 		EncryptedPrivateKey: user.EncryptedPrivateKey,
 		RootFolder:          user.RootFolder.Int64,
 		CreatedAt:           user.CreatedAt.Time,
+		Permission:          user.Permission,
 		KDFSalt:             user.KdfSalt,
 		KDFMemoryCost:       user.KdfMemoryCost,
 		KDFTimeCost:         user.KdfTimeCost,
@@ -395,7 +430,19 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	token, err := utils.NewToken(ref.UserID, 0, time.Minute*5)
+	authRow, err := db.Query().GetUserAuthByID(ctx, ref.UserID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 401, "Session expired")
+		return
+	}
+
+	if !authRow.IsActive {
+		utils.ErrorResponse(c, 401, "Session expired")
+		return
+	}
+
+	token, err := utils.NewToken(ref.UserID, authRow.Permission, time.Minute*5)
 
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when generating token")
