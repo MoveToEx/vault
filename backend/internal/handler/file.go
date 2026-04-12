@@ -32,7 +32,7 @@ func GetCapacity(c *gin.Context) {
 		return
 	}
 
-	used, err := db.Query().GetUsedCapacity(ctx, userID)
+	used, err := db.Query().GetCommittedStorageUse(ctx, userID)
 
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when getting capacity")

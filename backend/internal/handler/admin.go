@@ -232,7 +232,7 @@ func AdminPatchUserCapacity(c *gin.Context) {
 		return
 	}
 
-	used, err := db.Query().GetUsedCapacity(ctx, id)
+	used, err := db.Query().GetCommittedStorageUse(ctx, id)
 
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when checking capacity")

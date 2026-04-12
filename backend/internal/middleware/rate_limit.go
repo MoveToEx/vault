@@ -3,7 +3,7 @@ package middleware
 import (
 	"backend/internal/config"
 	"backend/internal/utils"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,20 +24,21 @@ func RateLimitMiddleware() gin.HandlerFunc {
 
 		count, err := config.Redis().Incr(ctx, key).Result()
 		if err != nil {
-			log.Printf("auth rate limit increment failed: %v", err)
-			c.Next()
+			slog.WarnContext(ctx, "auth rate limit unavailable", "err", err, "path", c.FullPath(), "client_ip", c.ClientIP())
+			utils.ErrorResponse(c, http.StatusServiceUnavailable, "Service temporarily unavailable")
+			c.Abort()
 			return
 		}
 
 		if count == 1 {
 			if err := config.Redis().Expire(ctx, key, authRateLimitWindow).Err(); err != nil {
-				log.Printf("auth rate limit expiration failed: %v", err)
+				slog.WarnContext(ctx, "auth rate limit expire failed", "err", err, "path", c.FullPath())
 			}
 		}
 
 		ttl, err := config.Redis().TTL(ctx, key).Result()
 		if err != nil {
-			log.Printf("auth rate limit ttl lookup failed: %v", err)
+			slog.WarnContext(ctx, "auth rate limit ttl failed", "err", err, "path", c.FullPath())
 			ttl = authRateLimitWindow
 		}
 

@@ -127,50 +127,51 @@ func RegisterFinish(c *gin.Context) {
 		return
 	}
 
-	user, err := db.Query().NewUser(ctx, sqlc.NewUserParams{
-		Email:    payload.Email,
-		Username: payload.Username,
+	var user sqlc.User
 
-		PublicKey:           payload.PublicKey,
-		EncryptedPrivateKey: payload.EncryptedPrivateKey,
+	err = db.Transaction(ctx, func(qtx *sqlc.Queries) error {
+		var txErr error
+		user, txErr = qtx.NewUser(ctx, sqlc.NewUserParams{
+			Email:    payload.Email,
+			Username: payload.Username,
 
-		CredentialIdentifier: credID,
-		OpaqueRecord:         record.Serialize(),
+			PublicKey:           payload.PublicKey,
+			EncryptedPrivateKey: payload.EncryptedPrivateKey,
 
-		Permission: permission.User,
-		Capacity:   siteCfg.DefaultUserCapacityBytes,
+			CredentialIdentifier: credID,
+			OpaqueRecord:         record.Serialize(),
 
-		KdfSalt:        payload.KDF.Salt,
-		KdfMemoryCost:  payload.KDF.MemoryCost,
-		KdfTimeCost:    payload.KDF.TimeCost,
-		KdfParallelism: payload.KDF.Parallelism,
+			Permission: permission.User,
+			Capacity:   siteCfg.DefaultUserCapacityBytes,
+
+			KdfSalt:        payload.KDF.Salt,
+			KdfMemoryCost:  payload.KDF.MemoryCost,
+			KdfTimeCost:    payload.KDF.TimeCost,
+			KdfParallelism: payload.KDF.Parallelism,
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		folder, txErr := qtx.NewFolder(ctx, sqlc.NewFolderParams{
+			EncryptedMetadata: payload.EncryptedRootMetadata,
+			OwnerID:           user.ID,
+		})
+		if txErr != nil {
+			return txErr
+		}
+
+		return qtx.SetRootFolder(ctx, sqlc.SetRootFolderParams{
+			ID: user.ID,
+			RootFolder: pgtype.Int8{
+				Valid: true,
+				Int64: folder.ID,
+			},
+		})
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating user")
-		return
-	}
-
-	folder, err := db.Query().NewFolder(ctx, sqlc.NewFolderParams{
-		EncryptedMetadata: payload.EncryptedRootMetadata,
-		OwnerID:           user.ID,
-	})
-
-	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating root directory")
-		return
-	}
-
-	err = db.Query().SetRootFolder(ctx, sqlc.SetRootFolderParams{
-		ID: user.ID,
-		RootFolder: pgtype.Int8{
-			Valid: true,
-			Int64: folder.ID,
-		},
-	})
-
-	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when assigning root directory")
+		utils.ErrorResponse(c, 500, "Failed when completing registration")
 		return
 	}
 
@@ -241,20 +242,27 @@ func LoginStart(c *gin.Context) {
 		ClientIdentity:       utils.Bytes(rec.Username),
 		RegistrationRecord:   record,
 	})
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when initializing login")
+		return
+	}
 
 	loginStateID := rand.Text()
 
-	state, err := json.Marshal(LoginState{
+	state, mErr := json.Marshal(LoginState{
 		AKEState: svr.SerializeState(),
 		UserID:   rec.ID,
 	})
 
-	if err != nil {
+	if mErr != nil {
 		utils.ErrorResponse(c, 500, "Failed when marshaling state")
 		return
 	}
 
-	config.Redis().Set(ctx, "login/state_id:"+loginStateID, state, time.Minute*5)
+	if err := config.Redis().Set(ctx, "login/state_id:"+loginStateID, state, time.Minute*5).Err(); err != nil {
+		utils.ErrorResponse(c, 500, "Failed when recording state")
+		return
+	}
 
 	utils.SuccessResponse(c, LoginStartResponse{
 		KE2:          ke2.Serialize(),

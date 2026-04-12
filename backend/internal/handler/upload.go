@@ -5,6 +5,8 @@ import (
 	"backend/internal/db"
 	"backend/internal/sqlc"
 	"backend/internal/utils"
+	"errors"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -14,6 +16,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
+)
+
+var (
+	errTooManyUploadSessions       = errors.New("too many upload sessions")
+	errInsufficientUploadCapacity  = errors.New("insufficient capacity")
+	errUploadParentOwnership       = errors.New("parent ownership mismatch")
 )
 
 func GetUploadSessions(c *gin.Context) {
@@ -66,55 +74,6 @@ func InitUpload(c *gin.Context) {
 		return
 	}
 
-	cnt, err := db.Query().CountActiveUploadSession(ctx, userID)
-
-	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when counting sessions")
-		return
-	}
-
-	if cnt > 12 {
-		utils.ErrorResponse(c, 400, "Too many sessions")
-		return
-	}
-
-	user, err := db.Query().GetUser(ctx, userID)
-
-	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting user")
-		return
-	}
-
-	parentID := payload.ParentID
-
-	if parentID == 0 {
-		parentID = user.RootFolder.Int64
-	}
-
-	used, err := db.Query().GetUsedCapacity(ctx, userID)
-
-	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when calculating capacity")
-		return
-	}
-
-	if used+payload.Size > user.Capacity {
-		utils.ErrorResponse(c, 400, "Insufficient capacity")
-		return
-	}
-
-	parent, err := db.Query().GetFolder(ctx, parentID)
-
-	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting parent folder")
-		return
-	}
-
-	if parent.OwnerID != userID {
-		utils.ErrorResponse(c, 403, "Ownership mismatch")
-		return
-	}
-
 	chunkSize := utils.GetChunkSize(payload.Size)
 	chunks := payload.Size / chunkSize
 
@@ -122,21 +81,79 @@ func InitUpload(c *gin.Context) {
 		chunks++
 	}
 
-	up, err := db.Query().NewUpload(ctx, sqlc.NewUploadParams{
-		UserID:            userID,
-		EncryptedMetadata: payload.EncryptedMetadata,
-		Size:              payload.Size,
-		Chunks:            int32(chunks),
-		ChunkSize:         chunkSize,
-		ParentID:          parent.ID,
-		ExpiresAt: pgtype.Timestamptz{
-			Valid: true,
-			Time:  time.Now().Add(time.Duration(siteCfg.UploadExpirySeconds) * time.Second),
-		},
+	var up sqlc.Upload
+
+	err = db.Transaction(ctx, func(tx *sqlc.Queries) error {
+		cnt, err := tx.CountActiveUploadSession(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if cnt > 12 {
+			return errTooManyUploadSessions
+		}
+
+		user, err := tx.GetUser(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		parentID := payload.ParentID
+		if parentID == 0 {
+			parentID = user.RootFolder.Int64
+		}
+
+		used, err := tx.GetCommittedStorageUse(ctx, userID)
+		if err != nil {
+			return err
+		}
+
+		if used+payload.Size > user.Capacity {
+			return errInsufficientUploadCapacity
+		}
+
+		parent, err := tx.GetFolder(ctx, parentID)
+		if err != nil {
+			return err
+		}
+
+		if parent.OwnerID != userID {
+			return errUploadParentOwnership
+		}
+
+		upload, err := tx.NewUpload(ctx, sqlc.NewUploadParams{
+			UserID:            userID,
+			EncryptedMetadata: payload.EncryptedMetadata,
+			Size:              payload.Size,
+			Chunks:            int32(chunks),
+			ChunkSize:         chunkSize,
+			ParentID:          parent.ID,
+			ExpiresAt: pgtype.Timestamptz{
+				Valid: true,
+				Time:  time.Now().Add(time.Duration(siteCfg.UploadExpirySeconds) * time.Second),
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		up = upload
+		return nil
 	})
 
+	if errors.Is(err, errTooManyUploadSessions) {
+		utils.ErrorResponse(c, 400, "Too many sessions")
+		return
+	}
+	if errors.Is(err, errInsufficientUploadCapacity) {
+		utils.ErrorResponse(c, 400, "Insufficient capacity")
+		return
+	}
+	if errors.Is(err, errUploadParentOwnership) {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Faile when creating upload")
+		utils.ErrorResponse(c, 500, "Failed when creating upload")
 		return
 	}
 
@@ -144,7 +161,7 @@ func InitUpload(c *gin.Context) {
 		"action":   "upload_init",
 		"uploadId": up.ID,
 		"size":     payload.Size,
-		"parentId": parent.ID,
+		"parentId": up.ParentID,
 	}, payload.EncryptedMetadata)
 
 	utils.SuccessResponse(c, InitUploadResponse{
@@ -372,7 +389,8 @@ func UploadComplete(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating file: %v", err)
+		slog.ErrorContext(ctx, "upload complete transaction failed", "err", err, "user_id", userID, "upload_id", uploadID)
+		utils.ErrorResponse(c, 500, "Failed when completing upload")
 		return
 	}
 

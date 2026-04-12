@@ -39,7 +39,7 @@ func main() {
 	db.Init(conn)
 
 	if err := config.InitOpaque(); err != nil {
-		log.Fatalln("Failed when initializingn OPAQUE: ", err)
+		log.Fatalln("Failed when initializing OPAQUE: ", err)
 		return
 	}
 	config.InitRedis()
@@ -56,9 +56,9 @@ func main() {
 	route.SetupRoutes(app)
 
 	srv := &http.Server{
-		Addr:              ":8000",
-		Handler:           app.Handler(),
-		ReadHeaderTimeout: 5 * time.Second,
+		Addr:        ":8000",
+		Handler:     app.Handler(),
+		ReadTimeout: 10 * time.Second,
 	}
 
 	go func() {

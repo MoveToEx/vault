@@ -54,6 +54,15 @@ WHERE id = $2;
 SELECT COALESCE(SUM(size), 0)::BIGINT FROM files
 WHERE owner_id = $1;
 
+-- name: GetCommittedStorageUse :one
+SELECT (
+    COALESCE((SELECT SUM(size) FROM files WHERE owner_id = $1), 0) +
+    COALESCE((
+        SELECT SUM(size) FROM uploads
+        WHERE user_id = $1 AND completed_at IS NULL AND expires_at > NOW()
+    ), 0)
+)::BIGINT AS total;
+
 -- name: NewUpload :one
 INSERT INTO uploads (
     user_id, chunks, chunk_size, size, expires_at, parent_id, encrypted_metadata

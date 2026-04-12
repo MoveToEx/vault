@@ -17,6 +17,7 @@
     "lock": "锁定",
     "logout": "退出登录",
     "login": "登录",
+    "loginDescription": "使用用户名或邮箱与密码登录。",
     "register": "注册",
     "openDrive": "打开网盘",
     "advanced": "高级",

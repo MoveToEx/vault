@@ -17,6 +17,7 @@
     "lock": "Lock",
     "logout": "Logout",
     "login": "Login",
+    "loginDescription": "Sign in with your username or email and password.",
     "register": "Register",
     "openDrive": "Open Drive",
     "advanced": "Advanced",

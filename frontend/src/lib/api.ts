@@ -29,11 +29,6 @@ type Serialized<T> = T extends Unserializable
       ? SerializedArray<T>
       : SerializedPrimitive<T>;
 
-type RefreshResponse = Wrapped<{
-  accessKey: string;
-  refreshKey: string;
-}>;
-
 type GetFileResponse = Wrapped<{
   chunks: number;
   chunkSize: number;
@@ -116,13 +111,6 @@ const api = {
     return response.data.data;
   },
 
-  async refresh(refreshToken: string) {
-    const response = await axios.post<RefreshResponse>("/auth/refresh", {
-      refreshToken,
-    });
-
-    return response.data.data;
-  },
   async deleteFile(id: number) {
     await instance.delete(`/files/${id}`);
   },

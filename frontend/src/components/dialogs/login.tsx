@@ -151,7 +151,7 @@ export default function LoginDialog() {
           <DialogTitle>
             <span className="text-xl">{t("common.login")}</span>
           </DialogTitle>
-          <DialogDescription></DialogDescription>
+          <DialogDescription>{t("common.loginDescription")}</DialogDescription>
         </DialogHeader>
 
         <form id="form-login" onSubmit={form.handleSubmit(onSubmit)}>
@@ -198,6 +198,9 @@ export default function LoginDialog() {
               )}
             />
           </FieldGroup>
+          {form.formState.errors.root && (
+            <FieldError errors={[form.formState.errors.root]} />
+          )}
           <div className="w-full flex flex-col gap-2">
             <div className="flex flex-row justify-end">
               <span>

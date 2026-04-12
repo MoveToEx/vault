@@ -408,6 +408,23 @@ func (q *Queries) GetChunk(ctx context.Context, arg GetChunkParams) (FileChunk, 
 	return i, err
 }
 
+const getCommittedStorageUse = `-- name: GetCommittedStorageUse :one
+SELECT (
+    COALESCE((SELECT SUM(size) FROM files WHERE owner_id = $1), 0) +
+    COALESCE((
+        SELECT SUM(size) FROM uploads
+        WHERE user_id = $1 AND completed_at IS NULL AND expires_at > NOW()
+    ), 0)
+)::BIGINT AS total
+`
+
+func (q *Queries) GetCommittedStorageUse(ctx context.Context, ownerID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getCommittedStorageUse, ownerID)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const getExpiredUploads = `-- name: GetExpiredUploads :many
 SELECT id, user_id, encrypted_metadata, parent_id, chunks, chunk_size, size, created_at, completed_at, expires_at FROM uploads
 WHERE completed_at ISNULL AND expires_at <= NOW()

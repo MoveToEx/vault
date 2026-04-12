@@ -1,6 +1,7 @@
 import instance from "@/lib/axios";
 import useTaggedSWR from "@/lib/swr";
 import type { Wrapped } from "@/lib/types";
+import axios from "axios";
 import { useLocalStorage } from "usehooks-ts";
 
 type AuthResponse = {
@@ -37,8 +38,11 @@ export default function useAuth() {
             },
           );
           return response.data.data;
-        } catch {
-          return null;
+        } catch (e) {
+          if (axios.isAxiosError(e) && e.response?.status === 401) {
+            return null;
+          }
+          throw e;
         }
       },
     }),
