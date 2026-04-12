@@ -27,6 +27,7 @@ import useLogs, {
 import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import { Logs } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const selectClassName = cn(
   "dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50",
@@ -42,36 +43,6 @@ function localDatetimeInputToISO(value: string): string | undefined {
   return d.toISOString();
 }
 
-const ACTION_LABELS: Record<string, string> = {
-  register: "Account registration",
-  login: "Signed in",
-  session_refresh: "Session refreshed",
-  list_folder: "Listed folder",
-  get_file_metadata: "Opened file metadata",
-  get_file_chunk: "Downloaded file chunk",
-  update_file: "Updated file",
-  update_folder: "Updated folder",
-  delete_file: "Deleted file",
-  create_folder: "Created folder",
-  get_capacity: "Viewed storage usage",
-  upload_init: "Started upload",
-  upload_chunk_presign: "Upload chunk presign",
-  upload_chunk_complete: "Upload chunk completed",
-  upload_complete: "Upload finished",
-  list_upload_sessions: "Listed upload sessions",
-  share_user_lookup: "Looked up user for sharing",
-  share_create: "Created share",
-  share_incoming_list: "Listed incoming shares",
-  share_outgoing_list: "Listed outgoing shares",
-  share_get_metadata: "Opened share details",
-  share_download_chunk: "Downloaded shared chunk",
-  share_revoke: "Revoked share",
-  user_profile_lookup: "Viewed user profile",
-  admin_site_config_update: "Updated site configuration (admin)",
-  admin_user_capacity: "Changed user storage capacity (admin)",
-  admin_user_active: "Changed user active status (admin)",
-};
-
 type DecryptedRow = {
   id: number;
   createdAt: Date;
@@ -85,17 +56,21 @@ type DecryptedRow = {
   itemMetaError?: string;
 };
 
-function formatDetails(payload: Record<string, unknown>): string {
+function formatDetails(
+  payload: Record<string, unknown>,
+  empty: string,
+): string {
   const { action: _a, ...rest } = payload;
-  if (Object.keys(rest).length === 0) return "—";
+  if (Object.keys(rest).length === 0) return empty;
   try {
     return JSON.stringify(rest, null, 0);
   } catch {
-    return "—";
+    return empty;
   }
 }
 
 export default function AuditPage() {
+  const { t } = useTranslation();
   const keys = useAppSelector((s) => s.key.value);
   const [page, setPage] = useState(0);
   const [level, setLevel] = useState("");
@@ -139,7 +114,7 @@ export default function AuditPage() {
             itemLabel = String(meta.name);
           }
         } catch {
-          itemMetaError = "Could not decrypt item metadata";
+          itemMetaError = t("common.couldNotDecryptItemMeta");
         }
       }
 
@@ -150,13 +125,16 @@ export default function AuditPage() {
         const payload = JSON.parse(plain) as Record<string, unknown>;
         const action =
           typeof payload.action === "string" ? payload.action : "unknown";
+        const actionLabel = t(`audit.actions.${action}`, {
+          defaultValue: action,
+        });
         return {
           id: it.id,
           createdAt: new Date(it.createdAt),
           action,
-          actionLabel: ACTION_LABELS[action] ?? action,
+          actionLabel,
           itemLabel: itemMetaError ? null : itemLabel,
-          details: formatDetails(payload),
+          details: formatDetails(payload, t("common.dash")),
           level: it.level,
           itemMetaError,
         };
@@ -164,17 +142,17 @@ export default function AuditPage() {
         return {
           id: it.id,
           createdAt: new Date(it.createdAt),
-          action: "—",
-          actionLabel: "—",
-          itemLabel: itemMetaError ? "—" : itemLabel,
+          action: t("common.dash"),
+          actionLabel: t("common.dash"),
+          itemLabel: itemMetaError ? t("common.dash") : itemLabel,
           details: "",
           level: it.level,
-          decryptError: "Could not decrypt this entry",
+          decryptError: t("common.couldNotDecryptEntry"),
           itemMetaError,
         };
       }
     });
-  }, [data, keys]);
+  }, [data, keys, t]);
 
   const totalPages = Math.max(1, Math.ceil(total / AUDIT_LOG_PAGE_SIZE));
   const canPrev = page > 0;
@@ -190,14 +168,14 @@ export default function AuditPage() {
               <EmptyMedia variant="icon">
                 <Logs />
               </EmptyMedia>
-              <EmptyTitle>Unlock required</EmptyTitle>
+              <EmptyTitle>{t("common.unlockRequired")}</EmptyTitle>
             </EmptyHeader>
           </Empty>
         ) : (
           <>
             <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
               <div className="flex flex-col gap-2 min-w-40">
-                <Label htmlFor="audit-level">Level</Label>
+                <Label htmlFor="audit-level">{t("common.level")}</Label>
                 <select
                   id="audit-level"
                   className={selectClassName}
@@ -207,15 +185,15 @@ export default function AuditPage() {
                     setLevel(e.target.value);
                   }}
                 >
-                  <option value="">All levels</option>
-                  <option value="trace">Trace</option>
-                  <option value="info">Info</option>
-                  <option value="warning">Warning</option>
-                  <option value="critical">Critical</option>
+                  <option value="">{t("common.allLevels")}</option>
+                  <option value="trace">{t("common.trace")}</option>
+                  <option value="info">{t("common.info")}</option>
+                  <option value="warning">{t("common.warning")}</option>
+                  <option value="critical">{t("common.critical")}</option>
                 </select>
               </div>
               <div className="flex flex-col gap-2 min-w-48">
-                <Label htmlFor="audit-from">From</Label>
+                <Label htmlFor="audit-from">{t("common.from")}</Label>
                 <Input
                   id="audit-from"
                   type="datetime-local"
@@ -227,7 +205,7 @@ export default function AuditPage() {
                 />
               </div>
               <div className="flex flex-col gap-2 min-w-48">
-                <Label htmlFor="audit-to">To</Label>
+                <Label htmlFor="audit-to">{t("common.to")}</Label>
                 <Input
                   id="audit-to"
                   type="datetime-local"
@@ -250,16 +228,18 @@ export default function AuditPage() {
                     setToLocal("");
                   }}
                 >
-                  Clear filters
+                  {t("common.clearFilters")}
                 </Button>
               ) : null}
             </div>
             {error ? (
               <p className="text-sm text-destructive">
-                Could not load audit log. Try again later.
+                {t("common.auditLoadError")}
               </p>
             ) : isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
+              <p className="text-sm text-muted-foreground">
+                {t("common.loadingEllipsis")}
+              </p>
             ) : data?.items.length === 0 ? (
               <Empty>
                 <EmptyHeader>
@@ -268,8 +248,8 @@ export default function AuditPage() {
                   </EmptyMedia>
                   <EmptyTitle>
                     {hasActiveFilters
-                      ? "No entries match these filters"
-                      : "No activity yet"}
+                      ? t("common.noMatchingEntries")
+                      : t("common.noActivityYet")}
                   </EmptyTitle>
                 </EmptyHeader>
               </Empty>
@@ -278,13 +258,13 @@ export default function AuditPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-50">Time</TableHead>
-                      <TableHead className="w-55">Action</TableHead>
+                      <TableHead className="w-50">{t("common.time")}</TableHead>
+                      <TableHead className="w-55">{t("common.action")}</TableHead>
                       <TableHead className="min-w-35 max-w-70">
-                        Item
+                        {t("common.item")}
                       </TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead className="w-20">Level</TableHead>
+                      <TableHead>{t("common.details")}</TableHead>
+                      <TableHead className="w-20">{t("common.level")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -309,12 +289,12 @@ export default function AuditPage() {
                             </span>
                           ) : row.itemLabel === null ? (
                             <span className='text-muted-foreground text-xs'>
-                              -
+                              {t("common.hyphen")}
                             </span>
                           ) : row.itemLabel}
                         </TableCell>
                         <TableCell className="align-top font-mono text-xs break-all">
-                          {row.decryptError ? "-" : row.details}
+                          {row.decryptError ? t("common.hyphen") : row.details}
                         </TableCell>
                         <TableCell className="align-top text-muted-foreground text-xs">
                           {row.level}
@@ -326,7 +306,11 @@ export default function AuditPage() {
 
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-sm text-muted-foreground">
-                    Page {page + 1} of {totalPages} · {total} entries
+                    {t("common.auditPageSummary", {
+                      page: page + 1,
+                      totalPages,
+                      total,
+                    })}
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -335,7 +319,7 @@ export default function AuditPage() {
                       disabled={!canPrev || isLoading}
                       onClick={() => setPage((p) => Math.max(0, p - 1))}
                     >
-                      Previous
+                      {t("common.previous")}
                     </Button>
                     <Button
                       variant="outline"
@@ -343,7 +327,7 @@ export default function AuditPage() {
                       disabled={!canNext || isLoading}
                       onClick={() => setPage((p) => p + 1)}
                     >
-                      Next
+                      {t("common.next")}
                     </Button>
                   </div>
                 </div>

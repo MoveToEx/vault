@@ -2,6 +2,7 @@ import useAuth from "@/hooks/use-auth";
 import { Spinner } from "@/components/ui/spinner";
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 
 export const PERMISSION_ADMIN = 2;
 
@@ -10,6 +11,7 @@ export default function RequireAdmin({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const { data, isLoading, error } = useAuth();
   const navigate = useNavigate();
 
@@ -27,7 +29,7 @@ export default function RequireAdmin({
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 p-8 text-muted-foreground">
-        <Spinner /> Loading…
+        <Spinner /> {t("common.loadingEllipsis")}
       </div>
     );
   }

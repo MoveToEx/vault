@@ -40,32 +40,33 @@ import type { FC } from "react";
 import { Progress } from "@base-ui/react";
 import useCapacity from "@/hooks/use-capacity";
 import { PERMISSION_ADMIN } from "@/components/require-admin";
+import { useTranslation } from "react-i18next";
 
-const items = [
+const navDefs = [
   {
-    title: "Home",
+    titleKey: "nav.home" as const,
     url: "/#/",
     icon: Home,
   },
   {
-    title: "Drive",
+    titleKey: "nav.drive" as const,
     url: "/#/drive",
     icon: FolderOpen,
   },
   {
-    title: "Audit",
+    titleKey: "nav.audit" as const,
     url: "/#/audit",
     icon: Logs,
   },
   {
-    title: "Share",
+    titleKey: "nav.share" as const,
     url: "/#/share",
     icon: Share2,
   },
 ];
 
-const adminNavItem = {
-  title: "Admin",
+const adminNavDef = {
+  titleKey: "nav.admin" as const,
   url: "/#/admin",
   icon: Shield,
 };
@@ -90,13 +91,14 @@ function Capacity() {
 function AccountMenu() {
   const { data, error, isLoading, reset, mutate } = useAuth();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
 
   const navigate = useNavigate();
 
   if (isLoading) {
     return (
       <SidebarMenuButton className="h-10" disabled>
-        <Spinner /> Loading
+        <Spinner /> {t("common.loading")}
       </SidebarMenuButton>
     );
   }
@@ -107,7 +109,7 @@ function AccountMenu() {
         className="h-10"
         onClick={() => dispatch(toggleLoginDialog(true))}
       >
-        <LogIn /> Login
+        <LogIn /> {t("common.login")}
       </SidebarMenuButton>
     );
   }
@@ -141,7 +143,7 @@ function AccountMenu() {
               navigate("/user/settings");
             }}
           >
-            <Settings /> Settings
+            <Settings /> {t("common.settings")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -149,7 +151,7 @@ function AccountMenu() {
               dispatch(resetKeys());
             }}
           >
-            <Lock /> Lock
+            <Lock /> {t("common.lock")}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -159,7 +161,7 @@ function AccountMenu() {
             }}
           >
             <LogOut />
-            Logout
+            {t("common.logout")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -206,20 +208,26 @@ function SidebarItem({
 
 export default function AppSidebar() {
   const { data: authUser } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup className="overflow-x-hidden">
           <SidebarGroupContent>
-            {items.map(({ url, icon, title }) => (
-              <SidebarItem url={url} title={title} Icon={icon} key={title} />
+            {navDefs.map(({ url, icon, titleKey }) => (
+              <SidebarItem
+                url={url}
+                title={t(titleKey)}
+                Icon={icon}
+                key={titleKey}
+              />
             ))}
             {authUser && authUser.permission === PERMISSION_ADMIN && (
               <SidebarItem
-                url={adminNavItem.url}
-                title={adminNavItem.title}
-                Icon={adminNavItem.icon}
+                url={adminNavDef.url}
+                title={t(adminNavDef.titleKey)}
+                Icon={adminNavDef.icon}
               />
             )}
           </SidebarGroupContent>

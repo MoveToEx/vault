@@ -26,6 +26,7 @@ import { mutate } from "@/lib/swr";
 import NewShareDialog from "./dialogs/new-share";
 import RenameDialog, { type RenameDialogPayload } from "./dialogs/rename";
 import type { Metadata } from "@/lib/types";
+import { useTranslation } from "react-i18next";
 
 type Payload = {
   type: "folder" | "file";
@@ -46,6 +47,8 @@ function DeleteDialog({
 }: {
   handle: BaseAlertDialog.Handle<DeletePayload>;
 }) {
+  const { t } = useTranslation();
+
   return (
     <AlertDialog handle={handle}>
       {function Content({ payload }) {
@@ -54,14 +57,16 @@ function DeleteDialog({
         return (
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
+              <AlertDialogTitle>{t("common.confirmDeletion")}</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure to delete this file? This action is not undoable.
+                {t("common.deleteItemConfirm")}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={loading}>
+                {t("common.cancel")}
+              </AlertDialogCancel>
               <AlertDialogAction
                 disabled={loading}
                 className="bg-destructive"
@@ -69,10 +74,9 @@ function DeleteDialog({
                   if (!payload) return;
 
                   setLoading(true);
-                  if (payload.type === 'file') {
+                  if (payload.type === "file") {
                     await api.deleteFile(payload.id);
-                  }
-                  else if (payload.type === 'folder') {
+                  } else if (payload.type === "folder") {
                     await api.deleteFolder(payload.id);
                   }
                   setLoading(false);
@@ -80,7 +84,7 @@ function DeleteDialog({
                   handle.close();
                 }}
               >
-                Continue
+                {t("common.continue")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -95,6 +99,8 @@ export default function FilePopupMenu({
 }: {
   handle: BaseMenu.Handle<Payload>;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div>
       <DeleteDialog handle={deleteHandle} />
@@ -114,7 +120,7 @@ export default function FilePopupMenu({
                 className="text-destructive"
               >
                 <Trash />
-                Delete
+                {t("common.delete")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
@@ -123,18 +129,18 @@ export default function FilePopupMenu({
                 }}
               >
                 <Pencil />
-                Rename
+                {t("common.rename")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
-                  if (!payload || payload.type !== 'file') return;
-                  
+                  if (!payload || payload.type !== "file") return;
+
                   shareHandle.openWithPayload(payload);
                 }}
                 disabled={payload?.type !== "file"}
               >
                 <Share2 />
-                Share
+                {t("common.share")}
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>

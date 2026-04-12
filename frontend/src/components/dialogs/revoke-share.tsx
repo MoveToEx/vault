@@ -13,6 +13,7 @@ import {
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
 import { AxiosError } from "axios";
+import { useTranslation } from "react-i18next";
 
 type Payload = {
   id: number;
@@ -24,6 +25,8 @@ export default function RevokeShareDialog({
 }: {
   handle: BaseAlertDialog.Handle<Payload>;
 }) {
+  const { t } = useTranslation();
+
   return (
     <AlertDialog handle={handle}>
       {function Content({ payload }) {
@@ -33,12 +36,9 @@ export default function RevokeShareDialog({
         return (
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirm revocation</AlertDialogTitle>
+              <AlertDialogTitle>{t("common.confirmRevocation")}</AlertDialogTitle>
               <AlertDialogDescription>
-                <p>
-                  Are you sure to revoke this share? The receiver will no longer
-                  be able to download encrypted files.
-                </p>
+                <p>{t("common.revokeShareConfirm")}</p>
                 {error.length > 0 && (
                   <p className="text-destructive">{error}</p>
                 )}
@@ -46,7 +46,9 @@ export default function RevokeShareDialog({
             </AlertDialogHeader>
 
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={loading}>
+                {t("common.cancel")}
+              </AlertDialogCancel>
               <AlertDialogAction
                 disabled={loading}
                 className="bg-destructive"
@@ -67,7 +69,7 @@ export default function RevokeShareDialog({
                   }
                 }}
               >
-                Continue
+                {t("common.continue")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

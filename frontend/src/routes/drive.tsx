@@ -29,6 +29,7 @@ import { transferBridge } from "@/lib/transfer-bridge";
 import { toggleTransferList } from "@/stores/ui";
 import { Menu } from "@base-ui/react";
 import FilePopupMenu from "@/components/file-popup-menu";
+import { useTranslation } from "react-i18next";
 
 type Item =
   | {
@@ -53,6 +54,7 @@ const fileMenuHandle = Menu.createHandle<{
 }>();
 
 function FileList() {
+  const { t } = useTranslation();
   const keys = useAppSelector((state) => state.key.value);
   const path = useAppSelector((state) => state.path.value);
   const dispatch = useAppDispatch();
@@ -99,10 +101,10 @@ function FileList() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-32">Name</TableHead>
-            <TableHead>Created at</TableHead>
-            <TableHead>Size</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead className="w-32">{t("drive.name")}</TableHead>
+            <TableHead>{t("drive.createdAt")}</TableHead>
+            <TableHead>{t("drive.size")}</TableHead>
+            <TableHead>{t("drive.actions")}</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -111,7 +113,7 @@ function FileList() {
             <TableRow className="h-12" onDoubleClick={() => dispatch(pop())}>
               <TableCell className="font-medium">
                 <FolderUp size={16} className="inline mx-2" />
-                ..
+                {t("common.parentDir")}
               </TableCell>
               <TableCell />
               <TableCell />

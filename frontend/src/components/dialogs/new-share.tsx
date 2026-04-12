@@ -25,6 +25,7 @@ import { Spinner } from "../ui/spinner";
 import { useState } from "react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 type Payload = {
   id: number;
@@ -40,6 +41,8 @@ export default function NewShareDialog({
 }: {
   handle: BaseDialog.Handle<Payload>;
 }) {
+  const { t } = useTranslation();
+
   return (
     <Dialog handle={handle}>
       {function Content({ payload }) {
@@ -78,7 +81,7 @@ export default function NewShareDialog({
             });
 
             handle.close();
-            toast.success("Created");
+            toast.success(t("common.shareCreated"));
           } catch (e) {
             if (e instanceof AxiosError) {
               form.setError("root", e.response?.data?.error);
@@ -97,7 +100,7 @@ export default function NewShareDialog({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                <span className="text-xl">Share files</span>
+                <span className="text-xl">{t("common.shareFiles")}</span>
               </DialogTitle>
               <DialogDescription></DialogDescription>
             </DialogHeader>
@@ -111,7 +114,7 @@ export default function NewShareDialog({
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel htmlFor="form-share-receiver-id">
-                        Receiver username
+                        {t("common.receiverUsername")}
                       </FieldLabel>
                       <UserInput {...field} id="form-share-receiver-id" />
                       {fieldState.invalid && (
@@ -127,31 +130,26 @@ export default function NewShareDialog({
               <Alert className="border-0">
                 <File />
                 <AlertDescription>
-                  Will share {payload?.name}
+                  {t("common.willShare", { name: payload?.name ?? "" })}
                 </AlertDescription>
               </Alert>
               <Alert className="border-0">
                 <Info />
                 <AlertDescription>
-                  <p>
-                    By sharing, your file encryption key will be revealed to the
-                    other party.
-                  </p>
-                  <p>
-                    This means there exists possibility that the other party can
-                    still decrypt your files offline after expiration, if they
-                    have downloaded the raw ciphertext of the shared files.
-                  </p>
-                  <p>There's no way of revoking such access. Be informed.</p>
+                  <p>{t("common.shareWarning1")}</p>
+                  <p>{t("common.shareWarning2")}</p>
+                  <p>{t("common.shareWarning3")}</p>
                 </AlertDescription>
               </Alert>
             </div>
 
             <DialogFooter>
               <Button type="submit" form="form-share">
-                <Share2 /> Create
+                <Share2 /> {t("common.create")}
               </Button>
-              <DialogClose render={<Button variant="outline">Cancel</Button>} />
+              <DialogClose
+                render={<Button variant="outline">{t("common.cancel")}</Button>}
+              />
             </DialogFooter>
           </DialogContent>
         );
@@ -170,6 +168,7 @@ type UserInputProps = {
 };
 
 function UserInput({ value, onChange, disabled = false }: UserInputProps) {
+  const { t } = useTranslation();
   const { data, isLoading } = useUsers(value);
 
   return (
@@ -199,7 +198,7 @@ function UserInput({ value, onChange, disabled = false }: UserInputProps) {
                       disabled
                       className="focus:**:text-accent-foreground gap-2 rounded-sm px-2 py-1.5 text-sm [&_svg:not([class*='size-'])]:size-4 group/dropdown-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0"
                     >
-                      <Spinner /> Loading...
+                      <Spinner /> {t("common.loadingAutocomplete")}
                     </Autocomplete.Item>
                   )}
                   {!isLoading && data && data.length === 0 && (
@@ -207,7 +206,7 @@ function UserInput({ value, onChange, disabled = false }: UserInputProps) {
                       disabled
                       className="hover:bg-accent hover:text-accent-foreground focus:**:text-accent-foreground gap-2 rounded-sm px-2 py-1.5 text-sm [&_svg:not([class*='size-'])]:size-4 group/dropdown-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0"
                     >
-                      <i>No result found</i>
+                      <i>{t("common.noResultFound")}</i>
                     </Autocomplete.Item>
                   )}
                 </Autocomplete.Status>

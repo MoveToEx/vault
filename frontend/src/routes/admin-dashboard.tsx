@@ -2,8 +2,10 @@ import api from "@/lib/api";
 import { formatSize } from "@/lib/utils";
 import useTaggedSWR from "@/lib/swr";
 import { Spinner } from "@/components/ui/spinner";
+import { useTranslation } from "react-i18next";
 
 export default function AdminDashboardPage() {
+  const { t } = useTranslation();
   const { data, isLoading, error } = useTaggedSWR({
     id: "admin-stats",
     tags: ["admin"],
@@ -14,7 +16,7 @@ export default function AdminDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Spinner /> Loading statistics…
+        <Spinner /> {t("common.loadingStatistics")}
       </div>
     );
   }
@@ -22,20 +24,20 @@ export default function AdminDashboardPage() {
   if (error || !data) {
     return (
       <p className="text-sm text-destructive">
-        Could not load dashboard statistics.
+        {t("common.couldNotLoadDashboard")}
       </p>
     );
   }
 
   const cards = [
-    { label: "Registered users", value: String(data.userCount) },
-    { label: "Files stored", value: String(data.fileCount) },
+    { label: t("common.registeredUsers"), value: String(data.userCount) },
+    { label: t("common.filesStored"), value: String(data.fileCount) },
     {
-      label: "Total storage used",
+      label: t("common.totalStorageUsed"),
       value: formatSize(data.totalStoredBytes),
     },
     {
-      label: "Active upload sessions",
+      label: t("common.activeUploadSessions"),
       value: String(data.activeUploadSessions),
     },
   ];

@@ -20,6 +20,7 @@ import { Dialog as BaseDialog } from "@base-ui/react";
 import SetUserCapacityDialog, {
   type SetUserCapacityPayload,
 } from "@/components/dialogs/set-user-capacity";
+import { useTranslation } from "react-i18next";
 
 const PAGE = 30;
 
@@ -39,6 +40,7 @@ type UserRow = {
 };
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation();
   const { data: me } = useAuth();
   const [page, setPage] = useState(0);
 
@@ -57,7 +59,7 @@ export default function AdminUsersPage() {
     const next = !row.isActive;
     try {
       await api.patchAdminUserActive(row.id, next);
-      toast.success(next ? "User re-enabled." : "User banned.");
+      toast.success(next ? t("common.userReenabled") : t("common.userBanned"));
       await mutate();
       await invalidateAdminSWR("admin");
     } catch (err: unknown) {
@@ -66,21 +68,21 @@ export default function AdminUsersPage() {
           ? (err as { response?: { data?: { message?: string } } }).response
               ?.data?.message
           : undefined;
-      toast.error(msg ?? "Could not update user.");
+      toast.error(msg ?? t("common.couldNotUpdateUser"));
     }
   }
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Spinner /> Loading users…
+        <Spinner /> {t("common.loadingUsers")}
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <p className="text-sm text-destructive">Could not load users.</p>
+      <p className="text-sm text-destructive">{t("common.couldNotLoadUsers")}</p>
     );
   }
 
@@ -98,13 +100,13 @@ export default function AdminUsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Username</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Capacity</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t("common.id")}</TableHead>
+              <TableHead>{t("common.username")}</TableHead>
+              <TableHead>{t("common.email")}</TableHead>
+              <TableHead>{t("common.role")}</TableHead>
+              <TableHead>{t("common.capacity")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead className="text-right">{t("common.actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -116,18 +118,22 @@ export default function AdminUsersPage() {
                   {row.email}
                 </TableCell>
                 <TableCell>
-                  {row.permission === PERMISSION_ADMIN ? "Admin" : "User"}
+                  {row.permission === PERMISSION_ADMIN
+                    ? t("common.admin")
+                    : t("common.user")}
                 </TableCell>
                 <TableCell className="tabular-nums">
                   {formatSize(row.capacity)}
                 </TableCell>
                 <TableCell>
                   {!row.isActive ? (
-                    <span className="text-destructive">Banned</span>
+                    <span className="text-destructive">{t("common.banned")}</span>
                   ) : row.isLocked ? (
-                    <span className="text-amber-600">Locked</span>
+                    <span className="text-amber-600">{t("common.locked")}</span>
                   ) : (
-                    <span className="text-muted-foreground">Active</span>
+                    <span className="text-muted-foreground">
+                      {t("common.active")}
+                    </span>
                   )}
                 </TableCell>
                 <TableCell className="text-right space-x-2 whitespace-nowrap">
@@ -142,7 +148,7 @@ export default function AdminUsersPage() {
                       })
                     }
                   >
-                    Capacity
+                    {t("common.capacity")}
                   </Button>
                   <Button
                     variant={row.isActive ? "destructive" : "default"}
@@ -150,7 +156,7 @@ export default function AdminUsersPage() {
                     disabled={row.id === me?.id}
                     onClick={() => toggleActive(row)}
                   >
-                    {row.isActive ? "Ban" : "Unban"}
+                    {row.isActive ? t("common.ban") : t("common.unban")}
                   </Button>
                 </TableCell>
               </TableRow>
@@ -161,7 +167,11 @@ export default function AdminUsersPage() {
 
       <div className="flex items-center justify-between gap-4 pt-2">
         <p className="text-sm text-muted-foreground">
-          {total} users · page {page + 1} of {totalPages}
+          {t("common.usersPageSummary", {
+            total,
+            page: page + 1,
+            totalPages,
+          })}
         </p>
         <div className="flex gap-2">
           <Button
@@ -170,7 +180,7 @@ export default function AdminUsersPage() {
             disabled={page <= 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
           >
-            Previous
+            {t("common.previous")}
           </Button>
           <Button
             variant="outline"
@@ -178,7 +188,7 @@ export default function AdminUsersPage() {
             disabled={page + 1 >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >
-            Next
+            {t("common.next")}
           </Button>
         </div>
       </div>

@@ -28,6 +28,7 @@ import { Ban, Download, Share2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Dialog as BaseDialog } from "@base-ui/react";
 import RevokeShareDialog from "@/components/dialogs/revoke-share";
+import { useTranslation } from "react-i18next";
 
 type FileMetadata = Extract<Metadata, { type: 'file' }>;
 
@@ -46,6 +47,7 @@ type MyShareMetadata = FileMetadata & {
 };
 
 function SharedWithMe() {
+  const { t } = useTranslation();
   const [page] = useState(1);
   // [ ] add pagination
 
@@ -94,7 +96,7 @@ function SharedWithMe() {
           <EmptyMedia variant="icon">
             <Share2 />
           </EmptyMedia>
-          <EmptyTitle>No files shared with you</EmptyTitle>
+          <EmptyTitle>{t("common.noFilesSharedWithYou")}</EmptyTitle>
         </EmptyHeader>
       </Empty>
     );
@@ -104,10 +106,10 @@ function SharedWithMe() {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>File name</TableHead>
-          <TableHead>Shared at</TableHead>
-          <TableHead>Shared by</TableHead>
-          <TableHead>Action</TableHead>
+          <TableHead>{t("common.fileName")}</TableHead>
+          <TableHead>{t("common.sharedAt")}</TableHead>
+          <TableHead>{t("common.sharedBy")}</TableHead>
+          <TableHead>{t("common.action")}</TableHead>
         </TableRow>
       </TableHeader>
 
@@ -149,6 +151,7 @@ const revokeHandle = BaseDialog.createHandle<{
 }>();
 
 function SharedByMe() {
+  const { t } = useTranslation();
   const [page] = useState(1);
 
   const { data } = useMyShares(page);
@@ -195,7 +198,7 @@ function SharedByMe() {
           <EmptyMedia variant="icon">
             <Share2 />
           </EmptyMedia>
-          <EmptyTitle>No files shared by you</EmptyTitle>
+          <EmptyTitle>{t("common.noFilesSharedByYou")}</EmptyTitle>
         </EmptyHeader>
       </Empty>
     );
@@ -207,11 +210,11 @@ function SharedByMe() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>File name</TableHead>
-            <TableHead>Shared at</TableHead>
-            <TableHead>Expires at</TableHead>
-            <TableHead>Shared with</TableHead>
-            <TableHead>Action</TableHead>
+            <TableHead>{t("common.fileName")}</TableHead>
+            <TableHead>{t("common.sharedAt")}</TableHead>
+            <TableHead>{t("common.expiresAt")}</TableHead>
+            <TableHead>{t("common.sharedWith")}</TableHead>
+            <TableHead>{t("common.action")}</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -250,15 +253,17 @@ function SharedByMe() {
 }
 
 export default function SharesPage() {
+  const { t } = useTranslation();
+
   return (
     <div>
       <RequireUMK />
-      <p>Shared with you</p>
+      <p>{t("common.sharedWithYou")}</p>
       <SharedWithMe />
 
       <Separator className="my-4 " />
 
-      <p>Shared by you</p>
+      <p>{t("common.sharedByYou")}</p>
       <SharedByMe />
     </div>
   );

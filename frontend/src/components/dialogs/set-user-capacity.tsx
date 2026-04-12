@@ -19,6 +19,7 @@ import api from "@/lib/api";
 import { AxiosError } from "axios";
 import { Spinner } from "../ui/spinner";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export type SetUserCapacityPayload = {
   userId: number;
@@ -27,16 +28,9 @@ export type SetUserCapacityPayload = {
   capacityBytes: number;
 };
 
-const schema = z.object({
-  capacityGiB: z.coerce
-    .number()
-    .min(1, "Minimum 1 GiB")
-    .max(1024, "Maximum 1024 GiB"),
-});
-
-type FormValues = z.infer<typeof schema>;
-
-const resolver = zodResolver(schema) as Resolver<FormValues>;
+type FormValues = {
+  capacityGiB: number;
+};
 
 export default function SetUserCapacityDialog({
   handle,
@@ -48,10 +42,18 @@ export default function SetUserCapacityDialog({
   return (
     <Dialog handle={handle}>
       {function Content({ payload }) {
+        const { t } = useTranslation();
         const [loading, setLoading] = useState(false);
 
+        const schema = z.object({
+          capacityGiB: z.coerce
+            .number()
+            .min(1, t("common.minGib"))
+            .max(1024, t("common.maxGib")),
+        });
+
         const form = useForm<FormValues>({
-          resolver,
+          resolver: zodResolver(schema) as Resolver<FormValues>,
           defaultValues: {
             capacityGiB: 1,
           },
@@ -76,7 +78,7 @@ export default function SetUserCapacityDialog({
               payload.userId,
               Math.round(values.capacityGiB * 1024 ** 3),
             );
-            toast.success("Capacity updated.");
+            toast.success(t("common.capacityUpdated"));
             handle.close();
             await onSaved?.();
           } catch (e) {
@@ -85,7 +87,7 @@ export default function SetUserCapacityDialog({
                 type: "custom",
                 message:
                   (e.response?.data as { error?: string } | undefined)?.error ??
-                  "Could not update capacity.",
+                  t("common.couldNotUpdateCapacity"),
               });
             } else {
               throw e;
@@ -99,7 +101,7 @@ export default function SetUserCapacityDialog({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                Storage capacity
+                {t("common.storageCapacityTitle")}
                 {payload?.username ? ` — ${payload.username}` : ""}
               </DialogTitle>
             </DialogHeader>
@@ -115,7 +117,7 @@ export default function SetUserCapacityDialog({
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel htmlFor="form-set-user-capacity-gib">
-                        Capacity (GiB)
+                        {t("common.capacityGib")}
                       </FieldLabel>
                       <Input
                         {...field}
@@ -147,13 +149,13 @@ export default function SetUserCapacityDialog({
                 disabled={loading}
               >
                 {loading ? <Spinner /> : <Check />}
-                Save
+                {t("common.save")}
               </Button>
               <DialogClose
                 render={
                   <Button variant="outline" disabled={loading}>
                     <X />
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                 }
               />

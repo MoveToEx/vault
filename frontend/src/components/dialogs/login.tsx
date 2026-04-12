@@ -39,6 +39,7 @@ import { toggleLoginDialog, toggleRegisterDialog } from "@/stores/ui";
 import sodium, { from_string, to_base64 } from "libsodium-wrappers-sumo";
 import api from "@/lib/api";
 import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
+import { useTranslation } from "react-i18next";
 
 const schema = z.object({
   username: z.string(),
@@ -46,6 +47,7 @@ const schema = z.object({
 });
 
 export default function LoginDialog() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [, setRefreshToken] = useLocalStorage("vault-refresh-token", "");
   const dispatch = useAppDispatch();
@@ -99,7 +101,7 @@ export default function LoginDialog() {
         loginStateID,
       );
 
-      toast.success("Successfully logged in");
+      toast.success(t("common.loginSuccess"));
 
       const umk = await argon2id({
         iterations: kdfParams.timeCost,
@@ -147,7 +149,7 @@ export default function LoginDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="text-xl">Login</span>
+            <span className="text-xl">{t("common.login")}</span>
           </DialogTitle>
           <DialogDescription></DialogDescription>
         </DialogHeader>
@@ -160,12 +162,12 @@ export default function LoginDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-login-username">
-                    Username/Email
+                    {t("common.usernameOrEmail")}
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-login-username"
-                    placeholder="user@example.com"
+                    placeholder={t("common.placeholderEmail")}
                     autoComplete="username"
                   />
                   {fieldState.invalid && (
@@ -180,12 +182,12 @@ export default function LoginDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-login-password">
-                    Password
+                    {t("common.password")}
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-login-password"
-                    placeholder="••••••••"
+                    placeholder={t("common.placeholderPassword")}
                     autoComplete="current-password"
                     type="password"
                   />
@@ -199,7 +201,7 @@ export default function LoginDialog() {
           <div className="w-full flex flex-col gap-2">
             <div className="flex flex-row justify-end">
               <span>
-                No account yet?
+                {t("common.noAccountYet")}
                 <Button
                   variant="link"
                   type="button"
@@ -208,7 +210,7 @@ export default function LoginDialog() {
                     dispatch(toggleRegisterDialog(true));
                   }}
                 >
-                  Register
+                  {t("common.register")}
                 </Button>
               </span>
             </div>
@@ -219,9 +221,11 @@ export default function LoginDialog() {
           <Button type="submit" form="form-login" disabled={loading}>
             {loading && <Spinner />}
             {loading || <LogIn />}
-            Login
+            {t("common.login")}
           </Button>
-          <DialogClose render={<Button variant="outline">Cancel</Button>} />
+          <DialogClose
+            render={<Button variant="outline">{t("common.cancel")}</Button>}
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

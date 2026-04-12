@@ -40,28 +40,35 @@ import { mutate } from "@/lib/swr";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleRegisterDialog } from "@/stores/ui";
 import usePublicSiteConfig from "@/hooks/use-public-site-config";
-
-const registerSchema = z.object({
-  email: z.email(),
-  username: z
-    .string()
-    .min(6, "Username should be no shorter than 6 characters")
-    .max(32, "Username should be no longer than 32 characters")
-    .regex(/^[a-zA-Z0-9]+$/, "Only digits and letters are allowed"),
-  password: z
-    .string()
-    .min(8, "Password should be at lease 8 characters")
-    .max(128, "Password should be at most 128 characters"),
-  confirmPassword: z
-    .string()
-    .min(8, "Password should be at lease 8 characters")
-    .max(128, "Password should be at most 128 characters"),
-  kdfMemoryCost: z.number().min(64).max(1024),
-  kdfTimeCost: z.number().min(1).max(100),
-  kdfParallelism: z.number().min(1).max(4),
-});
+import { useTranslation } from "react-i18next";
+import { useMemo } from "react";
 
 export default function RegisterDialog() {
+  const { t } = useTranslation();
+  const registerSchema = useMemo(
+    () =>
+      z.object({
+        email: z.email(),
+        username: z
+          .string()
+          .min(6, t("common.usernameMin6"))
+          .max(32, t("common.usernameMax32"))
+          .regex(/^[a-zA-Z0-9]+$/, t("common.usernameAlphanumeric")),
+        password: z
+          .string()
+          .min(8, t("common.passwordMin8"))
+          .max(128, t("common.passwordMax128")),
+        confirmPassword: z
+          .string()
+          .min(8, t("common.passwordMin8"))
+          .max(128, t("common.passwordMax128")),
+        kdfMemoryCost: z.number().min(64).max(1024),
+        kdfTimeCost: z.number().min(1).max(100),
+        kdfParallelism: z.number().min(1).max(4),
+      }),
+    [t],
+  );
+
   const dispatch = useAppDispatch();
   const open = useAppSelector((s) => s.ui.registerDialogOpen);
   const [loading, setLoading] = useState(false);
@@ -89,7 +96,7 @@ export default function RegisterDialog() {
     if (data.confirmPassword !== data.password) {
       form.setError("confirmPassword", {
         type: "validate",
-        message: "Passwords do not match",
+        message: t("common.passwordsMismatch"),
       });
       return;
     }
@@ -163,7 +170,7 @@ export default function RegisterDialog() {
         },
       });
 
-      toast.success("Signed up");
+      toast.success(t("common.signedUp"));
       dispatch(toggleRegisterDialog(false));
 
       mutate("file");
@@ -192,13 +199,13 @@ export default function RegisterDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="text-xl">Register</span>
+            <span className="text-xl">{t("common.register")}</span>
           </DialogTitle>
         </DialogHeader>
 
         {!conf?.registrationOpen && (
           <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/5 p-3">
-            New registrations are disabled on this server.
+            {t("common.registrationsDisabled")}
           </p>
         )}
 
@@ -215,11 +222,13 @@ export default function RegisterDialog() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="form-register-email">Email</FieldLabel>
+                  <FieldLabel htmlFor="form-register-email">
+                    {t("common.email")}
+                  </FieldLabel>
                   <Input
                     {...field}
                     id="form-register-email"
-                    placeholder="user@example.com"
+                    placeholder={t("common.placeholderEmail")}
                     autoComplete="email"
                   />
                   {fieldState.invalid && (
@@ -234,12 +243,12 @@ export default function RegisterDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-register-username">
-                    Username
+                    {t("common.username")}
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-register-username"
-                    placeholder="user@example.com"
+                    placeholder={t("common.placeholderEmail")}
                     autoComplete="username"
                   />
                   {fieldState.invalid && (
@@ -254,12 +263,12 @@ export default function RegisterDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-register-password">
-                    Password
+                    {t("common.password")}
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-register-password"
-                    placeholder="••••••••"
+                    placeholder={t("common.placeholderPassword")}
                     autoComplete="new-password"
                     type="password"
                   />
@@ -275,12 +284,12 @@ export default function RegisterDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-register-confirm-password">
-                    Confirm Password
+                    {t("common.confirmPassword")}
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-register-confirm-password"
-                    placeholder="••••••••"
+                    placeholder={t("common.placeholderPassword")}
                     autoComplete="new-password"
                     type="password"
                   />
@@ -301,13 +310,13 @@ export default function RegisterDialog() {
             >
               {showKDF && <ChevronUp />}
               {showKDF || <ChevronDown />}
-              Advanced
+              {t("common.advanced")}
             </Button>
           </div>
 
           {showKDF && (
             <FieldSet>
-              <FieldLegend>KDF</FieldLegend>
+              <FieldLegend>{t("common.kdfLegend")}</FieldLegend>
 
               <FieldGroup>
                 <Controller
@@ -319,7 +328,7 @@ export default function RegisterDialog() {
                         className="flex flex-row justify-between items-center"
                         htmlFor="form-register-kdf-timecost"
                       >
-                        <span>Time cost</span>
+                        <span>{t("common.timeCost")}</span>
                         <span>{field.value}</span>
                       </FieldLabel>
                       <Slider
@@ -346,7 +355,7 @@ export default function RegisterDialog() {
                         className="flex flex-row justify-between items-center"
                         htmlFor="form-register-kdf-memcost"
                       >
-                        <span>Memory cost</span>
+                        <span>{t("common.memoryCost")}</span>
                         <span>{field.value} MiB</span>
                       </FieldLabel>
                       <Slider
@@ -373,7 +382,7 @@ export default function RegisterDialog() {
                         className="flex flex-row justify-between items-center"
                         htmlFor="form-register-kdf-parallel"
                       >
-                        <span>Parallelism</span>
+                        <span>{t("common.parallelism")}</span>
                         <span>{field.value}</span>
                       </FieldLabel>
                       <Slider
@@ -397,9 +406,11 @@ export default function RegisterDialog() {
 
           <div className="flex flex-row justify-end">
             <span>
-              Already have an account?
+              {t("common.alreadyHaveAccount")}
               <DialogClose
-                render={<Button variant="link">Go back to login</Button>}
+                render={
+                  <Button variant="link">{t("common.goBackToLogin")}</Button>
+                }
               />
             </span>
           </div>
@@ -408,9 +419,11 @@ export default function RegisterDialog() {
             <Button type="submit" disabled={loading}>
               {loading || <User />}
               {loading && <Spinner />}
-              Register
+              {t("common.register")}
             </Button>
-            <DialogClose render={<Button variant="outline">Cancel</Button>} />
+            <DialogClose
+              render={<Button variant="outline">{t("common.cancel")}</Button>}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

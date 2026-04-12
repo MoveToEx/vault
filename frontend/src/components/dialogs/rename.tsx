@@ -23,6 +23,7 @@ import { mutate } from "@/lib/swr";
 import { AxiosError } from "axios";
 import { Spinner } from "../ui/spinner";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 export type RenameDialogPayload = {
   type: "folder" | "file";
@@ -39,6 +40,8 @@ export default function RenameDialog({
 }: {
   handle: BaseDialog.Handle<RenameDialogPayload>;
 }) {
+  const { t } = useTranslation();
+
   return (
     <Dialog handle={handle}>
       {function Content({ payload }) {
@@ -83,7 +86,7 @@ export default function RenameDialog({
 
             await mutate("file");
             handle.close();
-            toast.success('Saved');
+            toast.success(t("common.saved"));
           } catch (e) {
             if (e instanceof AxiosError) {
               form.setError("root", {
@@ -102,7 +105,12 @@ export default function RenameDialog({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                Rename {payload?.type === "folder" ? "Folder" : "File"}
+                {t("common.renameTitle", {
+                  type:
+                    payload?.type === "folder"
+                      ? t("common.renameTypeFolder")
+                      : t("common.renameTypeFile"),
+                })}
               </DialogTitle>
             </DialogHeader>
 
@@ -113,7 +121,9 @@ export default function RenameDialog({
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="form-rename-name">Name</FieldLabel>
+                      <FieldLabel htmlFor="form-rename-name">
+                        {t("common.name")}
+                      </FieldLabel>
                       <Input
                         {...field}
                         id="form-rename-name"
@@ -131,13 +141,13 @@ export default function RenameDialog({
             <DialogFooter>
               <Button type="submit" form="form-rename" disabled={loading}>
                 {loading ? <Spinner /> : <Check />}
-                Save
+                {t("common.save")}
               </Button>
               <DialogClose
                 render={
                   <Button variant="outline" disabled={loading}>
                     <X />
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                 }
               />

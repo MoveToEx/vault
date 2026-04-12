@@ -6,20 +6,22 @@ import { FolderLock, Share2, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppDispatch } from "@/stores";
 import { toggleLoginDialog, toggleRegisterDialog } from "@/stores/ui";
+import { useTranslation } from "react-i18next";
 
 export default function HomePage() {
   const dispatch = useAppDispatch();
   const { data, error, isLoading } = useAuth();
   const loggedIn = !isLoading && !error && !!data;
+  const { t } = useTranslation();
 
   return (
     <div className="mx-auto max-w-2xl flex flex-col gap-8 py-4">
       <div className="space-y-3">
-        <h1 className="text-3xl font-semibold tracking-tight">Vault</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {t("home.title")}
+        </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
-          A private workspace for your files: encrypt uploads at rest, browse
-          folders, and share with others—without exposing your data to the
-          server in plaintext.
+          {t("home.subtitle")}
         </p>
       </div>
 
@@ -27,23 +29,28 @@ export default function HomePage() {
         <li className="flex gap-3">
           <FolderLock className="mt-0.5 size-5 shrink-0 text-foreground" />
           <span>
-            <strong className="text-foreground font-medium">Drive</strong> —
-            unlock with your password to upload, download, and organize
-            encrypted files and folders.
+            <strong className="text-foreground font-medium">
+              {t("home.driveTitle")}
+            </strong>{" "}
+            — {t("home.driveBody")}
           </span>
         </li>
         <li className="flex gap-3">
           <Share2 className="mt-0.5 size-5 shrink-0 text-foreground" />
           <span>
-            <strong className="text-foreground font-medium">Share</strong> —
-            grant access to specific files for other users when you choose.
+            <strong className="text-foreground font-medium">
+              {t("home.shareTitle")}
+            </strong>{" "}
+            — {t("home.shareBody")}
           </span>
         </li>
         <li className="flex gap-3">
           <Shield className="mt-0.5 size-5 shrink-0 text-foreground" />
           <span>
-            <strong className="text-foreground font-medium">Audit</strong> —
-            review activity tied to your account for transparency.
+            <strong className="text-foreground font-medium">
+              {t("home.auditTitle")}
+            </strong>{" "}
+            — {t("home.auditBody")}
           </span>
         </li>
       </ul>
@@ -53,7 +60,7 @@ export default function HomePage() {
           <Spinner />
         ) : loggedIn ? (
           <Link to="/drive" className={cn(buttonVariants())}>
-            Open Drive
+            {t("common.openDrive")}
           </Link>
         ) : (
           <>
@@ -61,14 +68,14 @@ export default function HomePage() {
               type="button"
               onClick={() => dispatch(toggleLoginDialog(true))}
             >
-              Login
+              {t("common.login")}
             </Button>
             <Button
               variant="outline"
               type="button"
               onClick={() => dispatch(toggleRegisterDialog(true))}
             >
-              Register
+              {t("common.register")}
             </Button>
           </>
         )}

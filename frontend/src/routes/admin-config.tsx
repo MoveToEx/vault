@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import useTaggedSWR from "@/lib/swr";
 import { formatSize } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import z from "zod";
 import { Controller, useForm, type Resolver } from "react-hook-form";
@@ -17,26 +17,38 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { AxiosError } from "axios";
+import { useTranslation } from "react-i18next";
 
-const siteConfigSchema = z.object({
-  uploadExpiryMinutes: z.coerce
-    .number()
-    .min(1, "Minimum 1 minute")
-    .max(10080, "Maximum 7 days (10080 minutes)"),
-  registrationOpen: z.boolean(),
-  defaultCapacityGiB: z.coerce
-    .number()
-    .min(1, "Minimum 1 GiB")
-    .max(1024, "Maximum 1024 GiB"),
-});
-
-type SiteConfigFormValues = z.infer<typeof siteConfigSchema>;
-
-const siteConfigResolver = zodResolver(
-  siteConfigSchema,
-) as Resolver<SiteConfigFormValues>;
+type SiteConfigFormValues = {
+  uploadExpiryMinutes: number;
+  registrationOpen: boolean;
+  defaultCapacityGiB: number;
+};
 
 export default function AdminSiteConfigPage() {
+  const { t } = useTranslation();
+
+  const siteConfigSchema = useMemo(
+    () =>
+      z.object({
+        uploadExpiryMinutes: z.coerce
+          .number()
+          .min(1, t("common.minUploadMinutes"))
+          .max(10080, t("common.maxUploadMinutes")),
+        registrationOpen: z.boolean(),
+        defaultCapacityGiB: z.coerce
+          .number()
+          .min(1, t("common.minDefaultGib"))
+          .max(1024, t("common.maxDefaultGib")),
+      }),
+    [t],
+  );
+
+  const siteConfigResolver = useMemo(
+    () => zodResolver(siteConfigSchema) as Resolver<SiteConfigFormValues>,
+    [siteConfigSchema],
+  );
+
   const { data, isLoading, error, mutate } = useTaggedSWR({
     id: "admin-site-config",
     tags: ["admin"],
@@ -76,7 +88,7 @@ export default function AdminSiteConfigPage() {
           values.defaultCapacityGiB * 1024 ** 3,
         ),
       });
-      toast.success("Site configuration saved.");
+      toast.success(t("common.siteConfigSaved"));
       await mutate();
     } catch (e) {
       if (e instanceof AxiosError) {
@@ -84,7 +96,7 @@ export default function AdminSiteConfigPage() {
           type: "custom",
           message:
             (e.response?.data as { error?: string } | undefined)?.error ??
-            "Could not save configuration.",
+            t("common.couldNotSaveSiteConfig"),
         });
       } else {
         throw e;
@@ -95,7 +107,7 @@ export default function AdminSiteConfigPage() {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Spinner /> Loading…
+        <Spinner /> {t("common.loadingSiteConfig")}
       </div>
     );
   }
@@ -103,7 +115,7 @@ export default function AdminSiteConfigPage() {
   if (error || !data) {
     return (
       <p className="text-sm text-destructive">
-        Could not load site configuration.
+        {t("common.couldNotLoadSiteConfig")}
       </p>
     );
   }
@@ -120,7 +132,7 @@ export default function AdminSiteConfigPage() {
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="site-config-upload-expiry">
-                Incomplete upload expiration (minutes)
+                {t("common.incompleteUploadExpiry")}
               </FieldLabel>
               <Input
                 {...field}
@@ -134,8 +146,7 @@ export default function AdminSiteConfigPage() {
                 <FieldError errors={[fieldState.error]} />
               )}
               <p className="text-xs text-muted-foreground">
-                Upload sessions that are not finished within this window are
-                discarded (between 1 minute and 7 days).
+                {t("common.incompleteUploadExpiryHint")}
               </p>
             </Field>
           )}
@@ -158,7 +169,7 @@ export default function AdminSiteConfigPage() {
                 htmlFor="site-config-reg-open"
                 className="font-normal cursor-pointer"
               >
-                Allow new user registration
+                {t("common.allowRegistration")}
               </Label>
             </div>
           )}
@@ -170,7 +181,7 @@ export default function AdminSiteConfigPage() {
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="site-config-default-cap">
-                Default storage for new users (GiB)
+                {t("common.defaultStorageNewUsers")}
               </FieldLabel>
               <Input
                 {...field}
@@ -185,8 +196,9 @@ export default function AdminSiteConfigPage() {
                 <FieldError errors={[fieldState.error]} />
               )}
               <p className="text-xs text-muted-foreground">
-                Applied to new accounts only. Current:{" "}
-                {formatSize(data.defaultUserCapacityBytes)}.
+                {t("common.defaultStorageHint", {
+                  size: formatSize(data.defaultUserCapacityBytes),
+                })}
               </p>
             </Field>
           )}
@@ -200,7 +212,7 @@ export default function AdminSiteConfigPage() {
       </FieldGroup>
 
       <Button type="submit" disabled={saving}>
-        {saving ? "Saving…" : "Save changes"}
+        {saving ? t("common.savingChanges") : t("common.saveChanges")}
       </Button>
     </form>
   );

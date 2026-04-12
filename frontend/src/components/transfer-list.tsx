@@ -23,8 +23,10 @@ import {
   EmptyTitle,
 } from "./ui/empty";
 import { Progress, ProgressLabel, ProgressValue } from "./ui/progress";
+import { useTranslation } from "react-i18next";
 
 export default function TransferList() {
+  const { t } = useTranslation();
   const transfers = useAppSelector((state) => state.transfer.items);
   const open = useAppSelector((state) => state.ui.transferListOpen);
   const dispatch = useAppDispatch();
@@ -52,7 +54,7 @@ export default function TransferList() {
           <Drawer.Popup className="md:-mr-8 md:pl-8 md:pr-16 h-full w-[80vw] md:w-[calc(60vw+3rem)] bg-background px-6 pt-4 text-foreground overflow-y-auto overscroll-contain touch-auto transform-[translateX(var(--drawer-swipe-movement-x))] transition-transform duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:select-none data-ending-style:transform-[translateX(calc(100%-3rem+2px))] data-starting-style:transform-[translateX(calc(100%-3rem+2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] dark:outline dark:outline-gray-900">
             <Drawer.Content className="mx-auto h-full w-full">
               <Drawer.Title className="mb-1 text-lg font-medium">
-                Transfer List
+                {t("common.transferList")}
               </Drawer.Title>
               <div className="mb-6 text-base text-center">
                 {items.length === 0 && (
@@ -61,9 +63,9 @@ export default function TransferList() {
                       <EmptyMedia variant="icon">
                         <ArrowUpDown />
                       </EmptyMedia>
-                      <EmptyTitle>No active transfers yet</EmptyTitle>
+                      <EmptyTitle>{t("common.noActiveTransfers")}</EmptyTitle>
                       <EmptyDescription>
-                        Upload or download to create transfer tasks.
+                        {t("common.transferListHint")}
                       </EmptyDescription>
                     </EmptyHeader>
                   </Empty>
@@ -124,8 +126,8 @@ export default function TransferList() {
                       )}
                       {it.status === "error" && (
                         <div className="flex flex-row items-center text-destructive gap-2">
-                          <CircleAlert size={16} className="inline" /> Failed:{" "}
-                          {it.error}
+                          <CircleAlert size={16} className="inline" />{" "}
+                          {t("common.failedPrefix")} {it.error}
                         </div>
                       )}
                     </div>

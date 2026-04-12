@@ -18,21 +18,29 @@ import { useAppSelector } from "@/stores";
 import { seal } from "@/lib/crypto";
 import { from_base64, from_string, ready } from "libsodium-wrappers-sumo";
 import api from "@/lib/api";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AxiosError } from "axios";
 import { Spinner } from "../ui/spinner";
 import { mutate } from "@/lib/swr";
 import { Dialog as BaseDialog } from "@base-ui/react";
-
-const schema = z.object({
-  name: z.string().nonempty(),
-});
+import { useTranslation } from "react-i18next";
 
 const handle = BaseDialog.createHandle();
 
+type NewFolderValues = { name: string };
+
 export default function NewFolderDialog() {
-  const form = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
+  const { t } = useTranslation();
+  const folderSchema = useMemo(
+    () =>
+      z.object({
+        name: z.string().min(1, t("common.minOneChar")),
+      }),
+    [t],
+  );
+
+  const form = useForm<NewFolderValues>({
+    resolver: zodResolver(folderSchema),
     defaultValues: {
       name: "",
     },
@@ -42,7 +50,7 @@ export default function NewFolderDialog() {
 
   const [loading, setLoading] = useState(false);
 
-  const submit = async (data: z.infer<typeof schema>) => {
+  const submit = async (data: NewFolderValues) => {
     if (!keys) return;
 
     setLoading(true);
@@ -83,13 +91,13 @@ export default function NewFolderDialog() {
       <DialogTrigger
         render={
           <Button variant="outline">
-            <Plus /> New Folder
+            <Plus /> {t("common.newFolderButton")}
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create New Folder</DialogTitle>
+          <DialogTitle>{t("common.createNewFolder")}</DialogTitle>
         </DialogHeader>
         <form id="form-new-folder" onSubmit={form.handleSubmit(submit)}>
           <FieldGroup>
@@ -99,7 +107,7 @@ export default function NewFolderDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-new-folder-name">
-                    Folder name
+                    {t("common.folderName")}
                   </FieldLabel>
                   <Input {...field} id="form-new-folder-name" />
                   {fieldState.invalid && (
@@ -115,14 +123,14 @@ export default function NewFolderDialog() {
           <Button type="submit" form="form-new-folder" disabled={loading}>
             {loading && <Spinner />}
             {loading || <Check />}
-            Confirm
+            {t("common.confirm")}
           </Button>
 
           <DialogClose
             render={
               <Button variant="outline">
                 <X />
-                Cancel
+                {t("common.cancel")}
               </Button>
             }
           />
