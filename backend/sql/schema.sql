@@ -58,8 +58,7 @@ CREATE TABLE IF NOT EXISTS files (
     chunk_size BIGINT NOT NULL,
     size BIGINT NOT NULL,
 
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS file_chunks (

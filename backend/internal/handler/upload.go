@@ -124,7 +124,7 @@ func InitUpload(c *gin.Context) {
 		ParentID:          parent.ID,
 		ExpiresAt: pgtype.Timestamptz{
 			Valid: true,
-			Time:  time.Now().Add(time.Hour * 12),
+			Time:  time.Now().Add(time.Hour * 4),
 		},
 	})
 

@@ -3,6 +3,7 @@ package handler
 import (
 	"backend/internal/config"
 	"backend/internal/db"
+	"backend/internal/queue"
 	"backend/internal/sqlc"
 	"backend/internal/utils"
 	"strconv"
@@ -393,10 +394,23 @@ func DeleteFile(c *gin.Context) {
 
 	meta := file.EncryptedMetadata
 
-	err = db.Query().DeleteFile(ctx, payload.FileID)
+	keys, err := db.Query().GetFileS3Keys(ctx, payload.FileID)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when updating row")
+		utils.ErrorResponse(c, 500, "Failed when getting keys")
+		return
+	}
+
+	if err := db.Query().DeleteFile(ctx, sqlc.DeleteFileParams{
+		ID:      payload.FileID,
+		OwnerID: userID,
+	}); err != nil {
+		utils.ErrorResponse(c, 500, "Failed when deleting file")
+		return
+	}
+
+	if err := queue.EnqueueS3Deletion(ctx, keys); err != nil {
+		utils.ErrorResponse(c, 500, "Failed when scheduling storage cleanup")
 		return
 	}
 
@@ -524,8 +538,19 @@ func DeleteFolder(c *gin.Context) {
 
 	meta := folder.EncryptedMetadata
 
+	keys, err := db.Query().TraverseChunks(ctx, payload.FolderID)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when listing files")
+		return
+	}
+
 	if err := db.Query().DeleteFiles(ctx, payload.FolderID); err != nil {
 		utils.ErrorResponse(c, 500, "Failed when deleting files")
+		return
+	}
+
+	if err := queue.EnqueueS3Deletion(ctx, keys); err != nil {
+		utils.ErrorResponse(c, 500, "Failed when scheduling storage cleanup")
 		return
 	}
 

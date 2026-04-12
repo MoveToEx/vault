@@ -4,6 +4,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/middleware"
+	"backend/internal/queue"
 	"backend/internal/route"
 	"context"
 	"log"
@@ -44,6 +45,10 @@ func main() {
 	config.InitRedis()
 	config.InitS3()
 
+	if err := queue.Init(conn); err != nil {
+		log.Fatalln("Failed when starting job queue: ", err)
+	}
+
 	app := gin.New()
 
 	app.Use(gin.Recovery(), middleware.CORSMiddleware(config.GetConfig().CORSOrigin))
@@ -67,10 +72,14 @@ func main() {
 	stop()
 	log.Println("Shutting down")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := queue.Stop(); err != nil {
+		log.Println("Job queue shutdown: ", err)
+	}
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Println("Server forced to shutdown: ", err)
 	}
 }

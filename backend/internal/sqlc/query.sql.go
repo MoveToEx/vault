@@ -64,13 +64,17 @@ func (q *Queries) CountLogsForOwner(ctx context.Context, ownerID int64) (int64, 
 }
 
 const deleteFile = `-- name: DeleteFile :exec
-UPDATE files
-SET deleted_at = NOW()
-WHERE id = $1
+DELETE FROM files
+WHERE id = $1 AND owner_id = $2
 `
 
-func (q *Queries) DeleteFile(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteFile, id)
+type DeleteFileParams struct {
+	ID      int64 `json:"id"`
+	OwnerID int64 `json:"ownerId"`
+}
+
+func (q *Queries) DeleteFile(ctx context.Context, arg DeleteFileParams) error {
+	_, err := q.db.Exec(ctx, deleteFile, arg.ID, arg.OwnerID)
 	return err
 }
 
@@ -113,6 +117,39 @@ WHERE f.id IN (
 
 func (q *Queries) DeleteFolders(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteFolders, id)
+	return err
+}
+
+const deleteIncompleteUpload = `-- name: DeleteIncompleteUpload :exec
+DELETE FROM uploads
+WHERE id = $1 AND completed_at IS NULL
+`
+
+func (q *Queries) DeleteIncompleteUpload(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteIncompleteUpload, id)
+	return err
+}
+
+const deleteUploadChunk = `-- name: DeleteUploadChunk :exec
+DELETE FROM upload_chunks WHERE upload_id = $1 AND chunk_index = $2
+`
+
+type DeleteUploadChunkParams struct {
+	UploadID   int64 `json:"uploadId"`
+	ChunkIndex int32 `json:"chunkIndex"`
+}
+
+func (q *Queries) DeleteUploadChunk(ctx context.Context, arg DeleteUploadChunkParams) error {
+	_, err := q.db.Exec(ctx, deleteUploadChunk, arg.UploadID, arg.ChunkIndex)
+	return err
+}
+
+const deleteUploadChunks = `-- name: DeleteUploadChunks :exec
+DELETE FROM upload_chunks WHERE upload_id = $1
+`
+
+func (q *Queries) DeleteUploadChunks(ctx context.Context, uploadID int64) error {
+	_, err := q.db.Exec(ctx, deleteUploadChunks, uploadID)
 	return err
 }
 
@@ -268,8 +305,46 @@ func (q *Queries) GetChunks(ctx context.Context, arg GetChunksParams) (FileChunk
 	return i, err
 }
 
+const getExpiredUploads = `-- name: GetExpiredUploads :many
+SELECT id, user_id, encrypted_metadata, parent_id, chunks, chunk_size, size, created_at, completed_at, expires_at FROM uploads
+WHERE completed_at ISNULL AND expires_at <= NOW()
+ORDER BY expires_at ASC
+LIMIT 500
+`
+
+func (q *Queries) GetExpiredUploads(ctx context.Context) ([]Upload, error) {
+	rows, err := q.db.Query(ctx, getExpiredUploads)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Upload{}
+	for rows.Next() {
+		var i Upload
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.EncryptedMetadata,
+			&i.ParentID,
+			&i.Chunks,
+			&i.ChunkSize,
+			&i.Size,
+			&i.CreatedAt,
+			&i.CompletedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getFile = `-- name: GetFile :one
-SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at, deleted_at FROM files
+SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at FROM files
 WHERE id = $1
 `
 
@@ -286,14 +361,38 @@ func (q *Queries) GetFile(ctx context.Context, id int64) (File, error) {
 		&i.ChunkSize,
 		&i.Size,
 		&i.CreatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
 
+const getFileS3Keys = `-- name: GetFileS3Keys :many
+SELECT s3_key FROM file_chunks
+WHERE file_id = $1
+`
+
+func (q *Queries) GetFileS3Keys(ctx context.Context, fileID int64) ([]string, error) {
+	rows, err := q.db.Query(ctx, getFileS3Keys, fileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var s3_key string
+		if err := rows.Scan(&s3_key); err != nil {
+			return nil, err
+		}
+		items = append(items, s3_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getFiles = `-- name: GetFiles :many
-SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at, deleted_at FROM files f
-WHERE parent_id = $1 AND deleted_at ISNULL
+SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at FROM files f
+WHERE parent_id = $1
 `
 
 func (q *Queries) GetFiles(ctx context.Context, parentID int64) ([]File, error) {
@@ -315,7 +414,6 @@ func (q *Queries) GetFiles(ctx context.Context, parentID int64) ([]File, error) 
 			&i.ChunkSize,
 			&i.Size,
 			&i.CreatedAt,
-			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -364,6 +462,29 @@ func (q *Queries) GetFolderDepth(ctx context.Context, id int64) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const getIncompleteExpiredUpload = `-- name: GetIncompleteExpiredUpload :one
+SELECT id, user_id, encrypted_metadata, parent_id, chunks, chunk_size, size, created_at, completed_at, expires_at FROM uploads
+WHERE id = $1 AND completed_at IS NULL AND expires_at <= NOW()
+`
+
+func (q *Queries) GetIncompleteExpiredUpload(ctx context.Context, id int64) (Upload, error) {
+	row := q.db.QueryRow(ctx, getIncompleteExpiredUpload, id)
+	var i Upload
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.EncryptedMetadata,
+		&i.ParentID,
+		&i.Chunks,
+		&i.ChunkSize,
+		&i.Size,
+		&i.CreatedAt,
+		&i.CompletedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
 
 const getKDFParameters = `-- name: GetKDFParameters :one
@@ -686,6 +807,36 @@ func (q *Queries) GetUploadChunk(ctx context.Context, arg GetUploadChunkParams) 
 	return i, err
 }
 
+const getUploadChunks = `-- name: GetUploadChunks :many
+SELECT upload_id, chunk_index, s3_key, completed FROM upload_chunks
+WHERE upload_id = $1
+`
+
+func (q *Queries) GetUploadChunks(ctx context.Context, uploadID int64) ([]UploadChunk, error) {
+	rows, err := q.db.Query(ctx, getUploadChunks, uploadID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UploadChunk{}
+	for rows.Next() {
+		var i UploadChunk
+		if err := rows.Scan(
+			&i.UploadID,
+			&i.ChunkIndex,
+			&i.S3Key,
+			&i.Completed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUploadSession = `-- name: GetUploadSession :one
 SELECT id, user_id, encrypted_metadata, parent_id, chunks, chunk_size, size, created_at, completed_at, expires_at FROM uploads
 WHERE id = $1 AND completed_at IS NULL AND expires_at > NOW()
@@ -711,7 +862,7 @@ func (q *Queries) GetUploadSession(ctx context.Context, id int64) (Upload, error
 
 const getUsedCapacity = `-- name: GetUsedCapacity :one
 SELECT COALESCE(SUM(size), 0)::BIGINT FROM files
-WHERE owner_id = $1 AND deleted_at ISNULL
+WHERE owner_id = $1
 `
 
 func (q *Queries) GetUsedCapacity(ctx context.Context, ownerID int64) (int64, error) {
@@ -820,6 +971,90 @@ func (q *Queries) InvalidateShare(ctx context.Context, id int64) error {
 	return err
 }
 
+const listExpiredIncompleteUploadIDs = `-- name: ListExpiredIncompleteUploadIDs :many
+SELECT id FROM uploads
+WHERE completed_at IS NULL AND expires_at <= NOW()
+ORDER BY expires_at ASC
+LIMIT 500
+`
+
+func (q *Queries) ListExpiredIncompleteUploadIDs(ctx context.Context) ([]int64, error) {
+	rows, err := q.db.Query(ctx, listExpiredIncompleteUploadIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFileChunk = `-- name: ListFileChunk :many
+SELECT s3_key FROM file_chunks WHERE file_id = $1
+`
+
+func (q *Queries) ListFileChunk(ctx context.Context, fileID int64) ([]string, error) {
+	rows, err := q.db.Query(ctx, listFileChunk, fileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var s3_key string
+		if err := rows.Scan(&s3_key); err != nil {
+			return nil, err
+		}
+		items = append(items, s3_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFileIDsUnderFolder = `-- name: ListFileIDsUnderFolder :many
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT f.id, f.parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
+)
+SELECT f.id FROM files f WHERE f.parent_id IN (SELECT id FROM t)
+`
+
+func (q *Queries) ListFileIDsUnderFolder(ctx context.Context, id int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, listFileIDsUnderFolder, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLogsForOwner = `-- name: ListLogsForOwner :many
 SELECT id, level, message, encrypted_metadata, created_at
 FROM logs
@@ -861,6 +1096,30 @@ func (q *Queries) ListLogsForOwner(ctx context.Context, arg ListLogsForOwnerPara
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUploadChunks = `-- name: ListUploadChunks :many
+SELECT s3_key FROM upload_chunks WHERE upload_id = $1
+`
+
+func (q *Queries) ListUploadChunks(ctx context.Context, uploadID int64) ([]string, error) {
+	rows, err := q.db.Query(ctx, listUploadChunks, uploadID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var s3_key string
+		if err := rows.Scan(&s3_key); err != nil {
+			return nil, err
+		}
+		items = append(items, s3_key)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -917,7 +1176,7 @@ INSERT INTO files (
 VALUES (
     $1, $2, $3, $4, $5
 )
-RETURNING id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at, deleted_at
+RETURNING id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at
 `
 
 type NewFileParams struct {
@@ -947,7 +1206,6 @@ func (q *Queries) NewFile(ctx context.Context, arg NewFileParams) (File, error) 
 		&i.ChunkSize,
 		&i.Size,
 		&i.CreatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -1248,6 +1506,44 @@ func (q *Queries) SetRootFolder(ctx context.Context, arg SetRootFolderParams) er
 	return err
 }
 
+const traverseChunks = `-- name: TraverseChunks :many
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT f.id, f.parent_id
+        FROM folders f 
+        WHERE f.id = $1
+    UNION
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
+)
+SELECT ch.s3_key
+FROM files f
+INNER JOIN file_chunks ch ON f.id = ch.file_id
+WHERE f.id IN (
+    SELECT id FROM t
+)
+`
+
+func (q *Queries) TraverseChunks(ctx context.Context, id int64) ([]string, error) {
+	rows, err := q.db.Query(ctx, traverseChunks, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var s3_key string
+		if err := rows.Scan(&s3_key); err != nil {
+			return nil, err
+		}
+		items = append(items, s3_key)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const traverseFiles = `-- name: TraverseFiles :many
 WITH RECURSIVE t(id, parent_id) AS (
         SELECT f.id, f.parent_id
@@ -1258,7 +1554,7 @@ WITH RECURSIVE t(id, parent_id) AS (
         FROM folders f
         JOIN t cur ON f.parent_id = cur.id
 )
-SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at, deleted_at
+SELECT id, owner_id, encrypted_metadata, encrypted_key, parent_id, chunks, chunk_size, size, created_at
 FROM files
 WHERE id IN (
     SELECT id FROM t
@@ -1284,7 +1580,6 @@ func (q *Queries) TraverseFiles(ctx context.Context, id int64) ([]File, error) {
 			&i.ChunkSize,
 			&i.Size,
 			&i.CreatedAt,
-			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}

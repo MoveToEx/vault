@@ -63,7 +63,7 @@ WHERE id = $1;
 
 -- name: GetUsedCapacity :one
 SELECT COALESCE(SUM(size), 0)::BIGINT FROM files
-WHERE owner_id = $1 AND deleted_at ISNULL;
+WHERE owner_id = $1;
 
 -- name: NewUpload :one
 INSERT INTO uploads (
@@ -122,6 +122,10 @@ WHERE upload_id = $2 AND completed = TRUE;
 SELECT * FROM upload_chunks
 WHERE upload_id = $1 AND chunk_index = $2;
 
+-- name: GetUploadChunks :many
+SELECT * FROM upload_chunks
+WHERE upload_id = $1;
+
 -- name: NewFolder :one
 INSERT INTO folders(encrypted_metadata, parent_id, owner_id)
 VALUES ($1, $2, $3)
@@ -134,7 +138,7 @@ WHERE id = $2;
 
 -- name: GetFiles :many
 SELECT * FROM files f
-WHERE parent_id = $1 AND deleted_at ISNULL;
+WHERE parent_id = $1;
 
 -- name: GetFolder :one
 SELECT * FROM folders
@@ -158,10 +162,57 @@ SELECT c.* FROM file_chunks c
 JOIN files f ON c.file_id = f.id
 WHERE f.owner_id = $1 AND f.id = @file_id;
 
+-- name: GetFileS3Keys :many
+SELECT s3_key FROM file_chunks
+WHERE file_id = $1;
+
 -- name: DeleteFile :exec
-UPDATE files
-SET deleted_at = NOW()
-WHERE id = $1;
+DELETE FROM files
+WHERE id = $1 AND owner_id = $2;
+
+-- name: ListFileChunk :many
+SELECT s3_key FROM file_chunks WHERE file_id = $1;
+
+-- name: ListFileIDsUnderFolder :many
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT f.id, f.parent_id
+        FROM folders f
+        WHERE f.id = $1
+    UNION
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
+)
+SELECT f.id FROM files f WHERE f.parent_id IN (SELECT id FROM t);
+
+-- name: ListUploadChunks :many
+SELECT s3_key FROM upload_chunks WHERE upload_id = $1;
+
+-- name: ListExpiredIncompleteUploadIDs :many
+SELECT id FROM uploads
+WHERE completed_at IS NULL AND expires_at <= NOW()
+ORDER BY expires_at ASC
+LIMIT 500;
+
+-- name: GetExpiredUploads :many
+SELECT * FROM uploads
+WHERE completed_at ISNULL AND expires_at <= NOW()
+ORDER BY expires_at ASC
+LIMIT 500;
+
+-- name: GetIncompleteExpiredUpload :one
+SELECT * FROM uploads
+WHERE id = $1 AND completed_at IS NULL AND expires_at <= NOW();
+
+-- name: DeleteUploadChunk :exec
+DELETE FROM upload_chunks WHERE upload_id = $1 AND chunk_index = $2;
+
+-- name: DeleteUploadChunks :exec
+DELETE FROM upload_chunks WHERE upload_id = $1;
+
+-- name: DeleteIncompleteUpload :exec
+DELETE FROM uploads
+WHERE id = $1 AND completed_at IS NULL;
 
 
 -- name: InsertLog :exec
@@ -207,6 +258,24 @@ FROM files
 WHERE id IN (
     SELECT id FROM t
 );
+
+-- name: TraverseChunks :many
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT f.id, f.parent_id
+        FROM folders f 
+        WHERE f.id = $1
+    UNION
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.parent_id = cur.id
+)
+SELECT ch.s3_key
+FROM files f
+INNER JOIN file_chunks ch ON f.id = ch.file_id
+WHERE f.id IN (
+    SELECT id FROM t
+);
+
 
 -- name: GetFolderDepth :one
 WITH RECURSIVE t(id, parent_id) AS (

@@ -65,7 +65,6 @@ type File struct {
 	ChunkSize         int64              `json:"chunkSize"`
 	Size              int64              `json:"size"`
 	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
-	DeletedAt         pgtype.Timestamptz `json:"deletedAt"`
 }
 
 type FileChunk struct {
