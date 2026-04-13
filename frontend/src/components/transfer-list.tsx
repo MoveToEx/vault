@@ -58,7 +58,7 @@ function Content() {
         )}
         {items.map((it) => (
           <div
-            className="hover:bg-accent rounded-md pt-2 pb-4 px-4"
+            className="hover:bg-accent rounded-md pt-2 pb-4 md:px-4 px-2"
             key={it.id}
           >
             <div className="h-12 w-full flex flex-row gap-4">
@@ -70,21 +70,23 @@ function Content() {
               </div>
               <Progress
                 value={(it.sent / it.size) * 100}
-                className="flex-1"
+                className="min-w-0 shrink flex-1"
               >
-                <ProgressLabel className="flex flex-row items-center justify-start gap-2">
+                <ProgressLabel className="w-full flex flex-row items-center justify-start gap-2">
                   {it.kind === "download" && (
-                    <DownloadCloudIcon className="inline" size={16} />
+                    <DownloadCloudIcon className="inline shrink-0" size={16} />
                   )}
                   {it.kind === "upload" && (
-                    <UploadIcon className="inline" size={16} />
+                    <UploadIcon className="inline shrink-0" size={16} />
                   )}
                   {it.kind === "download-share" && (
-                    <Share2 className="inline" size={16} />
+                    <Share2 className="inline shrink-0" size={16} />
                   )}
-                  {it.filename}
+                  <span className='min-w-0 shrink overflow-hidden truncate'>
+                    {it.filename}
+                  </span>
+                  <ProgressValue className='shrink-0' />
                 </ProgressLabel>
-                <ProgressValue />
               </Progress>
             </div>
 
@@ -146,7 +148,7 @@ export default function TransferList() {
         <Drawer.Backdrop className="z-20 [--backdrop-opacity:0.2] [--bleed:3rem] dark:[--backdrop-opacity:0.7] fixed inset-0 min-h-dvh bg-black opacity-[calc(var(--backdrop-opacity)*(1-var(--drawer-swipe-progress)))] transition-opacity duration-450 ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:duration-0 data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] supports-[-webkit-touch-callout:none]:absolute" />
         <Drawer.Viewport className="z-30 fixed inset-0 flex flex-col justify-end md:justify-center md:items-end">
           <Drawer.Popup className={
-            "md:-mr-8 md:pl-8 md:pr-16 md:h-full md:w-[calc(60vw+3rem)] bg-background px-6 pt-4 " +
+            "md:-mr-8 md:pl-8 md:pr-16 md:h-full md:w-[calc(60vw+3rem)] bg-background md:px-6 px-2 pt-4 " +
             "max-sm:-mb-8 my-0 w-full h-[calc(80vh+3rem)] " +
             "text-foreground overflow-y-auto overscroll-contain touch-auto " +
             "transform-[translateY(var(--drawer-swipe-movement-y))] md:transform-[translateX(var(--drawer-swipe-movement-x))] " +

@@ -61,7 +61,7 @@ export default function UploadDialog() {
         <DialogHeader>
           <DialogTitle>{t("common.uploadDialogTitle")}</DialogTitle>
         </DialogHeader>
-        <Field>
+        <Field className='min-w-0 w-full'>
           {file === null && (
             <DragDrop
               onChange={(f) => {
@@ -74,7 +74,9 @@ export default function UploadDialog() {
             <div className='flex flex-col gap-2'>
               <div className='flex flex-row gap-2 items-center'>
                 <FileIcon size={16} />
-                {file.name}
+                <span className='min-w-0 shrink truncate'>
+                  {file.name}
+                </span>
               </div>
             </div>
           )}
