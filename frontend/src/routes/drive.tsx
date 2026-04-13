@@ -33,19 +33,19 @@ import { useTranslation } from "react-i18next";
 
 type Item =
   | {
-      type: "file";
-      name: string;
-      mime: string;
-      size: number;
-      id: number;
-      createdAt: Date;
-    }
+    type: "file";
+    name: string;
+    mime: string;
+    size: number;
+    id: number;
+    createdAt: Date;
+  }
   | {
-      type: "folder";
-      name: string;
-      id: number;
-      createdAt: Date;
-    };
+    type: "folder";
+    name: string;
+    id: number;
+    createdAt: Date;
+  };
 
 const fileMenuHandle = Menu.createHandle<{
   type: "folder" | "file";
@@ -101,7 +101,7 @@ function FileList() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-32">{t("drive.name")}</TableHead>
+            <TableHead className="w-lg">{t("drive.name")}</TableHead>
             <TableHead>{t("drive.createdAt")}</TableHead>
             <TableHead>{t("drive.size")}</TableHead>
             <TableHead>{t("drive.actions")}</TableHead>
@@ -140,7 +140,9 @@ function FileList() {
                   <Folder size={16} className="inline mx-2" />
                 )}
                 {val.type === "file" && getIcon(val.name)}
-                {val.name}
+                <span className='lg:text-wrap lg:wrap-anywhere'>
+                  {val.name}
+                </span>
               </TableCell>
               <TableCell className="text-secondary-foreground">
                 {val.createdAt.toLocaleString()}
@@ -229,7 +231,7 @@ export default function DrivePage() {
   return (
     <div className="flex flex-col h-full">
       <RequireKeys />
-      
+
       <div className="flex flex-row justify-start items-center gap-4 mb-4">
         <UploadDialog />
         <NewFolderDialog />
