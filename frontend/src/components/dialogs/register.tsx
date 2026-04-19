@@ -39,7 +39,6 @@ import sodium from "libsodium-wrappers-sumo";
 import { mutate } from "@/lib/swr";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleRegisterDialog } from "@/stores/ui";
-import usePublicSiteConfig from "@/hooks/use-public-site-config";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 
@@ -74,8 +73,6 @@ export default function RegisterDialog() {
   const [loading, setLoading] = useState(false);
   const [showKDF, setShowKDF] = useState(false);
 
-  const { data: conf } = usePublicSiteConfig(open);
-
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -87,7 +84,7 @@ export default function RegisterDialog() {
       kdfTimeCost: 3,
       kdfParallelism: 1,
     },
-    disabled: loading || !conf?.registrationOpen,
+    disabled: loading,
   });
 
   const onSubmit = async (data: z.infer<typeof registerSchema>) => {
@@ -203,12 +200,6 @@ export default function RegisterDialog() {
           </DialogTitle>
         </DialogHeader>
 
-        {!conf?.registrationOpen && (
-          <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/5 p-3">
-            {t("common.registrationsDisabled")}
-          </p>
-        )}
-
         <form
           onSubmit={(e) => {
             e.stopPropagation();
@@ -300,6 +291,10 @@ export default function RegisterDialog() {
               )}
             />
           </FieldGroup>
+
+          {form.formState.errors.root && (
+            <FieldError errors={[form.formState.errors.root]} />
+          )}
 
           <div className="w-full flex flex-row justify-end items-center">
             <Button

@@ -104,6 +104,18 @@ func RegisterFinish(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
+	siteCfg, err := db.Query().GetSiteConfig(ctx)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when reading site configuration")
+		return
+	}
+
+	if !siteCfg.RegistrationOpen {
+		utils.ErrorResponse(c, 403, "Registration is closed")
+		return
+	}
+
 	credID, err := config.Redis().GetDel(ctx, "reg/cred_id:"+payload.Username).Bytes()
 
 	if err != nil {
@@ -117,13 +129,6 @@ func RegisterFinish(c *gin.Context) {
 
 	if err != nil {
 		utils.ErrorResponse(c, 400, "Invalid record")
-		return
-	}
-
-	siteCfg, err := db.Query().GetSiteConfig(ctx)
-
-	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when reading site configuration")
 		return
 	}
 

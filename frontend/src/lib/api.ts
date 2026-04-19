@@ -1,7 +1,5 @@
-import axios, { type AxiosResponse } from "axios";
+import { type AxiosResponse } from "axios";
 import instance from "./axios";
-
-const BASE_URL = import.meta.env.VITE_BASE_URL ?? "http://localhost:8000/";
 import { from_base64, to_base64 } from "libsodium-wrappers-sumo";
 import type { KDFParameters, Wrapped } from "./types";
 
@@ -104,13 +102,6 @@ type GetShareResposne = {
 };
 
 const api = {
-  async getPublicSiteConfig() {
-    const response = await axios.get<Wrapped<{ registrationOpen: boolean }>>(
-      `${BASE_URL}public/site-config`,
-    );
-    return response.data.data;
-  },
-
   async deleteFile(id: number) {
     await instance.delete(`/files/${id}`);
   },

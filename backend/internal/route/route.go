@@ -10,8 +10,6 @@ import (
 func SetupRoutes(r *gin.Engine) {
 	public := r.Group("/")
 
-	public.GET("/public/site-config", handler.GetPublicSiteConfig)
-
 	{
 		auth := public.Group("/auth")
 		auth.Use(middleware.RateLimitMiddleware())
