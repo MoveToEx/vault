@@ -272,5 +272,9 @@
       "admin_user_capacity": "Changed user storage capacity (admin)",
       "admin_user_active": "Changed user active status (admin)"
     }
+  },
+  "dragDrop": {
+    "dropPrompt": "Drop files here or ",
+    "browse": "browse"
   }
 }

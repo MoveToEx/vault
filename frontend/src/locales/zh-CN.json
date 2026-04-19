@@ -272,5 +272,9 @@
       "admin_user_capacity": "更改用户存储容量（管理员）",
       "admin_user_active": "更改用户启用状态（管理员）"
     }
+  },
+  "dragDrop": {
+    "dropPrompt": "将文件拖放到此处，或",
+    "browse": "浏览文件"
   }
 }
