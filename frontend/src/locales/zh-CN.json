@@ -206,7 +206,12 @@
     "usernameMax32": "用户名最多 32 个字符",
     "usernameAlphanumeric": "仅允许字母与数字",
     "passwordMin8": "密码至少 8 个字符",
-    "passwordMax128": "密码最多 128 个字符"
+    "passwordMax128": "密码最多 128 个字符",
+    "move": "移动",
+    "moveTitle": "移动 \"{{name}}\"",
+    "moveHere": "移动到此处",
+    "moved": "已移动",
+    "noSubfolders": "没有子文件夹"
   },
   "theme": {
     "toggle": "切换主题",
@@ -268,6 +273,8 @@
       "share_download_chunk": "下载分享分块",
       "share_revoke": "撤销分享",
       "user_profile_lookup": "查看用户资料",
+      "move_file": "移动文件",
+      "move_folder": "移动文件夹",
       "admin_site_config_update": "更新站点配置（管理员）",
       "admin_user_capacity": "更改用户存储容量（管理员）",
       "admin_user_active": "更改用户启用状态（管理员）"

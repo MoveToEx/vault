@@ -77,8 +77,7 @@ CREATE TABLE IF NOT EXISTS folders (
 
     parent_id BIGINT REFERENCES folders(id),
     owner_id BIGINT NOT NULL REFERENCES users(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS logs (

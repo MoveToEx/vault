@@ -422,6 +422,150 @@ func DeleteFile(c *gin.Context) {
 	utils.SuccessResponse(c, nil)
 }
 
+type MoveFilePayload struct {
+	DestinationFolderID int64 `json:"destinationFolderId"`
+}
+
+func MoveFile(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	fileID, err := strconv.ParseInt(c.Param("file_id"), 10, 64)
+	if err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	var payload MoveFilePayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	file, err := db.Query().GetFile(ctx, fileID)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting file")
+		return
+	}
+	if file.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
+
+	dest, err := db.Query().GetFolder(ctx, payload.DestinationFolderID)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting destination folder")
+		return
+	}
+	if dest.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
+
+	if err := db.Query().MoveFile(ctx, sqlc.MoveFileParams{
+		ID:       fileID,
+		ParentID: dest.ID,
+	}); err != nil {
+		utils.ErrorResponse(c, 500, "Failed when moving file")
+		return
+	}
+
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":     "move_file",
+		"fileId":     fileID,
+		"destFolder": dest.ID,
+	}, file.EncryptedMetadata)
+
+	utils.SuccessResponse(c, nil)
+}
+
+type MoveFolderPayload struct {
+	DestinationFolderID int64 `json:"destinationFolderId"`
+}
+
+func MoveFolder(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	folderID, err := strconv.ParseInt(c.Param("folder_id"), 10, 64)
+	if err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	var payload MoveFolderPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	folder, err := db.Query().GetFolder(ctx, folderID)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting folder")
+		return
+	}
+	if folder.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
+
+	if payload.DestinationFolderID == folderID {
+		utils.ErrorResponse(c, 400, "Cannot move a folder into itself")
+		return
+	}
+
+	dest, err := db.Query().GetFolder(ctx, payload.DestinationFolderID)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting destination folder")
+		return
+	}
+	if dest.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Ownership mismatch")
+		return
+	}
+
+	isDescendant, err := db.Query().IsFolderDescendant(ctx, sqlc.IsFolderDescendantParams{
+		LeftID:  dest.ID,
+		RightID: folderID,
+	})
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when checking folder ancestry")
+		return
+	}
+	if isDescendant {
+		utils.ErrorResponse(c, 400, "Cannot move a folder into its own subtree")
+		return
+	}
+
+	depth, err := db.Query().GetFolderDepth(ctx, dest.ID)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when calculating folder depth")
+		return
+	}
+	if depth > 32 {
+		utils.ErrorResponse(c, 400, "Destination folder is too deep")
+		return
+	}
+
+	if err := db.Query().MoveFolder(ctx, sqlc.MoveFolderParams{
+		ID:       folderID,
+		ParentID: pgtype.Int8{Valid: true, Int64: dest.ID},
+	}); err != nil {
+		utils.ErrorResponse(c, 500, "Failed when moving folder")
+		return
+	}
+
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":     "move_folder",
+		"folderId":   folderID,
+		"destFolder": dest.ID,
+	}, folder.EncryptedMetadata)
+
+	utils.SuccessResponse(c, nil)
+}
+
 type NewFolderPayload struct {
 	ParentID          int64       `json:"parentId"`
 	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`

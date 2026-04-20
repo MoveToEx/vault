@@ -219,6 +219,30 @@ WHERE f.id IN (
     SELECT id FROM t
 );
 
+-- name: IsFolderDescendant :one
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT f.id, f.parent_id
+        FROM folders f 
+        WHERE f.id = @left_id
+    UNION
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.id = cur.parent_id
+)
+SELECT EXISTS (
+	SELECT 1 FROM t
+    WHERE t.id = @right_id::BIGINT
+);
+
+-- name: MoveFile :exec
+UPDATE files
+SET parent_id = $2
+WHERE id = $1;
+
+-- name: MoveFolder :exec
+UPDATE folders
+SET parent_id = $2
+WHERE id = $1;
 
 -- name: GetFolderDepth :one
 WITH RECURSIVE t(id, parent_id) AS (

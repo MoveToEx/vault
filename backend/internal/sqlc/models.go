@@ -79,7 +79,6 @@ type Folder struct {
 	ParentID          pgtype.Int8        `json:"parentId"`
 	OwnerID           int64              `json:"ownerId"`
 	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
-	DeletedAt         pgtype.Timestamptz `json:"deletedAt"`
 }
 
 type Log struct {

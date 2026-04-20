@@ -43,12 +43,14 @@ func SetupRoutes(r *gin.Engine) {
 		protected.POST("/folder", handler.NewFolder)
 		protected.PUT("/folder/:folder_id", handler.UpdateFolder)
 		protected.DELETE("/folder/:folder_id", handler.DeleteFolder)
+		protected.PATCH("/folder/:folder_id/move", handler.MoveFolder)
 
 		protected.GET("/files", handler.GetFiles)
 		protected.GET("/files/:file_id", handler.GetFile)
 		protected.GET("/files/:file_id/:chunk_index", handler.GetChunk)
 		protected.POST("/files/:file_id", handler.UpdateFile)
 		protected.DELETE("/files/:file_id", handler.DeleteFile)
+		protected.PATCH("/files/:file_id/move", handler.MoveFile)
 
 		protected.GET("/share/lookup", handler.FindUser)
 		protected.POST("/share", handler.CreateShare)

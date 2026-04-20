@@ -121,6 +121,14 @@ const api = {
     });
   },
 
+  async moveFile(id: number, destinationFolderId: number) {
+    await instance.patch(`/files/${id}/move`, { destinationFolderId });
+  },
+
+  async moveFolder(id: number, destinationFolderId: number) {
+    await instance.patch(`/folder/${id}/move`, { destinationFolderId });
+  },
+
   async newFolder(parent: number, metadata: Uint8Array) {
     await instance.post("/folder", {
       parentId: parent,

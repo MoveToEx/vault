@@ -1,4 +1,4 @@
-import { Pencil, Share2, Trash } from "lucide-react";
+import { FolderInput, Pencil, Share2, Trash } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +25,7 @@ import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
 import NewShareDialog from "./dialogs/new-share";
 import RenameDialog, { type RenameDialogPayload } from "./dialogs/rename";
+import MoveDialog, { type MoveDialogPayload } from "./dialogs/move";
 import type { Metadata } from "@/lib/types";
 import { useTranslation } from "react-i18next";
 
@@ -41,6 +42,7 @@ type DeletePayload = {
 const deleteHandle = BaseAlertDialog.createHandle<DeletePayload>();
 const shareHandle = BaseDialog.createHandle<{ id: number; name: string }>();
 const renameHandle = BaseDialog.createHandle<RenameDialogPayload>();
+const moveHandle = BaseDialog.createHandle<MoveDialogPayload>();
 
 function DeleteDialog({
   handle,
@@ -106,6 +108,7 @@ export default function FilePopupMenu({
       <DeleteDialog handle={deleteHandle} />
       <NewShareDialog handle={shareHandle} />
       <RenameDialog handle={renameHandle} />
+      <MoveDialog handle={moveHandle} />
 
       <DropdownMenu<Payload> handle={handle}>
         {({ payload }) => (
@@ -130,6 +133,15 @@ export default function FilePopupMenu({
               >
                 <Pencil />
                 {t("common.rename")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!payload) return;
+                  moveHandle.openWithPayload(payload);
+                }}
+              >
+                <FolderInput />
+                {t("common.move")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {

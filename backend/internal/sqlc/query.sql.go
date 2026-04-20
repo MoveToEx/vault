@@ -546,7 +546,7 @@ func (q *Queries) GetFiles(ctx context.Context, parentID int64) ([]File, error) 
 }
 
 const getFolder = `-- name: GetFolder :one
-SELECT id, encrypted_metadata, parent_id, owner_id, created_at, deleted_at FROM folders
+SELECT id, encrypted_metadata, parent_id, owner_id, created_at FROM folders
 WHERE id = $1 AND deleted_at ISNULL
 `
 
@@ -559,7 +559,6 @@ func (q *Queries) GetFolder(ctx context.Context, id int64) (Folder, error) {
 		&i.ParentID,
 		&i.OwnerID,
 		&i.CreatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }
@@ -846,7 +845,7 @@ func (q *Queries) GetSiteConfig(ctx context.Context) (SiteConfig, error) {
 }
 
 const getSubfolders = `-- name: GetSubfolders :many
-SELECT id, encrypted_metadata, parent_id, owner_id, created_at, deleted_at FROM folders
+SELECT id, encrypted_metadata, parent_id, owner_id, created_at FROM folders
 WHERE parent_id = $1 AND deleted_at ISNULL
 `
 
@@ -865,7 +864,6 @@ func (q *Queries) GetSubfolders(ctx context.Context, parentID pgtype.Int8) ([]Fo
 			&i.ParentID,
 			&i.OwnerID,
 			&i.CreatedAt,
-			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1106,6 +1104,34 @@ WHERE id = $1
 func (q *Queries) InvalidateShare(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, invalidateShare, id)
 	return err
+}
+
+const isFolderDescendant = `-- name: IsFolderDescendant :one
+WITH RECURSIVE t(id, parent_id) AS (
+        SELECT f.id, f.parent_id
+        FROM folders f 
+        WHERE f.id = $2
+    UNION
+        SELECT f.id, f.parent_id
+        FROM folders f
+        JOIN t cur ON f.id = cur.parent_id
+)
+SELECT EXISTS (
+	SELECT 1 FROM t
+    WHERE t.id = $1::BIGINT
+)
+`
+
+type IsFolderDescendantParams struct {
+	RightID int64 `json:"rightId"`
+	LeftID  int64 `json:"leftId"`
+}
+
+func (q *Queries) IsFolderDescendant(ctx context.Context, arg IsFolderDescendantParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isFolderDescendant, arg.RightID, arg.LeftID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const listIncompleteUploadIDsByUser = `-- name: ListIncompleteUploadIDsByUser :many
@@ -1351,6 +1377,38 @@ func (q *Queries) MigrateUpload(ctx context.Context, arg MigrateUploadParams) (i
 	return id, err
 }
 
+const moveFile = `-- name: MoveFile :exec
+UPDATE files
+SET parent_id = $2
+WHERE id = $1
+`
+
+type MoveFileParams struct {
+	ID       int64 `json:"id"`
+	ParentID int64 `json:"parentId"`
+}
+
+func (q *Queries) MoveFile(ctx context.Context, arg MoveFileParams) error {
+	_, err := q.db.Exec(ctx, moveFile, arg.ID, arg.ParentID)
+	return err
+}
+
+const moveFolder = `-- name: MoveFolder :exec
+UPDATE folders
+SET parent_id = $2
+WHERE id = $1
+`
+
+type MoveFolderParams struct {
+	ID       int64       `json:"id"`
+	ParentID pgtype.Int8 `json:"parentId"`
+}
+
+func (q *Queries) MoveFolder(ctx context.Context, arg MoveFolderParams) error {
+	_, err := q.db.Exec(ctx, moveFolder, arg.ID, arg.ParentID)
+	return err
+}
+
 const newFile = `-- name: NewFile :one
 INSERT INTO files (
     owner_id, encrypted_metadata, encrypted_key,
@@ -1396,7 +1454,7 @@ func (q *Queries) NewFile(ctx context.Context, arg NewFileParams) (File, error) 
 const newFolder = `-- name: NewFolder :one
 INSERT INTO folders(encrypted_metadata, parent_id, owner_id)
 VALUES ($1, $2, $3)
-RETURNING id, encrypted_metadata, parent_id, owner_id, created_at, deleted_at
+RETURNING id, encrypted_metadata, parent_id, owner_id, created_at
 `
 
 type NewFolderParams struct {
@@ -1414,7 +1472,6 @@ func (q *Queries) NewFolder(ctx context.Context, arg NewFolderParams) (Folder, e
 		&i.ParentID,
 		&i.OwnerID,
 		&i.CreatedAt,
-		&i.DeletedAt,
 	)
 	return i, err
 }

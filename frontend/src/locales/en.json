@@ -206,7 +206,12 @@
     "usernameMax32": "Username must be at most 32 characters",
     "usernameAlphanumeric": "Only letters and digits are allowed",
     "passwordMin8": "Password must be at least 8 characters",
-    "passwordMax128": "Password must be at most 128 characters"
+    "passwordMax128": "Password must be at most 128 characters",
+    "move": "Move",
+    "moveTitle": "Move \"{{name}}\"",
+    "moveHere": "Move here",
+    "moved": "Moved",
+    "noSubfolders": "No subfolders"
   },
   "theme": {
     "toggle": "Toggle theme",
@@ -268,6 +273,8 @@
       "share_download_chunk": "Downloaded shared chunk",
       "share_revoke": "Revoked share",
       "user_profile_lookup": "Viewed user profile",
+      "move_file": "Moved file",
+      "move_folder": "Moved folder",
       "admin_site_config_update": "Updated site configuration (admin)",
       "admin_user_capacity": "Changed user storage capacity (admin)",
       "admin_user_active": "Changed user active status (admin)"
