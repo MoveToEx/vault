@@ -1,0 +1,54 @@
+services:
+  pg:
+    image: postgres:18.3-alpine3.23
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=vault
+      - TZ=Asia/Shanghai
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d vault"]
+      interval: 1s
+      timeout: 30s
+      retries: 30
+      start_period: 1s
+  redis:
+    image: redis:8.6.1-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 30s
+      retries: 30
+      start_period: 1s
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      pg:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://user:password@pg/vault
+      - REDIS_ADDR=redis:6379
+      - GIN_MODE=release
+    env_file: .env
+    
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        API_BASE: ${API_BASE}
+    ports:
+      - "5173:80"
+    environment:
+      - NODE_ENV=PRODUCTION
+
+volumes:
+  pgdata:
