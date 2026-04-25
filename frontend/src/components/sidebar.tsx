@@ -193,7 +193,7 @@ function SidebarItem({
     <SidebarMenuItem>
       <SidebarMenuButton
         className={
-          sameOrigin && window.location.hash === target.hash ? "bg-accent" : ""
+          sameOrigin && window.location.pathname === target.pathname ? "bg-accent" : ""
         }
         render={
           <Link to={url} target={sameOrigin ? "_self" : "_blank"}>
