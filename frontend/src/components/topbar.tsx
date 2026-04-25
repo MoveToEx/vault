@@ -3,6 +3,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import TransferList from "./transfer-list";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 
 export default function AppTopBar() {
   const { t } = useTranslation();
@@ -10,9 +11,9 @@ export default function AppTopBar() {
   return (
     <div className="w-full border-b border-gray-250 h-12 flex flex-row items-center px-4 gap-2">
       <SidebarTrigger />
-      <a className="text-lg flex items-center ml-2" href="/#/">
+      <Link className="text-lg flex items-center ml-2" to="/">
         {t("common.appName")}
-      </a>
+      </Link>
       <div className="flex-1" />
       <LanguageSwitcher />
       <ModeToggle />

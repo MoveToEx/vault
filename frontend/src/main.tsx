@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./i18n";
 import "./global.css";
-import { createHashRouter, RouterProvider } from "react-router";
+import { createBrowserRouter, RouterProvider } from "react-router";
 import HomePage from "./routes/index.tsx";
 import DrivePage from "./routes/drive.tsx";
 import Layout from "./layout.tsx";
@@ -14,7 +14,7 @@ import AdminSiteConfigPage from "./routes/admin-config.tsx";
 import AdminUsersPage from "./routes/admin-users.tsx";
 import UserSettingsPage from "./routes/user-settings.tsx";
 
-const router = createHashRouter([
+const router = createBrowserRouter([
   {
     path: "/",
     Component: Layout,

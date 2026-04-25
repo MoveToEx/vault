@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import useAuth from "@/hooks/use-auth";
 import { Spinner } from "@/components/ui/spinner";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { useAppDispatch } from "@/stores";
 import { reset as resetKeys } from "@/stores/key";
 import { toggleLoginDialog } from "@/stores/ui";
@@ -45,29 +45,32 @@ import { useTranslation } from "react-i18next";
 const navDefs = [
   {
     titleKey: "nav.home" as const,
-    url: "/#/",
+    url: "/",
     icon: Home,
   },
+];
+
+const userNavDefs = [
   {
     titleKey: "nav.drive" as const,
-    url: "/#/drive",
+    url: "/drive",
     icon: FolderOpen,
   },
   {
     titleKey: "nav.audit" as const,
-    url: "/#/audit",
+    url: "/audit",
     icon: Logs,
   },
   {
     titleKey: "nav.share" as const,
-    url: "/#/share",
+    url: "/share",
     icon: Share2,
   },
-];
+]
 
 const adminNavDef = {
   titleKey: "nav.admin" as const,
-  url: "/#/admin",
+  url: "/admin",
   icon: Shield,
 };
 
@@ -193,13 +196,13 @@ function SidebarItem({
           sameOrigin && window.location.hash === target.hash ? "bg-accent" : ""
         }
         render={
-          <a href={url} target={sameOrigin ? "_self" : "_blank"}>
+          <Link to={url} target={sameOrigin ? "_self" : "_blank"}>
             <Icon />
             <span>{title}</span>
             {!sameOrigin && (
               <ExternalLink className="text-muted-foreground max-w-3 max-h-3" />
             )}
-          </a>
+          </Link>
         }
       />
     </SidebarMenuItem>
@@ -223,6 +226,16 @@ export default function AppSidebar() {
                 key={titleKey}
               />
             ))}
+            {authUser && (
+              userNavDefs.map(({ url, icon, titleKey }) => (
+                <SidebarItem
+                  url={url}
+                  title={t(titleKey)}
+                  Icon={icon}
+                  key={titleKey}
+                />
+              ))
+            )}
             {authUser && authUser.permission === PERMISSION_ADMIN && (
               <SidebarItem
                 url={adminNavDef.url}
