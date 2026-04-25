@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import type { Wrapped } from "./types";
 
-const BASE_URL = import.meta.env.VITE_BASE_URL ?? "http://localhost:8000/";
+const BASE_URL = import.meta.env.VITE_API_BASE;
 
 type RefreshResponse = Wrapped<{
   token: string;

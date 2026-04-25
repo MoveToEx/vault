@@ -139,9 +139,9 @@ class TransferBridge {
         }
         case "get-file-chunk": {
           const { fileId, chunkIndex, $id } = message;
-          const { url } = await api.getChunk(fileId, chunkIndex);
+          const { url, headers } = await api.getChunk(fileId, chunkIndex);
 
-          this.post({ type: "get-file-chunk", url, $id });
+          this.post({ type: "get-file-chunk", url, headers, $id });
 
           break;
         }
