@@ -13,11 +13,13 @@ FROM deps AS builder
 
 WORKDIR /app
 
-COPY . .
 COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
-ARG API_BASE
-ENV API_BASE ${API_BASE}
+ARG VITE_APP_BASE
+ARG VITE_API_BASE
+ENV VITE_APP_BASE=${VITE_APP_BASE}
+ENV VITE_API_BASE=${VITE_API_BASE}
 
 RUN yarn build
 
