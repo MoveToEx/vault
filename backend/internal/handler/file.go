@@ -187,7 +187,6 @@ func GetFile(c *gin.Context) {
 type GetChunkResponse struct {
 	URL     string              `json:"url"`
 	Headers map[string][]string `json:"headers"`
-	Size    int64               `json:"size"`
 }
 
 func GetChunk(c *gin.Context) {
@@ -209,8 +208,19 @@ func GetChunk(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
+	file, err := db.Query().GetFile(ctx, fileID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting file")
+		return
+	}
+
+	if file.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Forbidden")
+		return
+	}
+
 	chunk, err := db.Query().GetChunk(ctx, sqlc.GetChunkParams{
-		OwnerID:    userID,
 		ChunkIndex: int32(chunkIndex),
 		FileID:     fileID,
 	})
@@ -232,21 +242,11 @@ func GetChunk(c *gin.Context) {
 		return
 	}
 
-	fileRow, err := db.Query().GetFile(ctx, fileID)
-	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting file")
-		return
-	}
-	if fileRow.OwnerID != userID {
-		utils.ErrorResponse(c, 403, "Ownership mismatch")
-		return
-	}
-
 	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action":     "get_file_chunk",
 		"fileId":     fileID,
 		"chunkIndex": chunkIndex,
-	}, fileRow.EncryptedMetadata)
+	}, file.EncryptedMetadata)
 
 	utils.SuccessResponse(c, GetChunkResponse{
 		URL:     req.URL,

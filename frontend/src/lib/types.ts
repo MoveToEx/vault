@@ -96,6 +96,12 @@ export type TransferCommand =
     privateKey: Uint8Array;
   }
   | {
+    type: 'enqueue-download-public-share';
+    key: string;
+    publicKey: Uint8Array;
+    privateKey: Uint8Array;
+  }
+  | {
     type: "pause-transfer";
     transferId: string;
   }
@@ -145,6 +151,15 @@ export type WorkerRequest = (
     type: "get-file-chunk";
     fileId: number;
     chunkIndex: number;
+  }
+  | {
+    type: 'get-public-share',
+    key: string,
+  }
+  | {
+    type: 'resolve-public-share-chunk',
+    key: string,
+    index: number,
   }
   | {
     type: "get-share";
@@ -203,7 +218,20 @@ export type WorkerResponse = (
     type: "get-share-chunk";
     url: string;
     headers: Record<string, string[]>
-
+  }
+  | {
+    type: 'get-public-share',
+    chunks: number;
+    chunkSize: number;
+    size: number;
+    owner: string;
+    encryptedKey: Uint8Array;
+    encryptedMetadata: Uint8Array;
+  }
+  | {
+    type: 'resolve-public-share-chunk',
+    url: string;
+    headers: Record<string, string[]>
   }
   | {
     type: "get-file-chunk";

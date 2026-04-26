@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatSize, getIcon } from "@/lib/utils";
+import { formatSize } from "@/lib/utils";
 import RequireKeys from "@/components/require-umk";
 import { pop, popUntil, push, reset } from "@/stores/path";
 import {
@@ -30,6 +30,7 @@ import { toggleTransferList } from "@/stores/ui";
 import { Menu } from "@base-ui/react";
 import FilePopupMenu from "@/components/file-popup-menu";
 import { useTranslation } from "react-i18next";
+import ExtIcon from "@/components/icon";
 
 type Item =
   | {
@@ -139,7 +140,9 @@ function FileList() {
                 {val.type === "folder" && (
                   <Folder size={16} className="inline mx-2" />
                 )}
-                {val.type === "file" && getIcon(val.name)}
+                {val.type === "file" && (
+                  <ExtIcon filename={val.name} size={16} className='inline mx-2' />
+                )}
                 <span className='lg:text-wrap lg:wrap-anywhere'>
                   {val.name}
                 </span>

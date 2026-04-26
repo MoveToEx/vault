@@ -16,12 +16,12 @@ import { AxiosError } from "axios";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-type Payload = {
-  id: number;
+export type Payload = {
+  key: string;
   filename: string;
 };
 
-export default function RevokeShareDialog({
+export default function RevokePublicShareDialog({
   handle,
 }: {
   handle: BaseAlertDialog.Handle<Payload>;
@@ -34,13 +34,23 @@ export default function RevokeShareDialog({
         const [loading, setLoading] = useState(false);
         const [error, setError] = useState("");
 
+        if (!payload) {
+          return <></>
+        }
+
         return (
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{t("common.confirmRevocation")}</AlertDialogTitle>
               <AlertDialogDescription>
-                <p>{t("common.revokeShareConfirm")}</p>
-                {error.length > 0 && (
+                <p>
+                  {t("common.revokePublicShareMessage", {
+                    key: payload.key,
+                    filename: payload.filename,
+                  })}
+                </p>
+                <p>{t("common.publicShareInvalidatedNote")}</p>
+                {error && (
                   <p className="text-destructive">{error}</p>
                 )}
               </AlertDialogDescription>
@@ -56,9 +66,9 @@ export default function RevokeShareDialog({
                 onClick={async () => {
                   setLoading(true);
                   try {
-                    await api.revokeShare(payload?.id ?? 0);
-                    mutate("share");
-                    toast.success(t("common.shareRevoked"));
+                    await api.revokePublicShare(payload.key);
+                    mutate("public-share");
+                    toast.success(t("common.publicShareRevoked"));
                     handle.close();
                   } catch (e) {
                     if (e instanceof AxiosError) {

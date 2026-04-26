@@ -90,6 +90,17 @@ type Log struct {
 	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
 }
 
+type PublicShare struct {
+	ID                int64              `json:"id"`
+	Key               string             `json:"key"`
+	FileID            int64              `json:"fileId"`
+	OwnerID           int64              `json:"ownerId"`
+	EncryptedKey      []byte             `json:"encryptedKey"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+}
+
 type Session struct {
 	ID           int64              `json:"id"`
 	RefreshToken string             `json:"refreshToken"`

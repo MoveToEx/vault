@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
+
+	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
 type FindUserPayload struct {
@@ -219,11 +221,6 @@ func GetShares(c *gin.Context) {
 	utils.SuccessResponse(c, result)
 }
 
-type GetMySharesPayload struct {
-	Limit  int64 `form:"limit"`
-	Offset int64 `form:"offset"`
-}
-
 type GetMySharesResponse struct {
 	ID                int64       `json:"id"`
 	SenderID          int64       `json:"senderId"`
@@ -239,17 +236,12 @@ func GetMyShares(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	var payload GetMySharesPayload
-
-	if err := c.ShouldBindQuery(&payload); err != nil {
-		utils.ErrorResponse(c, 400, "Invalid request")
-		return
-	}
+	offset, limit := utils.Pagination(c)
 
 	shares, err := db.Query().GetSharesBySender(ctx, sqlc.GetSharesBySenderParams{
 		SenderID: userID,
-		Limit:    int32(payload.Limit),
-		Offset:   int32(payload.Offset),
+		Limit:    limit,
+		Offset:   offset,
 	})
 
 	if err != nil {
@@ -273,8 +265,8 @@ func GetMyShares(c *gin.Context) {
 
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "share_outgoing_list",
-		"limit":  payload.Limit,
-		"offset": payload.Offset,
+		"limit":  limit,
+		"offset": offset,
 	}, nil)
 
 	utils.SuccessResponse(c, result)
@@ -440,6 +432,246 @@ func DeleteShare(c *gin.Context) {
 		"action":  "share_revoke",
 		"shareId": payload.ShareID,
 	}, meta)
+
+	utils.SuccessResponse(c, nil)
+}
+
+type ListPublicSharesItem struct {
+	Key              string      `json:"key"`
+	EncrypedMetadata utils.Bytes `json:"encryptedMetadata"`
+	CreatedAt        time.Time   `json:"createdAt"`
+	ExpiresAt        time.Time   `json:"expiresAt"`
+}
+
+func ListPublicShares(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	ctx := c.Request.Context()
+
+	offset, limit := utils.Pagination(c)
+
+	shares, err := db.Query().ListPublicShares(ctx, sqlc.ListPublicSharesParams{
+		OwnerID: userID,
+		Limit:   limit,
+		Offset:  offset,
+	})
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when collecting shares")
+		return
+	}
+
+	var result []ListPublicSharesItem = []ListPublicSharesItem{}
+
+	for i := range shares {
+		result = append(result, ListPublicSharesItem{
+			Key:              shares[i].Key,
+			EncrypedMetadata: shares[i].File.EncryptedMetadata,
+			CreatedAt:        shares[i].CreatedAt.Time,
+			ExpiresAt:        shares[i].ExpiresAt.Time,
+		})
+	}
+
+	utils.SuccessResponse(c, result)
+}
+
+type CreatePublicSharePayload struct {
+	FileID int64 `json:"fileId"`
+
+	EncryptedKey      utils.Bytes `json:"encryptedKey"`
+	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+}
+
+type CreatePublicShareResponse struct {
+	ID  int64  `json:"id"`
+	Key string `json:"key"`
+}
+
+func CreatePublicShare(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	ctx := c.Request.Context()
+
+	var payload CreatePublicSharePayload
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	file, err := db.Query().GetFile(ctx, payload.FileID)
+
+	if err != nil {
+		utils.ErrorResponse(c, 400, "Invalid file id")
+		return
+	}
+
+	if file.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Forbidden")
+		return
+	}
+
+	key, err := gonanoid.New()
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when generating key")
+		return
+	}
+
+	share, err := db.Query().NewPublicShare(ctx, sqlc.NewPublicShareParams{
+		FileID:  file.ID,
+		OwnerID: userID,
+		Key:     key,
+
+		EncryptedKey:      payload.EncryptedKey,
+		EncryptedMetadata: payload.EncryptedMetadata,
+	})
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when creating share")
+		return
+	}
+
+	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+		"action":  "public_share_create",
+		"shareId": share.ID,
+		"fileId":  file.ID,
+	}, file.EncryptedMetadata)
+
+	utils.SuccessResponse(c, CreatePublicShareResponse{
+		ID:  share.ID,
+		Key: key,
+	})
+}
+
+type GetPublicShareResponse struct {
+	Key               string      `json:"key"`
+	Owner             string      `json:"owner"`
+	Size              int64       `json:"size"`
+	Chunks            int32       `json:"chunks"`
+	ChunkSize         int64       `json:"chunkSize"`
+	CreatedAt         time.Time   `json:"createdAt"`
+	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+	EncryptedKey      utils.Bytes `json:"encryptedKey"`
+}
+
+func GetPublicShare(c *gin.Context) {
+	ctx := c.Request.Context()
+	key := c.Param("key")
+
+	if len(key) == 0 {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	share, err := db.Query().GetPublicShare(ctx, key)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting share")
+		return
+	}
+
+	utils.SuccessResponse(c, GetPublicShareResponse{
+		Key:               key,
+		Owner:             share.User.Username,
+		Size:              share.File.Size,
+		Chunks:            share.File.Chunks,
+		ChunkSize:         share.File.ChunkSize,
+		CreatedAt:         share.CreatedAt.Time,
+		EncryptedMetadata: share.EncryptedMetadata,
+		EncryptedKey:      share.EncryptedKey,
+	})
+}
+
+type ResolvePublicSharePayload struct {
+	Key        string `uri:"key"`
+	ChunkIndex int32  `uri:"index"`
+}
+
+type ResolvePublicShareResponse struct {
+	URL     string              `json:"url"`
+	Headers map[string][]string `json:"headers"`
+}
+
+func ResolvePublicShare(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var payload ResolvePublicSharePayload
+
+	if err := c.ShouldBindUri(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	share, err := db.Query().GetPublicShare(ctx, payload.Key)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting share")
+		return
+	}
+
+	chunk, err := db.Query().GetChunk(ctx, sqlc.GetChunkParams{
+		FileID:     share.FileID,
+		ChunkIndex: payload.ChunkIndex,
+	})
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting chunk")
+		return
+	}
+
+	presigner := s3.NewPresignClient(config.S3())
+
+	req, err := presigner.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(config.GetConfig().S3.BucketName),
+		Key:    aws.String(chunk.S3Key),
+	})
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when signing request")
+		return
+	}
+
+	utils.SuccessResponse(c, ResolvePublicShareResponse{
+		URL:     req.URL,
+		Headers: req.SignedHeader,
+	})
+}
+
+type RevokePublicSharePayload struct {
+	Key string `uri:"key"`
+}
+
+func RevokePublicShare(c *gin.Context) {
+	userID := c.GetInt64("UserID")
+
+	ctx := c.Request.Context()
+
+	var payload RevokePublicSharePayload
+
+	if err := c.ShouldBindUri(&payload); err != nil {
+		utils.ErrorResponse(c, 400, "Invalid request")
+		return
+	}
+
+	share, err := db.Query().GetPublicShare(ctx, payload.Key)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when getting share")
+		return
+	}
+
+	if share.OwnerID != userID {
+		utils.ErrorResponse(c, 403, "Forbidden")
+		return
+	}
+
+	err = db.Query().RevokePublicShare(ctx, payload.Key)
+
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed when updating share")
+		return
+	}
 
 	utils.SuccessResponse(c, nil)
 }

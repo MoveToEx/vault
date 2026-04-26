@@ -51,7 +51,9 @@ func main() {
 
 	app := gin.New()
 
-	app.Use(gin.Recovery(), middleware.CORSMiddleware(config.GetConfig().CORSOrigin))
+	log.Println("CORS: Origin =", config.GetConfig().AppBase)
+
+	app.Use(gin.Recovery(), middleware.CORSMiddleware(config.GetConfig().AppBase))
 
 	route.SetupRoutes(app)
 

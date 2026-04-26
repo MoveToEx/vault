@@ -43,7 +43,7 @@ type OpaqueConfig struct {
 type Config struct {
 	DatabaseURL string
 	RedisAddr   string
-	CORSOrigin  string
+	AppBase     string
 	JWT         JWTConfig
 	S3          S3Config
 	Opaque      OpaqueConfig
@@ -90,7 +90,7 @@ func LoadConfig() error {
 
 	config = Config{
 		DatabaseURL: os.Getenv("DATABASE_URL"),
-		CORSOrigin:  os.Getenv("CORS_ORIGIN"),
+		AppBase:     os.Getenv("APP_BASE"),
 		RedisAddr:   os.Getenv("REDIS_ADDR"),
 		JWT: JWTConfig{
 			PrivateKey: mustDecodeBase64(os.Getenv("JWT_PRIVATE_KEY")),

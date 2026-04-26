@@ -21,6 +21,7 @@ import {
 import { mutate } from "./swr";
 import { AxiosError } from "axios";
 import api from "@/lib/api";
+import { from_base64 } from "libsodium-wrappers-sumo";
 
 class TransferBridge {
   private worker: Worker;
@@ -67,6 +68,19 @@ class TransferBridge {
     });
   }
 
+  enqueueDownloadPublicShare(
+    key: string,
+    pubKey: Uint8Array,
+    privKey: Uint8Array,
+  ) {
+    this.post({
+      type: 'enqueue-download-public-share',
+      key,
+      publicKey: pubKey,
+      privateKey: privKey,
+    })
+  }
+
   post(message: TransferCommand | WithId<WorkerResponse>) {
     this.worker.postMessage(message);
   }
@@ -74,7 +88,7 @@ class TransferBridge {
   private async onMessage(message: TransferMessage | WithId<WorkerRequest>) {
     try {
       switch (message.type) {
-        //#region Upload RPC
+        //#region Upload
         case "presign": {
           const { uploadId, chunkIndex, $id } = message;
           const response = await api.presignUploadChunk(uploadId, chunkIndex);
@@ -111,7 +125,7 @@ class TransferBridge {
 
         //#endregion
 
-        //#region Share RPC
+        //#region Share
         case "get-share": {
           const { shareId, $id } = message;
           const result = await api.getShare(shareId);
@@ -128,7 +142,38 @@ class TransferBridge {
         }
         //#endregion
 
-        //#region Download RPC
+        //#region Public Share
+        case 'get-public-share': {
+          const { key, $id } = message;
+          const result = await api.getPublicShare(key);
+
+          this.post({
+            type: 'get-public-share',
+            ...result,
+            $id,
+            encryptedKey: from_base64(result.encryptedKey),
+            encryptedMetadata: from_base64(result.encryptedMetadata)
+          });
+
+          break;
+        }
+          
+        case 'resolve-public-share-chunk': {
+          const { key, index, $id } = message;
+
+          const result = await api.resolvePublicShareChunk(key, index);
+
+          this.post({
+            type: 'resolve-public-share-chunk',
+            ...result,
+            $id,
+          });
+          break;
+        }
+
+        //#endregion
+
+        //#region Download
         case "get-file": {
           const { fileId, $id } = message;
 

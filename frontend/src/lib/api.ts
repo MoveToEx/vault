@@ -10,10 +10,10 @@ type SerializedPrimitive<T> = T extends Unserializable ? string : T;
 type SerializedArray<T extends unknown[]> = T extends []
   ? []
   : T extends [infer P, ...infer U]
-    ? [Serialized<P>, ...SerializedArray<U>]
-    : T extends (infer Q)[]
-      ? SerializedPrimitive<Q>[]
-      : never;
+  ? [Serialized<P>, ...SerializedArray<U>]
+  : T extends (infer Q)[]
+  ? SerializedPrimitive<Q>[]
+  : never;
 
 type SerializedObj<T> = {
   [K in keyof T]: Serialized<T[K]>;
@@ -22,10 +22,10 @@ type SerializedObj<T> = {
 type Serialized<T> = T extends Unserializable
   ? string
   : T extends object
-    ? SerializedObj<T>
-    : T extends unknown[]
-      ? SerializedArray<T>
-      : SerializedPrimitive<T>;
+  ? SerializedObj<T>
+  : T extends unknown[]
+  ? SerializedArray<T>
+  : SerializedPrimitive<T>;
 
 type GetFileResponse = Wrapped<{
   chunks: number;
@@ -73,6 +73,23 @@ type FinishLoginResponse = {
   kdf: KDFParameters;
 };
 
+type CreatePublicSharePayload = {
+  fileId: number;
+  encryptedMetadata: Uint8Array;
+  encryptedKey: Uint8Array;
+};
+
+type GetPublicShareResponse = {
+  key: string,
+  owner: string,
+  size: number,
+  chunks: number,
+  chunkSize: number,
+  createdAt: string,
+  encryptedMetadata: string,
+  encryptedKey: string,
+}
+
 type CreateSharePayload = {
   receiver: string;
   fileId: number;
@@ -83,6 +100,10 @@ type CreateSharePayload = {
 type NewShareResponse = {
   id: number;
 };
+
+type NewPublicShareResponse = {
+  key: string;
+}
 
 type GetUserResponse = {
   id: number;
@@ -267,6 +288,35 @@ const api = {
     return response.data.data;
   },
 
+  async createPublicShare({
+    encryptedKey,
+    encryptedMetadata,
+    fileId,
+  }: CreatePublicSharePayload) {
+    const response = await instance.post<Serialized<Wrapped<NewPublicShareResponse>>>(
+      "/public-shares",
+      {
+        fileId,
+        encryptedKey: to_base64(encryptedKey),
+        encryptedMetadata: to_base64(encryptedMetadata),
+      },
+    );
+
+    return response.data.data;
+  },
+
+  async getPublicShare(key: string) {
+    const response = await instance.get<Serialized<Wrapped<GetPublicShareResponse>>>(`/public-share/${key}`);
+
+    return response.data.data;
+  },
+
+  async resolvePublicShareChunk(key: string, index: number) {
+    const response = await instance.get<PresignResponse>(`/public-share/${key}/${index + 1}`);
+
+    return response.data.data;
+  },
+
   async getUser(username: string) {
     const response = await instance.get<Serialized<Wrapped<GetUserResponse>>>(
       `/user/${username}`,
@@ -300,6 +350,10 @@ const api = {
     );
 
     return response.data.data;
+  },
+
+  async revokePublicShare(key: string) {
+    await instance.delete(`/public-share/${key}`);
   },
 
   async revokeShare(shareId: number) {

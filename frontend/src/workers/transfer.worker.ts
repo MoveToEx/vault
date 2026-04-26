@@ -332,6 +332,40 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
       })
       break;
     }
+
+    case 'enqueue-download-public-share': {
+      const transferId = crypto.randomUUID();
+
+      await download({
+        async resolve() {
+          const { encryptedKey, encryptedMetadata, ...rest } = await rpc({
+            type: "get-public-share",
+            key: params.key,
+            transferId,
+          });
+
+          return {
+            ...rest,
+            key: open(encryptedKey, params.publicKey, params.privateKey),
+            metadata: JSON.parse(
+              to_string(
+                open(encryptedMetadata, params.publicKey, params.privateKey)
+              )
+            ),
+          };
+        },
+        async resolveChunk(index) {
+          return await rpc({
+            type: "resolve-public-share-chunk",
+            index,
+            key: params.key,
+            transferId,
+          })
+        },
+        transferId
+      })
+      break;
+    }
     case "enqueue-download-share": {
       const transferId = crypto.randomUUID();
 

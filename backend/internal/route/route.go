@@ -11,6 +11,12 @@ func SetupRoutes(r *gin.Engine) {
 	public := r.Group("/")
 
 	{
+		limit := r.Group("/")
+		limit.GET("/public-share/:key", handler.GetPublicShare)
+		limit.GET("/public-share/:key/:index", handler.ResolvePublicShare)
+	}
+
+	{
 		auth := public.Group("/auth")
 		auth.Use(middleware.RateLimitMiddleware())
 		auth.POST("/register/start", handler.RegisterStart)
@@ -59,6 +65,10 @@ func SetupRoutes(r *gin.Engine) {
 		protected.GET("/share/:share_id", handler.GetShare)
 		protected.GET("/share/:share_id/:chunk_index", handler.GetShareChunk)
 		protected.DELETE("/share/:share_id", handler.DeleteShare)
+
+		protected.POST("/public-shares", handler.CreatePublicShare)
+		protected.GET("/public-shares", handler.ListPublicShares)
+		protected.DELETE("/public-share/:key", handler.RevokePublicShare)
 
 		protected.GET("/user/:username", handler.GetUser)
 

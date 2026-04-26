@@ -143,6 +143,23 @@ CREATE TABLE IF NOT EXISTS shares (
     expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
 );
 
+CREATE TABLE IF NOT EXISTS public_shares (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+
+    key VARCHAR(32) NOT NULL UNIQUE,
+
+    file_id BIGINT NOT NULL REFERENCES files(id),
+    owner_id BIGINT NOT NULL REFERENCES users(id),
+
+    encrypted_key BYTEA NOT NULL,
+    encrypted_metadata BYTEA NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
+);
+
+CREATE INDEX IF NOT EXISTS public_shares_key_idx ON public_shares(key);
+
 CREATE TABLE IF NOT EXISTS site_config (
     id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
     upload_expiry_seconds INTEGER NOT NULL DEFAULT 10800,

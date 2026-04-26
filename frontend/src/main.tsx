@@ -13,6 +13,7 @@ import AdminDashboardPage from "./routes/admin-dashboard.tsx";
 import AdminSiteConfigPage from "./routes/admin-config.tsx";
 import AdminUsersPage from "./routes/admin-users.tsx";
 import UserSettingsPage from "./routes/user-settings.tsx";
+import PublicSharePage from "./routes/public-share.tsx";
 
 const router = createBrowserRouter([
   {
@@ -34,6 +35,10 @@ const router = createBrowserRouter([
       {
         path: "share",
         Component: SharesPage,
+      },
+      {
+        path: "ps/:key",
+        Component: PublicSharePage,
       },
       {
         path: "user/settings",

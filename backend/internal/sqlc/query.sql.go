@@ -392,17 +392,16 @@ func (q *Queries) GetActiveUploadSession(ctx context.Context, userID int64) ([]G
 const getChunk = `-- name: GetChunk :one
 SELECT c.file_id, c.chunk_index, c.s3_key FROM file_chunks c
 JOIN files f ON c.file_id = f.id
-WHERE f.owner_id = $1 AND f.id = $3 AND c.chunk_index = $2
+WHERE f.id = $2 AND c.chunk_index = $1
 `
 
 type GetChunkParams struct {
-	OwnerID    int64 `json:"ownerId"`
 	ChunkIndex int32 `json:"chunkIndex"`
 	FileID     int64 `json:"fileId"`
 }
 
 func (q *Queries) GetChunk(ctx context.Context, arg GetChunkParams) (FileChunk, error) {
-	row := q.db.QueryRow(ctx, getChunk, arg.OwnerID, arg.ChunkIndex, arg.FileID)
+	row := q.db.QueryRow(ctx, getChunk, arg.ChunkIndex, arg.FileID)
 	var i FileChunk
 	err := row.Scan(&i.FileID, &i.ChunkIndex, &i.S3Key)
 	return i, err
@@ -603,6 +602,70 @@ func (q *Queries) GetOpaqueClientRecord(ctx context.Context, username string) (G
 		&i.Username,
 		&i.OpaqueRecord,
 		&i.CredentialIdentifier,
+	)
+	return i, err
+}
+
+const getPublicShare = `-- name: GetPublicShare :one
+SELECT p.id, p.key, p.file_id, p.owner_id, p.encrypted_key, p.encrypted_metadata, p.created_at, p.expires_at, u.id, u.email, u.username, u.opaque_record, u.credential_identifier, u.permission, u.capacity, u.kdf_salt, u.kdf_memory_cost, u.kdf_time_cost, u.kdf_parallelism, u.public_key, u.encrypted_private_key, u.root_folder, u.is_active, u.is_locked, u.created_at, u.updated_at, u.last_login_at, f.id, f.owner_id, f.encrypted_metadata, f.encrypted_key, f.parent_id, f.chunks, f.chunk_size, f.size, f.created_at FROM public_shares p
+INNER JOIN users u ON p.owner_id = u.id
+INNER JOIN files f ON p.file_id = f.id
+WHERE key = $1 AND expires_at > NOW()
+`
+
+type GetPublicShareRow struct {
+	ID                int64              `json:"id"`
+	Key               string             `json:"key"`
+	FileID            int64              `json:"fileId"`
+	OwnerID           int64              `json:"ownerId"`
+	EncryptedKey      []byte             `json:"encryptedKey"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+	User              User               `json:"user"`
+	File              File               `json:"file"`
+}
+
+func (q *Queries) GetPublicShare(ctx context.Context, key string) (GetPublicShareRow, error) {
+	row := q.db.QueryRow(ctx, getPublicShare, key)
+	var i GetPublicShareRow
+	err := row.Scan(
+		&i.ID,
+		&i.Key,
+		&i.FileID,
+		&i.OwnerID,
+		&i.EncryptedKey,
+		&i.EncryptedMetadata,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.User.ID,
+		&i.User.Email,
+		&i.User.Username,
+		&i.User.OpaqueRecord,
+		&i.User.CredentialIdentifier,
+		&i.User.Permission,
+		&i.User.Capacity,
+		&i.User.KdfSalt,
+		&i.User.KdfMemoryCost,
+		&i.User.KdfTimeCost,
+		&i.User.KdfParallelism,
+		&i.User.PublicKey,
+		&i.User.EncryptedPrivateKey,
+		&i.User.RootFolder,
+		&i.User.IsActive,
+		&i.User.IsLocked,
+		&i.User.CreatedAt,
+		&i.User.UpdatedAt,
+		&i.User.LastLoginAt,
+		&i.File.ID,
+		&i.File.OwnerID,
+		&i.File.EncryptedMetadata,
+		&i.File.EncryptedKey,
+		&i.File.ParentID,
+		&i.File.Chunks,
+		&i.File.ChunkSize,
+		&i.File.Size,
+		&i.File.CreatedAt,
 	)
 	return i, err
 }
@@ -1219,6 +1282,70 @@ func (q *Queries) ListLogsForOwner(ctx context.Context, arg ListLogsForOwnerPara
 	return items, nil
 }
 
+const listPublicShares = `-- name: ListPublicShares :many
+SELECT p.id, p.key, p.file_id, p.owner_id, p.encrypted_key, p.encrypted_metadata, p.created_at, p.expires_at, f.id, f.owner_id, f.encrypted_metadata, f.encrypted_key, f.parent_id, f.chunks, f.chunk_size, f.size, f.created_at FROM public_shares p
+INNER JOIN files f ON p.file_id = f.id
+WHERE p.owner_id = $1 AND expires_at > NOW()
+LIMIT $2
+OFFSET $3
+`
+
+type ListPublicSharesParams struct {
+	OwnerID int64 `json:"ownerId"`
+	Limit   int32 `json:"limit"`
+	Offset  int32 `json:"offset"`
+}
+
+type ListPublicSharesRow struct {
+	ID                int64              `json:"id"`
+	Key               string             `json:"key"`
+	FileID            int64              `json:"fileId"`
+	OwnerID           int64              `json:"ownerId"`
+	EncryptedKey      []byte             `json:"encryptedKey"`
+	EncryptedMetadata []byte             `json:"encryptedMetadata"`
+	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+	File              File               `json:"file"`
+}
+
+func (q *Queries) ListPublicShares(ctx context.Context, arg ListPublicSharesParams) ([]ListPublicSharesRow, error) {
+	rows, err := q.db.Query(ctx, listPublicShares, arg.OwnerID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPublicSharesRow{}
+	for rows.Next() {
+		var i ListPublicSharesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Key,
+			&i.FileID,
+			&i.OwnerID,
+			&i.EncryptedKey,
+			&i.EncryptedMetadata,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.File.ID,
+			&i.File.OwnerID,
+			&i.File.EncryptedMetadata,
+			&i.File.EncryptedKey,
+			&i.File.ParentID,
+			&i.File.Chunks,
+			&i.File.ChunkSize,
+			&i.File.Size,
+			&i.File.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSessionsByUser = `-- name: ListSessionsByUser :many
 SELECT id, created_at, expires_at, last_used_at FROM sessions
 WHERE user_id = $1
@@ -1476,6 +1603,46 @@ func (q *Queries) NewFolder(ctx context.Context, arg NewFolderParams) (Folder, e
 	return i, err
 }
 
+const newPublicShare = `-- name: NewPublicShare :one
+
+
+INSERT INTO public_shares(file_id, owner_id, key, encrypted_key, encrypted_metadata)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, key, file_id, owner_id, encrypted_key, encrypted_metadata, created_at, expires_at
+`
+
+type NewPublicShareParams struct {
+	FileID            int64  `json:"fileId"`
+	OwnerID           int64  `json:"ownerId"`
+	Key               string `json:"key"`
+	EncryptedKey      []byte `json:"encryptedKey"`
+	EncryptedMetadata []byte `json:"encryptedMetadata"`
+}
+
+// #endregion
+// #region Public sharing
+func (q *Queries) NewPublicShare(ctx context.Context, arg NewPublicShareParams) (PublicShare, error) {
+	row := q.db.QueryRow(ctx, newPublicShare,
+		arg.FileID,
+		arg.OwnerID,
+		arg.Key,
+		arg.EncryptedKey,
+		arg.EncryptedMetadata,
+	)
+	var i PublicShare
+	err := row.Scan(
+		&i.ID,
+		&i.Key,
+		&i.FileID,
+		&i.OwnerID,
+		&i.EncryptedKey,
+		&i.EncryptedMetadata,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const newSession = `-- name: NewSession :one
 INSERT INTO sessions (refresh_token, user_id, expires_at)
 VALUES ($1, $2, $3)
@@ -1664,6 +1831,17 @@ func (q *Queries) NewUser(ctx context.Context, arg NewUserParams) (User, error) 
 		&i.LastLoginAt,
 	)
 	return i, err
+}
+
+const revokePublicShare = `-- name: RevokePublicShare :exec
+UPDATE public_shares
+SET expires_at = NOW()
+where key = $1
+`
+
+func (q *Queries) RevokePublicShare(ctx context.Context, key string) error {
+	_, err := q.db.Exec(ctx, revokePublicShare, key)
+	return err
 }
 
 const rotateSession = `-- name: RotateSession :exec

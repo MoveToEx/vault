@@ -153,7 +153,7 @@ WHERE id = $1;
 -- name: GetChunk :one
 SELECT c.* FROM file_chunks c
 JOIN files f ON c.file_id = f.id
-WHERE f.owner_id = $1 AND f.id = @file_id AND c.chunk_index = $2;
+WHERE f.id = @file_id AND c.chunk_index = $1;
 
 -- name: GetFileS3Keys :many
 SELECT s3_key FROM file_chunks
@@ -338,6 +338,33 @@ WHERE s.id = $1 AND c.chunk_index = $2 AND s.expires_at > NOW();
 UPDATE shares
 SET expires_at = NOW()
 WHERE id = $1;
+
+--#endregion
+
+--#region Public sharing
+
+-- name: NewPublicShare :one
+INSERT INTO public_shares(file_id, owner_id, key, encrypted_key, encrypted_metadata)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: GetPublicShare :one
+SELECT p.*, sqlc.embed(u), sqlc.embed(f) FROM public_shares p
+INNER JOIN users u ON p.owner_id = u.id
+INNER JOIN files f ON p.file_id = f.id
+WHERE key = $1 AND expires_at > NOW();
+
+-- name: ListPublicShares :many
+SELECT p.*, sqlc.embed(f) FROM public_shares p
+INNER JOIN files f ON p.file_id = f.id
+WHERE p.owner_id = $1 AND expires_at > NOW()
+LIMIT $2
+OFFSET $3;
+
+-- name: RevokePublicShare :exec
+UPDATE public_shares
+SET expires_at = NOW()
+where key = $1;
 
 --#endregion
 
