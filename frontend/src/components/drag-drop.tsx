@@ -77,7 +77,7 @@ export default function DragDrop({
         <Button
           type="button"
           variant="link"
-          className="p-0 text-secondary-foreground"
+          className="p-0 underline hover:cursor-pointer text-secondary-foreground"
           onClick={() => {
             if (inputRef.current) {
               inputRef.current.click();
