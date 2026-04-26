@@ -153,7 +153,7 @@ function SharedWithMe() {
     <div>
       <div className='w-full flex flex-row items-center'>
         <span>
-          <p>{t("common.sharedByYou")}</p>
+          <p>{t("common.sharedWithYou")}</p>
         </span>
         <div className='flex-1' />
         <ListPagination
@@ -270,7 +270,7 @@ function SharedByMe() {
       <RevokeShareDialog handle={revokeHandle} />
       <div className='w-full flex flex-row items-center'>
         <span>
-          <p>{t("common.sharedWithYou")}</p>
+          <p>{t("common.sharedByYou")}</p>
         </span>
         <div className='flex-1' />
         <ListPagination
