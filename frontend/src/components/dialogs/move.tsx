@@ -16,11 +16,11 @@ import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import { useAppSelector } from "@/stores";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
-import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import useAuth from "@/hooks/use-auth";
 import useFiles from "@/hooks/use-files";
+import { formatError } from "@/lib/utils";
 
 export type MoveDialogPayload = {
   type: "folder" | "file";
@@ -102,13 +102,7 @@ export default function MoveDialog({
             handle.close();
             toast.success(t("common.moved"));
           } catch (e) {
-            if (e instanceof AxiosError) {
-              setError(
-                e.response?.data?.error ?? t("common.requestFailed"),
-              );
-            } else {
-              throw e;
-            }
+            setError(formatError(e));
           } finally {
             setLoading(false);
           }

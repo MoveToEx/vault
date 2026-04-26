@@ -19,11 +19,11 @@ import { seal } from "@/lib/crypto";
 import { from_base64, from_string, ready } from "libsodium-wrappers-sumo";
 import api from "@/lib/api";
 import { useMemo, useState } from "react";
-import { AxiosError } from "axios";
 import { Spinner } from "../ui/spinner";
 import { mutate } from "@/lib/swr";
 import { Dialog as BaseDialog } from "@base-ui/react";
 import { useTranslation } from "react-i18next";
+import { formatError } from "@/lib/utils";
 
 const handle = BaseDialog.createHandle();
 
@@ -73,14 +73,10 @@ export default function NewFolderDialog() {
       handle.close();
       mutate("file");
     } catch (e) {
-      if (e instanceof AxiosError) {
-        form.setError("root", {
-          type: "custom",
-          message: e.response?.data.error,
-        });
-      } else {
-        throw e;
-      }
+      form.setError("root", {
+        type: "custom",
+        message: formatError(e),
+      });
     } finally {
       setLoading(false);
     }

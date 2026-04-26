@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatSize } from "@/lib/utils";
+import { formatError, formatSize } from "@/lib/utils";
 import RequireKeys from "@/components/require-umk";
 import { pop, popUntil, push, reset } from "@/stores/path";
 import {
@@ -31,6 +31,7 @@ import { Menu } from "@base-ui/react";
 import FilePopupMenu from "@/components/file-popup-menu";
 import { useTranslation } from "react-i18next";
 import ExtIcon from "@/components/icon";
+import { toast } from "sonner";
 
 type Item =
   | {
@@ -73,32 +74,39 @@ function FileList() {
   const decrypted = useMemo<Item[]>(() => {
     if (!data || !keys) return [];
     const result: Item[] = [];
+    
+    try {
+      for (const { encryptedMetadata, size, id, createdAt } of data) {
+        const plaintext = open(
+          from_base64(encryptedMetadata),
+          from_base64(keys.pubKey),
+          from_base64(keys.privKey),
+        );
 
-    for (const { encryptedMetadata, size, id, createdAt } of data) {
-      const plaintext = open(
-        from_base64(encryptedMetadata),
-        from_base64(keys.pubKey),
-        from_base64(keys.privKey),
-      );
+        const metadata = {
+          ...JSON.parse(to_string(plaintext)),
+          size,
+          id,
+          createdAt: new Date(createdAt),
+        };
 
-      const metadata = {
-        ...JSON.parse(to_string(plaintext)),
-        size,
-        id,
-        createdAt: new Date(createdAt),
-      };
-
-      result.push(metadata);
-    }
-
-    return result.sort((x, y) => {
-      if (x.type != y.type) {
-        if (x.type === "folder") return -1;
-        return 1;
+        result.push(metadata);
       }
-      if (x.name > y.name) return 1;
-      return -1;
-    });
+
+      return result.sort((x, y) => {
+        if (x.type != y.type) {
+          if (x.type === "folder") return -1;
+          return 1;
+        }
+        if (x.name > y.name) return 1;
+        return -1;
+      });
+    }
+    catch (e) {
+      toast.error(formatError(e));
+      
+      return [];
+    }
   }, [keys, data]);
 
   return (

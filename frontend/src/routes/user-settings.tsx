@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useAuth from "@/hooks/use-auth";
 import useTaggedSWR, { mutate as revalidateByTag } from "@/lib/swr";
 import { aeadComposite, kdf } from "@/lib/crypto";
-import { logout } from "@/lib/utils";
+import { formatError, logout } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { reset as resetKeys, set as setKeys } from "@/stores/key";
 import {
@@ -351,14 +351,10 @@ function ChangePassword({
       );
       await revalidateByTag("self");
     } catch (e) {
-      if (e instanceof AxiosError) {
-        form.setError("root", {
-          type: "custom",
-          message: e.response?.data?.error ?? t("common.requestFailed"),
-        });
-      } else {
-        throw e;
-      }
+      form.setError("root", {
+        type: "custom",
+        message: formatError(e),
+      });
     } finally {
       setLoading(false);
     }

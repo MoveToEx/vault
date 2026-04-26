@@ -16,7 +16,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { useState } from "react";
 import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
-import { logout } from "@/lib/utils";
+import { formatError, logout } from "@/lib/utils";
 import { argon2id } from "@/workers";
 import { useAppDispatch } from "@/stores";
 import { set } from "@/stores/key";
@@ -81,12 +81,10 @@ export default function UnlockDialog({
 
       handle.close();
     } catch (e) {
-      if (e instanceof Error) {
-        form.setError("password", {
-          message: e.message,
-          type: "value",
-        });
-      }
+      form.setError('password', {
+        type: 'value',
+        message: formatError(e)
+      });
     } finally {
       setLoading(false);
     }

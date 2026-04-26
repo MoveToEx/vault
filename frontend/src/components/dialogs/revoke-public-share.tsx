@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
-import { AxiosError } from "axios";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { formatError } from "@/lib/utils";
 
 export type Payload = {
   key: string;
@@ -71,11 +71,7 @@ export default function RevokePublicShareDialog({
                     toast.success(t("common.publicShareRevoked"));
                     handle.close();
                   } catch (e) {
-                    if (e instanceof AxiosError) {
-                      setError(e.response?.data?.error);
-                    } else if (e instanceof Error) {
-                      setError(e.message);
-                    }
+                    setError(formatError(e));
                   } finally {
                     setLoading(false);
                   }

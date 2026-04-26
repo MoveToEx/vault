@@ -4,6 +4,7 @@ import { clear } from "@/stores/transfer";
 import { reset } from "@/stores/key";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { AxiosError } from "axios";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -41,6 +42,18 @@ export function formatSize(size: number) {
     i += 1;
   }
   return `${size.toFixed(2)} ${units[i]}`;
+}
+
+export function formatError(e: unknown) {
+  let message = 'unknown error';
+
+  if (e instanceof AxiosError) {
+    message = e.response?.data?.error ?? e.response?.statusText ?? 'unknown error';
+  } else if (e instanceof Error) {
+    message = e.message;
+  }
+
+  return message;
 }
 
 export function logout() {

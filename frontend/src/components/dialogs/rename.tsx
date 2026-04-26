@@ -20,10 +20,10 @@ import { seal } from "@/lib/crypto";
 import { from_base64, from_string, ready } from "libsodium-wrappers-sumo";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
-import { AxiosError } from "axios";
 import { Spinner } from "../ui/spinner";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { formatError } from "@/lib/utils";
 
 export type RenameDialogPayload = {
   type: "folder" | "file";
@@ -88,14 +88,10 @@ export default function RenameDialog({
             handle.close();
             toast.success(t("common.saved"));
           } catch (e) {
-            if (e instanceof AxiosError) {
-              form.setError("root", {
-                type: "custom",
-                message: e.response?.data?.error,
-              });
-            } else {
-              throw e;
-            }
+            form.setError("root", {
+              type: "custom",
+              message: formatError(e),
+            });
           } finally {
             setLoading(false);
           }

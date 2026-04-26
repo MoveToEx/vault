@@ -19,9 +19,9 @@ import {
   transferStarted,
 } from "@/stores/transfer";
 import { mutate } from "./swr";
-import { AxiosError } from "axios";
 import api from "@/lib/api";
 import { from_base64 } from "libsodium-wrappers-sumo";
+import { formatError } from "./utils";
 
 class TransferBridge {
   private worker: Worker;
@@ -269,21 +269,12 @@ class TransferBridge {
         //#endregion
       }
     } catch (e) {
-      if (e instanceof AxiosError) {
-        store.dispatch(
-          transferFailed({
-            transferId: message.transferId,
-            error: e.response?.data?.error ?? e.response?.statusText ?? "Fail",
-          }),
-        );
-      } else if (e instanceof Error) {
-        store.dispatch(
-          transferFailed({
-            transferId: message.transferId,
-            error: e.message,
-          }),
-        );
-      }
+      store.dispatch(
+        transferFailed({
+          transferId: message.transferId,
+          error: formatError(e)
+        }),
+      );
     }
   }
 }

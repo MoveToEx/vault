@@ -21,7 +21,6 @@ import {
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import { AxiosError } from "axios";
 import { useState } from "react";
 import { ChevronDown, ChevronUp, User } from "lucide-react";
 import { Spinner } from "../ui/spinner";
@@ -41,6 +40,7 @@ import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleRegisterDialog } from "@/stores/ui";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
+import { formatError } from "@/lib/utils";
 
 export default function RegisterDialog() {
   const { t } = useTranslation();
@@ -172,14 +172,10 @@ export default function RegisterDialog() {
 
       mutate("file");
     } catch (e) {
-      if (e instanceof AxiosError) {
-        form.setError("root", {
-          type: "custom",
-          message: e.response?.data.error,
-        });
-      } else {
-        throw e;
-      }
+      form.setError("root", {
+        type: "custom",
+        message: formatError(e),
+      });
     } finally {
       setLoading(false);
     }

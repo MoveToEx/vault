@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import useTaggedSWR from "@/lib/swr";
-import { formatSize } from "@/lib/utils";
+import { formatError, formatSize } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
@@ -16,7 +16,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import { AxiosError } from "axios";
 import { useTranslation } from "react-i18next";
 
 type SiteConfigFormValues = {
@@ -91,16 +90,10 @@ export default function AdminSiteConfigPage() {
       toast.success(t("common.siteConfigSaved"));
       await mutate();
     } catch (e) {
-      if (e instanceof AxiosError) {
-        form.setError("root", {
-          type: "custom",
-          message:
-            (e.response?.data as { error?: string } | undefined)?.error ??
-            t("common.couldNotSaveSiteConfig"),
-        });
-      } else {
-        throw e;
-      }
+      form.setError("root", {
+        type: "custom",
+        message: formatError(e),
+      });
     }
   };
 

@@ -8,8 +8,9 @@ import type {
   WorkerResponse,
 } from "@/lib/types";
 import { from_base64, to_string } from "libsodium-wrappers-sumo";
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import sodium from "libsodium-wrappers-sumo";
+import { formatError } from "@/lib/utils";
 
 type FileMetadata = Extract<Metadata, { type: 'file' }>;
 
@@ -156,18 +157,10 @@ async function upload(file: File, parentId: number, publicKey: Uint8Array) {
       transferId,
     });
   } catch (e) {
-    let message = "unknown error";
-
-    if (e instanceof AxiosError) {
-      message = e.response?.data?.error ?? e.response?.statusText;
-    } else if (e instanceof Error) {
-      message = e.message;
-    }
-
     post({
       type: "transfer-error",
       transferId,
-      error: message,
+      error: formatError(e),
     });
   }
 }
@@ -275,18 +268,10 @@ async function download({ resolve, resolveChunk, transferId }: DownloadParams) {
     });
   }
   catch (e) {
-    let message = "unknown error";
-
-    if (e instanceof AxiosError) {
-      message = e.response?.data?.error ?? e.response?.statusText;
-    } else if (e instanceof Error) {
-      message = e.message;
-    }
-
     post({
       type: "transfer-error",
       transferId,
-      error: message,
+      error: formatError(e),
     });
   }
 }

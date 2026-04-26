@@ -16,10 +16,10 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { AxiosError } from "axios";
 import { Spinner } from "../ui/spinner";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { formatError } from "@/lib/utils";
 
 export type SetUserCapacityPayload = {
   userId: number;
@@ -82,16 +82,10 @@ export default function SetUserCapacityDialog({
             handle.close();
             await onSaved?.();
           } catch (e) {
-            if (e instanceof AxiosError) {
-              form.setError("root", {
-                type: "custom",
-                message:
-                  (e.response?.data as { error?: string } | undefined)?.error ??
-                  t("common.couldNotUpdateCapacity"),
-              });
-            } else {
-              throw e;
-            }
+            form.setError("root", {
+              type: "custom",
+              message: formatError(e)
+            });
           } finally {
             setLoading(false);
           }

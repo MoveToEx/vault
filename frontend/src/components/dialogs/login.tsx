@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { AxiosError } from "axios";
 import { useState } from "react";
 import {
   getOpaqueConfig,
@@ -40,6 +39,7 @@ import sodium, { from_string, to_base64 } from "libsodium-wrappers-sumo";
 import api from "@/lib/api";
 import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
 import { useTranslation } from "react-i18next";
+import { formatError } from "@/lib/utils";
 
 const schema = z.object({
   username: z.string(),
@@ -128,14 +128,10 @@ export default function LoginDialog() {
       mutate("self");
       dispatch(toggleLoginDialog(false));
     } catch (e) {
-      if (e instanceof AxiosError) {
-        form.setError("root", {
-          type: "custom",
-          message: e.response?.data.error,
-        });
-      } else {
-        throw e;
-      }
+      form.setError("root", {
+        type: "custom",
+        message: formatError(e)
+      });
     } finally {
       setLoading(false);
     }

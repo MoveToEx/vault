@@ -23,10 +23,10 @@ import { Alert, AlertDescription } from "../ui/alert";
 import useUsers from "@/hooks/use-users";
 import { Spinner } from "../ui/spinner";
 import { Fragment, useState } from "react";
-import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { formatError } from "@/lib/utils";
 
 type Payload = {
   id: number;
@@ -124,9 +124,10 @@ function PrivateShareTab({ fileId, handle }: { fileId: number, handle: BaseDialo
       handle.close();
       toast.success(t("common.shareCreated"));
     } catch (e) {
-      if (e instanceof AxiosError) {
-        form.setError("root", e.response?.data?.error);
-      }
+      form.setError("root", {
+        type: 'custom',
+        message: formatError(e)
+      });
     } finally {
       setLoading(false);
     }
@@ -228,15 +229,7 @@ function PublicShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog
       handle.close();
       linkHandle.openWithPayload({ link: url.toString() });
     } catch (e) {
-      let message = t("common.unknownError");
-
-      if (e instanceof AxiosError) {
-        message = e.response?.data?.error ?? e.response?.statusText ?? t("common.unknownError");
-      } else if (e instanceof Error) {
-        message = e.message;
-      }
-
-      toast.error(t("common.failedWithMessage", { message }));
+      toast.error(t("common.failedWithMessage", { message: formatError(e) }));
     } finally {
       setLoading(false);
     }
