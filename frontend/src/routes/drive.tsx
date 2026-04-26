@@ -142,14 +142,14 @@ function FileList() {
                 }
               }}
             >
-              <TableCell className="font-medium flex flex-row w-lg">
+              <TableCell className="font-medium flex flex-row items-center w-lg">
                 {val.type === "folder" && (
                   <Folder size={16} className="inline mx-2 shrink-0" />
                 )}
                 {val.type === "file" && (
                   <ExtIcon filename={val.name} size={16} className='inline mx-2 shrink-0' />
                 )}
-                <span className='truncate '>
+                <span className='truncate'>
                   {splitExt(val.name)[0]}
                 </span>
                 <span>
