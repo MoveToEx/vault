@@ -54,6 +54,12 @@ const fileMenuHandle = Menu.createHandle<{
   name: string;
 }>();
 
+function splitExt(filename: string): [string, string] {
+  const a = filename.split('.');
+  if (a.length === 1) return [filename, ''];
+  return [a.slice(0, -1).join('.'), '.' + a[a.length - 1]];
+}
+
 function FileList() {
   const { t } = useTranslation();
   const keys = useAppSelector((state) => state.key.value);
@@ -136,15 +142,18 @@ function FileList() {
                 }
               }}
             >
-              <TableCell className="font-medium">
+              <TableCell className="font-medium flex flex-row w-lg">
                 {val.type === "folder" && (
-                  <Folder size={16} className="inline mx-2" />
+                  <Folder size={16} className="inline mx-2 shrink-0" />
                 )}
                 {val.type === "file" && (
-                  <ExtIcon filename={val.name} size={16} className='inline mx-2' />
+                  <ExtIcon filename={val.name} size={16} className='inline mx-2 shrink-0' />
                 )}
-                <span className='lg:text-wrap lg:wrap-anywhere'>
-                  {val.name}
+                <span className='truncate '>
+                  {splitExt(val.name)[0]}
+                </span>
+                <span>
+                  {splitExt(val.name)[1]}
                 </span>
               </TableCell>
               <TableCell className="text-secondary-foreground">

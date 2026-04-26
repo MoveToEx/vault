@@ -249,6 +249,7 @@ function PublicShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog
           <Info />
           <AlertDescription>
             <p>{t("common.publicShareExposesWarning")}</p>
+            <p className='text-destructive'>Private share should always be preferred over public share when possible.</p>
           </AlertDescription>
         </Alert>
       </div>
@@ -285,14 +286,14 @@ export default function NewShareDialog({
 
           return (
             <DialogContent>
-              <DialogHeader>
+              <DialogHeader className='min-w-0 w-full'>
                 <DialogTitle>
                   <span className="text-xl">{t("common.shareFiles")}</span>
                 </DialogTitle>
                 <DialogDescription>
-                  <div className='pt-2 w-full flex flex-row gap-2 items-center'>
-                    <File size={16} />
-                    <span>
+                  <div className='pt-2 flex flex-row gap-2 items-center'>
+                    <File size={16} className='shrink-0' />
+                    <span className='truncate'>
                       {t("common.willShare", { name: payload.name })}
                     </span>
                   </div>
