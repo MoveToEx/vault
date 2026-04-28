@@ -24,9 +24,9 @@ import (
 	"backend/internal/sqlc"
 	"backend/internal/utils"
 
-	awscreds "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/alicebob/miniredis/v2"
 	awscfg "github.com/aws/aws-sdk-go-v2/aws"
+	awscreds "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/bytemare/ksf"
 	"github.com/bytemare/opaque"
@@ -239,7 +239,6 @@ func mustCreateTestUser(t *testing.T, perm int64) testUser {
 		KdfSalt:              make([]byte, 32),
 		KdfMemoryCost:        64 * 1024,
 		KdfTimeCost:          3,
-		KdfParallelism:       1,
 		PublicKey:            pubKey[:],
 		EncryptedPrivateKey:  make([]byte, 64),
 		RootFolder:           pgtype.Int8{Valid: false},

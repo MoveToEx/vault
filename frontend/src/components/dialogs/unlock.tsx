@@ -20,7 +20,7 @@ import { formatError, logout } from "@/lib/utils";
 import { argon2id } from "@/workers";
 import { useAppDispatch } from "@/stores";
 import { set } from "@/stores/key";
-import sodium, { to_base64, from_base64 } from "libsodium-wrappers-sumo";
+import sodium, { to_base64, from_base64 } from "libsodium-wrappers";
 import { Spinner } from "../ui/spinner";
 import { Key, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -56,7 +56,6 @@ export default function UnlockDialog({
       const umk = await argon2id({
         iterations: auth.kdfTimeCost,
         memorySize: auth.kdfMemoryCost * 1024,
-        parallelism: auth.kdfParallelism,
         password: new TextEncoder().encode(data.password),
         salt: from_base64(auth.kdfSalt),
         hashLength: 32,

@@ -12,7 +12,7 @@ import { Folder, FolderInput, FolderUp, X } from "lucide-react";
 import { Spinner } from "../ui/spinner";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { open } from "@/lib/crypto";
-import { from_base64, to_string } from "libsodium-wrappers-sumo";
+import { from_base64, to_string } from "libsodium-wrappers";
 import { useAppSelector } from "@/stores";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";

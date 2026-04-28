@@ -607,7 +607,7 @@ func (q *Queries) GetOpaqueClientRecord(ctx context.Context, username string) (G
 }
 
 const getPublicShare = `-- name: GetPublicShare :one
-SELECT p.id, p.key, p.file_id, p.owner_id, p.encrypted_key, p.encrypted_metadata, p.created_at, p.expires_at, u.id, u.email, u.username, u.opaque_record, u.credential_identifier, u.permission, u.capacity, u.kdf_salt, u.kdf_memory_cost, u.kdf_time_cost, u.kdf_parallelism, u.public_key, u.encrypted_private_key, u.root_folder, u.is_active, u.is_locked, u.created_at, u.updated_at, u.last_login_at, f.id, f.owner_id, f.encrypted_metadata, f.encrypted_key, f.parent_id, f.chunks, f.chunk_size, f.size, f.created_at FROM public_shares p
+SELECT p.id, p.key, p.file_id, p.owner_id, p.encrypted_key, p.encrypted_metadata, p.created_at, p.expires_at, u.id, u.email, u.username, u.opaque_record, u.credential_identifier, u.permission, u.capacity, u.kdf_salt, u.kdf_memory_cost, u.kdf_time_cost, u.public_key, u.encrypted_private_key, u.root_folder, u.is_active, u.is_locked, u.created_at, u.updated_at, u.last_login_at, f.id, f.owner_id, f.encrypted_metadata, f.encrypted_key, f.parent_id, f.chunks, f.chunk_size, f.size, f.created_at FROM public_shares p
 INNER JOIN users u ON p.owner_id = u.id
 INNER JOIN files f ON p.file_id = f.id
 WHERE key = $1 AND expires_at > NOW()
@@ -648,7 +648,6 @@ func (q *Queries) GetPublicShare(ctx context.Context, key string) (GetPublicShar
 		&i.User.KdfSalt,
 		&i.User.KdfMemoryCost,
 		&i.User.KdfTimeCost,
-		&i.User.KdfParallelism,
 		&i.User.PublicKey,
 		&i.User.EncryptedPrivateKey,
 		&i.User.RootFolder,
@@ -1037,7 +1036,7 @@ func (q *Queries) GetUsedCapacity(ctx context.Context, ownerID int64) (int64, er
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
+SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
 WHERE id = $1
 `
 
@@ -1055,7 +1054,6 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 		&i.KdfSalt,
 		&i.KdfMemoryCost,
 		&i.KdfTimeCost,
-		&i.KdfParallelism,
 		&i.PublicKey,
 		&i.EncryptedPrivateKey,
 		&i.RootFolder,
@@ -1087,7 +1085,7 @@ func (q *Queries) GetUserAuthByID(ctx context.Context, id int64) (GetUserAuthByI
 
 const getUserByName = `-- name: GetUserByName :one
 
-SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
+SELECT id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at FROM users
 WHERE username = $1
 `
 
@@ -1106,7 +1104,6 @@ func (q *Queries) GetUserByName(ctx context.Context, username string) (User, err
 		&i.KdfSalt,
 		&i.KdfMemoryCost,
 		&i.KdfTimeCost,
-		&i.KdfParallelism,
 		&i.PublicKey,
 		&i.EncryptedPrivateKey,
 		&i.RootFolder,
@@ -1769,11 +1766,11 @@ func (q *Queries) NewUploadChunk(ctx context.Context, arg NewUploadChunkParams) 
 const newUser = `-- name: NewUser :one
 INSERT INTO users (
     email, username, opaque_record, credential_identifier, permission, capacity,
-    kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism,
+    kdf_salt, kdf_memory_cost, kdf_time_cost,
     public_key, encrypted_private_key, root_folder
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-RETURNING id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, email, username, opaque_record, credential_identifier, permission, capacity, kdf_salt, kdf_memory_cost, kdf_time_cost, public_key, encrypted_private_key, root_folder, is_active, is_locked, created_at, updated_at, last_login_at
 `
 
 type NewUserParams struct {
@@ -1786,7 +1783,6 @@ type NewUserParams struct {
 	KdfSalt              []byte      `json:"kdfSalt"`
 	KdfMemoryCost        int32       `json:"kdfMemoryCost"`
 	KdfTimeCost          int32       `json:"kdfTimeCost"`
-	KdfParallelism       int32       `json:"kdfParallelism"`
 	PublicKey            []byte      `json:"publicKey"`
 	EncryptedPrivateKey  []byte      `json:"encryptedPrivateKey"`
 	RootFolder           pgtype.Int8 `json:"rootFolder"`
@@ -1803,7 +1799,6 @@ func (q *Queries) NewUser(ctx context.Context, arg NewUserParams) (User, error) 
 		arg.KdfSalt,
 		arg.KdfMemoryCost,
 		arg.KdfTimeCost,
-		arg.KdfParallelism,
 		arg.PublicKey,
 		arg.EncryptedPrivateKey,
 		arg.RootFolder,
@@ -1820,7 +1815,6 @@ func (q *Queries) NewUser(ctx context.Context, arg NewUserParams) (User, error) 
 		&i.KdfSalt,
 		&i.KdfMemoryCost,
 		&i.KdfTimeCost,
-		&i.KdfParallelism,
 		&i.PublicKey,
 		&i.EncryptedPrivateKey,
 		&i.RootFolder,
@@ -2005,8 +1999,7 @@ UPDATE users SET
     kdf_salt = $4,
     kdf_memory_cost = $5,
     kdf_time_cost = $6,
-    kdf_parallelism = $7,
-    encrypted_private_key = $8,
+    encrypted_private_key = $7,
     updated_at = NOW()
 WHERE id = $1
 `
@@ -2018,7 +2011,6 @@ type UpdateUserCredentialsParams struct {
 	KdfSalt              []byte `json:"kdfSalt"`
 	KdfMemoryCost        int32  `json:"kdfMemoryCost"`
 	KdfTimeCost          int32  `json:"kdfTimeCost"`
-	KdfParallelism       int32  `json:"kdfParallelism"`
 	EncryptedPrivateKey  []byte `json:"encryptedPrivateKey"`
 }
 
@@ -2030,7 +2022,6 @@ func (q *Queries) UpdateUserCredentials(ctx context.Context, arg UpdateUserCrede
 		arg.KdfSalt,
 		arg.KdfMemoryCost,
 		arg.KdfTimeCost,
-		arg.KdfParallelism,
 		arg.EncryptedPrivateKey,
 	)
 	return err

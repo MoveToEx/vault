@@ -51,6 +51,8 @@ export function formatError(e: unknown) {
     message = e.response?.data?.error ?? e.response?.statusText ?? 'unknown error';
   } else if (e instanceof Error) {
     message = e.message;
+  } else {
+    message = String(e);
   }
 
   return message;

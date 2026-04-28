@@ -16,7 +16,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { useAppSelector } from "@/stores";
 import { seal } from "@/lib/crypto";
-import { from_base64, from_string, ready } from "libsodium-wrappers-sumo";
+import { from_base64, from_string, ready } from "libsodium-wrappers";
 import api from "@/lib/api";
 import { useMemo, useState } from "react";
 import { Spinner } from "../ui/spinner";

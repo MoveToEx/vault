@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldDescription } from "@/components/ui/field";
 import { useAppDispatch, useAppSelector } from "@/stores";
-import { from_base64 } from "libsodium-wrappers-sumo";
+import { from_base64 } from "libsodium-wrappers";
 import { FileIcon, Upload } from "lucide-react";
 import { useState } from "react";
 import { Dialog as BaseDialog } from "@base-ui/react";

@@ -7,9 +7,9 @@ import type {
   WorkerRequest,
   WorkerResponse,
 } from "@/lib/types";
-import { from_base64, to_string } from "libsodium-wrappers-sumo";
+import { from_base64, to_string } from "libsodium-wrappers";
 import axios from "axios";
-import sodium from "libsodium-wrappers-sumo";
+import sodium from "libsodium-wrappers";
 import { formatError } from "@/lib/utils";
 
 type FileMetadata = Extract<Metadata, { type: 'file' }>;

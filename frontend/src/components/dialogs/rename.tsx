@@ -17,7 +17,7 @@ import { Input } from "../ui/input";
 import { useAppSelector } from "@/stores";
 import { useEffect, useState } from "react";
 import { seal } from "@/lib/crypto";
-import { from_base64, from_string, ready } from "libsodium-wrappers-sumo";
+import { from_base64, from_string, ready } from "libsodium-wrappers";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
 import { Spinner } from "../ui/spinner";
@@ -78,7 +78,6 @@ export default function RenameDialog({
             );
 
             if (payload.type === "file") {
-              console.log('before invoke')
               await api.renameFile(payload.id, metadata);
             } else {
               await api.renameFolder(payload.id, metadata);

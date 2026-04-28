@@ -1,6 +1,6 @@
 import { type AxiosResponse } from "axios";
 import instance from "./axios";
-import { from_base64, to_base64 } from "libsodium-wrappers-sumo";
+import { from_base64, to_base64 } from "libsodium-wrappers";
 import type { KDFParameters, Wrapped } from "./types";
 
 type Unserializable = Uint8Array;

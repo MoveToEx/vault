@@ -35,7 +35,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
 import { ChevronDown, ChevronUp, Shield } from "lucide-react";
-import sodium, { from_base64, to_base64 } from "libsodium-wrappers-sumo";
+import sodium, { from_base64, to_base64 } from "libsodium-wrappers";
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
@@ -280,7 +280,6 @@ function ChangePassword({
       const testUmk = await argon2id({
         iterations: auth.kdfTimeCost,
         memorySize: auth.kdfMemoryCost * 1024,
-        parallelism: auth.kdfParallelism,
         password: new TextEncoder().encode(data.currentPassword),
         salt: from_base64(auth.kdfSalt),
         hashLength: 32,
@@ -321,7 +320,6 @@ function ChangePassword({
       const umk = await argon2id({
         iterations: data.kdfTimeCost,
         memorySize: data.kdfMemoryCost * 1024,
-        parallelism: data.kdfParallelism,
         password: new TextEncoder().encode(data.newPassword),
         salt,
         hashLength: 32,
@@ -337,7 +335,6 @@ function ChangePassword({
           salt,
           memoryCost: data.kdfMemoryCost,
           timeCost: data.kdfTimeCost,
-          parallelism: data.kdfParallelism,
         },
       });
 
@@ -497,29 +494,6 @@ function ChangePassword({
                           step={64}
                           min={64}
                           max={1024}
-                        />
-                        {fieldState.invalid ? (
-                          <FieldError errors={[fieldState.error]} />
-                        ) : null}
-                      </Field>
-                    )}
-                  />
-                  <Controller
-                    name="kdfParallelism"
-                    control={form.control}
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel className="flex flex-row items-center justify-between">
-                          <span>{t("common.parallelism")}</span>
-                          <span>{field.value}</span>
-                        </FieldLabel>
-                        <Slider
-                          {...field}
-                          className="mx-auto h-1 w-full max-w-xs"
-                          onValueChange={field.onChange}
-                          step={1}
-                          min={1}
-                          max={4}
                         />
                         {fieldState.invalid ? (
                           <FieldError errors={[fieldState.error]} />

@@ -77,10 +77,9 @@ func RegisterStart(c *gin.Context) {
 }
 
 type KDFParameters struct {
-	Salt        utils.Bytes `json:"salt"`
-	MemoryCost  int32       `json:"memoryCost"`
-	TimeCost    int32       `json:"timeCost"`
-	Parallelism int32       `json:"parallelism"`
+	Salt       utils.Bytes `json:"salt"`
+	MemoryCost int32       `json:"memoryCost"`
+	TimeCost   int32       `json:"timeCost"`
 }
 
 type RegisterFinishPayload struct {
@@ -149,10 +148,9 @@ func RegisterFinish(c *gin.Context) {
 			Permission: permission.User,
 			Capacity:   siteCfg.DefaultUserCapacityBytes,
 
-			KdfSalt:        payload.KDF.Salt,
-			KdfMemoryCost:  payload.KDF.MemoryCost,
-			KdfTimeCost:    payload.KDF.TimeCost,
-			KdfParallelism: payload.KDF.Parallelism,
+			KdfSalt:       payload.KDF.Salt,
+			KdfMemoryCost: payload.KDF.MemoryCost,
+			KdfTimeCost:   payload.KDF.TimeCost,
 		})
 		if txErr != nil {
 			return txErr
@@ -363,10 +361,9 @@ func LoginFinish(c *gin.Context) {
 		EncryptedPrivateKey: user.EncryptedPrivateKey,
 		PublicKey:           user.PublicKey,
 		KDF: KDFParameters{
-			Salt:        user.KdfSalt,
-			MemoryCost:  user.KdfMemoryCost,
-			Parallelism: user.KdfParallelism,
-			TimeCost:    user.KdfTimeCost,
+			Salt:       user.KdfSalt,
+			MemoryCost: user.KdfMemoryCost,
+			TimeCost:   user.KdfTimeCost,
 		},
 	})
 }
@@ -382,7 +379,6 @@ type GetResponse struct {
 	KDFSalt             utils.Bytes `json:"kdfSalt"`
 	KDFMemoryCost       int32       `json:"kdfMemoryCost"`
 	KDFTimeCost         int32       `json:"kdfTimeCost"`
-	KdfParallelism      int32       `json:"kdfParallelism"`
 }
 
 func GetIdentity(c *gin.Context) {
@@ -408,7 +404,6 @@ func GetIdentity(c *gin.Context) {
 		KDFSalt:             user.KdfSalt,
 		KDFMemoryCost:       user.KdfMemoryCost,
 		KDFTimeCost:         user.KdfTimeCost,
-		KdfParallelism:      user.KdfParallelism,
 	})
 }
 
@@ -589,7 +584,6 @@ func PasswordChangeFinish(c *gin.Context) {
 		KdfSalt:              payload.KDF.Salt,
 		KdfMemoryCost:        payload.KDF.MemoryCost,
 		KdfTimeCost:          payload.KDF.TimeCost,
-		KdfParallelism:       payload.KDF.Parallelism,
 		EncryptedPrivateKey:  payload.EncryptedPrivateKey,
 	}); err != nil {
 		utils.ErrorResponse(c, 500, "Failed when updating credentials")

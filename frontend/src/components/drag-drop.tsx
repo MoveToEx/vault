@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import _ from "lodash";
 import { Upload } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
@@ -55,7 +54,7 @@ export default function DragDrop({
           return item.kind === "file";
         });
 
-        const result = _.compact(items.map(item => item.getAsFile()));
+        const result = items.map(item => item.getAsFile()).filter(it => !!it);
 
         if (result.length > 0) {
           onChange(result);

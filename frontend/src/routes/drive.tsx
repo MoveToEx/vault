@@ -3,7 +3,7 @@ import UploadDialog from "@/components/dialogs/upload";
 import useFiles from "@/hooks/use-files";
 import { open } from "@/lib/crypto";
 import { useAppDispatch, useAppSelector } from "@/stores";
-import { from_base64, to_string } from "libsodium-wrappers-sumo";
+import { from_base64, to_string } from "libsodium-wrappers";
 import { Fragment, useMemo } from "react";
 import {
   Table,
@@ -104,7 +104,7 @@ function FileList() {
     }
     catch (e) {
       toast.error(formatError(e));
-      
+
       return [];
     }
   }, [keys, data]);

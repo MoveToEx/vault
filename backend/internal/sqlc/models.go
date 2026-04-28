@@ -160,7 +160,6 @@ type User struct {
 	KdfSalt              []byte             `json:"kdfSalt"`
 	KdfMemoryCost        int32              `json:"kdfMemoryCost"`
 	KdfTimeCost          int32              `json:"kdfTimeCost"`
-	KdfParallelism       int32              `json:"kdfParallelism"`
 	PublicKey            []byte             `json:"publicKey"`
 	EncryptedPrivateKey  []byte             `json:"encryptedPrivateKey"`
 	RootFolder           pgtype.Int8        `json:"rootFolder"`

@@ -3,7 +3,6 @@ export type Argon2Params = {
   salt: Uint8Array;
   iterations: number;
   memorySize: number;
-  parallelism: number;
   hashLength: number;
 };
 

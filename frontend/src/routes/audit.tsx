@@ -24,7 +24,7 @@ import useLogs, {
   AUDIT_LOG_PAGE_SIZE,
   type AuditLogFilters,
 } from "@/hooks/use-logs";
-import { from_base64, to_string } from "libsodium-wrappers-sumo";
+import { from_base64, to_string } from "libsodium-wrappers";
 import { Logs } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -34,7 +34,7 @@ import {
 import { Slider } from "../ui/slider";
 import { aeadComposite, kdf, seal } from "@/lib/crypto";
 import { argon2id } from "@/workers";
-import sodium from "libsodium-wrappers-sumo";
+import sodium from "libsodium-wrappers";
 import { mutate } from "@/lib/swr";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleRegisterDialog } from "@/stores/ui";
@@ -55,15 +55,12 @@ export default function RegisterDialog() {
           .regex(/^[a-zA-Z0-9]+$/, t("common.usernameAlphanumeric")),
         password: z
           .string()
-          .min(8, t("common.passwordMin8"))
-          .max(128, t("common.passwordMax128")),
+          .min(12, t("common.passwordMin12")),
         confirmPassword: z
           .string()
-          .min(8, t("common.passwordMin8"))
-          .max(128, t("common.passwordMax128")),
+          .min(12, t("common.passwordMin12")),
         kdfMemoryCost: z.number().min(64).max(1024),
         kdfTimeCost: z.number().min(1).max(100),
-        kdfParallelism: z.number().min(1).max(4),
       }),
     [t],
   );
@@ -82,7 +79,6 @@ export default function RegisterDialog() {
       confirmPassword: "",
       kdfMemoryCost: 128,
       kdfTimeCost: 3,
-      kdfParallelism: 1,
     },
     disabled: loading,
   });
@@ -132,7 +128,6 @@ export default function RegisterDialog() {
       const umk = await argon2id({
         iterations: data.kdfTimeCost,
         memorySize: data.kdfMemoryCost * 1024,
-        parallelism: data.kdfParallelism,
         password: new TextEncoder().encode(data.password),
         salt,
         hashLength: 32,
@@ -163,7 +158,6 @@ export default function RegisterDialog() {
           salt,
           memoryCost: data.kdfMemoryCost,
           timeCost: data.kdfTimeCost,
-          parallelism: data.kdfParallelism,
         },
       });
 
@@ -357,33 +351,6 @@ export default function RegisterDialog() {
                         step={64}
                         min={64}
                         max={1024}
-                      />
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name="kdfParallelism"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel
-                        className="flex flex-row justify-between items-center"
-                        htmlFor="form-register-kdf-parallel"
-                      >
-                        <span>{t("common.parallelism")}</span>
-                        <span>{field.value}</span>
-                      </FieldLabel>
-                      <Slider
-                        {...field}
-                        id="form-register-kdf-parallel"
-                        className="mx-auto w-full max-w-xs h-1"
-                        onValueChange={field.onChange}
-                        step={1}
-                        min={1}
-                        max={4}
                       />
                       {fieldState.invalid && (
                         <FieldError errors={[fieldState.error]} />

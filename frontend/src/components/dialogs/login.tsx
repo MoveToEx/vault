@@ -35,7 +35,7 @@ import { argon2id } from "@/workers";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { set } from "@/stores/key";
 import { toggleLoginDialog, toggleRegisterDialog } from "@/stores/ui";
-import sodium, { from_string, to_base64 } from "libsodium-wrappers-sumo";
+import sodium, { from_string, to_base64 } from "libsodium-wrappers";
 import api from "@/lib/api";
 import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
 import { useTranslation } from "react-i18next";
@@ -106,7 +106,6 @@ export default function LoginDialog() {
       const umk = await argon2id({
         iterations: kdfParams.timeCost,
         memorySize: kdfParams.memoryCost * 1024,
-        parallelism: kdfParams.parallelism,
         password: from_string(data.password),
         salt: kdfParams.salt,
         hashLength: 32,

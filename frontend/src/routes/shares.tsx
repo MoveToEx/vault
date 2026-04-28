@@ -23,7 +23,7 @@ import { transferBridge } from "@/lib/transfer-bridge";
 import type { FileMetadata } from "@/lib/types";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleTransferList } from "@/stores/ui";
-import { from_base64, to_string } from "libsodium-wrappers-sumo";
+import { from_base64, to_string } from "libsodium-wrappers";
 import { Ban, Download, Share2 } from "lucide-react";
 import {
   useMemo,

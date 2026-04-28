@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS users (
     kdf_salt BYTEA NOT NULL,
     kdf_memory_cost INTEGER NOT NULL,
     kdf_time_cost INTEGER NOT NULL,
-    kdf_parallelism INTEGER NOT NULL,
 
     public_key BYTEA NOT NULL,
     encrypted_private_key BYTEA NOT NULL,

@@ -10,7 +10,6 @@ export type KDFParameters = {
   salt: Uint8Array;
   memoryCost: number;
   timeCost: number;
-  parallelism: number;
 };
 
 export type Metadata = FileMetadata | FolderMetadata;

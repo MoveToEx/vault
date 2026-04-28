@@ -2,10 +2,10 @@
 -- name: NewUser :one
 INSERT INTO users (
     email, username, opaque_record, credential_identifier, permission, capacity,
-    kdf_salt, kdf_memory_cost, kdf_time_cost, kdf_parallelism,
+    kdf_salt, kdf_memory_cost, kdf_time_cost,
     public_key, encrypted_private_key, root_folder
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
 -- name: GetOpaqueClientRecord :one
@@ -406,8 +406,7 @@ UPDATE users SET
     kdf_salt = $4,
     kdf_memory_cost = $5,
     kdf_time_cost = $6,
-    kdf_parallelism = $7,
-    encrypted_private_key = $8,
+    encrypted_private_key = $7,
     updated_at = NOW()
 WHERE id = $1;
 

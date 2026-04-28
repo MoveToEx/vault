@@ -20,7 +20,7 @@ import {
 } from "@/stores/transfer";
 import { mutate } from "./swr";
 import api from "@/lib/api";
-import { from_base64 } from "libsodium-wrappers-sumo";
+import { from_base64 } from "libsodium-wrappers";
 import { formatError } from "./utils";
 
 class TransferBridge {
