@@ -6,7 +6,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -36,6 +35,7 @@ import RevokeShareDialog from "@/components/dialogs/revoke-share";
 import { useTranslation } from "react-i18next";
 import usePublicShares from "@/hooks/use-public-shares";
 import RevokePublicShareDialog from "@/components/dialogs/revoke-public-share";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type ShareMetadata = FileMetadata & {
   createdAt: Date;
@@ -151,18 +151,6 @@ function SharedWithMe() {
 
   return (
     <div>
-      <div className='w-full flex flex-row items-center'>
-        <span>
-          <p>{t("common.sharedWithYou")}</p>
-        </span>
-        <div className='flex-1' />
-        <ListPagination
-          page={page}
-          setPage={setPage}
-          hasMore={data !== undefined && data.length === SHARES_LIST_PAGE_SIZE}
-          isLoading={isLoading}
-        />
-      </div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -202,6 +190,14 @@ function SharedWithMe() {
             ))}
         </TableBody>
       </Table>
+      <div className='w-full flex flex-row justify-end items-center'>
+        <ListPagination
+          page={page}
+          setPage={setPage}
+          hasMore={data !== undefined && data.length === SHARES_LIST_PAGE_SIZE}
+          isLoading={isLoading}
+        />
+      </div>
     </div>
   );
 }
@@ -268,18 +264,6 @@ function SharedByMe() {
   return (
     <div>
       <RevokeShareDialog handle={revokeHandle} />
-      <div className='w-full flex flex-row items-center'>
-        <span>
-          <p>{t("common.sharedByYou")}</p>
-        </span>
-        <div className='flex-1' />
-        <ListPagination
-          page={page}
-          setPage={setPage}
-          hasMore={data !== undefined && data.length === SHARES_LIST_PAGE_SIZE}
-          isLoading={isLoading}
-        />
-      </div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -321,6 +305,14 @@ function SharedByMe() {
             ))}
         </TableBody>
       </Table>
+      <div className='w-full flex flex-row items-center justify-end'>
+        <ListPagination
+          page={page}
+          setPage={setPage}
+          hasMore={data !== undefined && data.length === SHARES_LIST_PAGE_SIZE}
+          isLoading={isLoading}
+        />
+      </div>
     </div>
   );
 }
@@ -386,18 +378,6 @@ function PublicShares() {
   return (
     <div>
       <RevokePublicShareDialog handle={revokePublicHandle} />
-      <div className='w-full flex flex-row items-center'>
-        <span>
-          <p>{t("common.publicSharesByYou")}</p>
-        </span>
-        <div className='flex-1' />
-        <ListPagination
-          page={page}
-          setPage={setPage}
-          hasMore={data !== undefined && data.length === SHARES_LIST_PAGE_SIZE}
-          isLoading={isLoading}
-        />
-      </div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -439,19 +419,40 @@ function PublicShares() {
             ))}
         </TableBody>
       </Table>
+      <div className='w-full flex flex-row justify-end items-center'>
+        <ListPagination
+          page={page}
+          setPage={setPage}
+          hasMore={data !== undefined && data.length === SHARES_LIST_PAGE_SIZE}
+          isLoading={isLoading}
+        />
+      </div>
     </div>
   );
 }
 
 export default function SharesPage() {
+  const { t } = useTranslation();
+
   return (
     <div>
       <RequireUMK />
-      <SharedWithMe />
-      <Separator className="my-4" />
-      <SharedByMe />
-      <Separator className="my-4" />
-      <PublicShares />
+      <Tabs defaultValue='send'>
+        <TabsList className='w-full mb-4'>
+          <TabsTrigger value='recv'>{t("common.sharedWithYou")}</TabsTrigger>
+          <TabsTrigger value='send'>{t("common.sharedByYou")}</TabsTrigger>
+          <TabsTrigger value='public'>{t('common.publicSharesByYou')}</TabsTrigger>
+        </TabsList>
+        <TabsContent value='recv'>
+          <SharedWithMe />
+        </TabsContent>
+        <TabsContent value='send'>
+          <SharedByMe />
+        </TabsContent>
+        <TabsContent value='public'>
+          <PublicShares />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
