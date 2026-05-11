@@ -16,15 +16,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Envelope, Log } from "@/lib/crypto_wrappers";
 import { cn } from "@/lib/utils";
-import { open } from "@/lib/crypto";
 import type { Metadata } from "@/lib/types";
 import { useAppSelector } from "@/stores";
 import useLogs, {
   AUDIT_LOG_PAGE_SIZE,
   type AuditLogFilters,
 } from "@/hooks/use-logs";
-import { from_base64, to_string } from "libsodium-wrappers";
+import { from_base64 } from "libsodium-wrappers";
 import { Logs } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -95,21 +95,21 @@ export default function AuditPage() {
   const rows: DecryptedRow[] = useMemo(() => {
     if (!keys || !data) return [];
 
-    const pub = from_base64(keys.pubKey);
-    const priv = from_base64(keys.privKey);
+    const signPub = from_base64(keys.sign.publicKey);
+    const kemPriv = from_base64(keys.kem.privateKey);
 
     return data.items.map((it) => {
       let itemLabel = null;
       let itemMetaError: string | undefined;
 
-      if (it.encryptedMetadata) {
+      if (it.extraEnvelope && it.extraCipher) {
         try {
-          const metaPlain = open(
-            from_base64(it.encryptedMetadata),
-            pub,
-            priv,
-          );
-          const meta = JSON.parse(to_string(metaPlain)) as Metadata;
+          const meta = Envelope.decrypt(
+            it.extraEnvelope,
+            it.extraCipher,
+            signPub,
+            kemPriv,
+          ) as Metadata;
           if (meta && typeof meta === "object" && "name" in meta) {
             itemLabel = String(meta.name);
           }
@@ -119,10 +119,11 @@ export default function AuditPage() {
       }
 
       try {
-        const plain = to_string(
-          open(from_base64(it.message), pub, priv),
-        );
-        const payload = JSON.parse(plain) as Record<string, unknown>;
+        const payload = Log.decrypt(
+          it.messageEnvelope,
+          it.messageCipher,
+          kemPriv,
+        ) as Record<string, unknown>;
         const action =
           typeof payload.action === "string" ? payload.action : "unknown";
         const actionLabel = t(`audit.actions.${action}`, {

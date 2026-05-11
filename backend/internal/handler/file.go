@@ -41,7 +41,7 @@ func GetCapacity(c *gin.Context) {
 
 	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action": "get_capacity",
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, GetCapacityResponse{
 		Used:     used,
@@ -53,11 +53,24 @@ type GetFilesPayload struct {
 	DirID int64 `form:"dir"`
 }
 
+type GetFilesFolderItem struct {
+	ID        int64       `json:"id"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
+	CreatedAt time.Time   `json:"createdAt"`
+}
+
+type GetFilesFileItem struct {
+	ID        int64       `json:"id"`
+	Size      int64       `json:"size"`
+	CreatedAt time.Time   `json:"createdAt"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
+}
+
 type GetFilesResponse struct {
-	ID                int64       `json:"id"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	Size              int64       `json:"size"`
-	CreatedAt         time.Time   `json:"createdAt"`
+	Files   []GetFilesFileItem   `json:"files"`
+	Folders []GetFilesFolderItem `json:"folders"`
 }
 
 func GetFiles(c *gin.Context) {
@@ -111,39 +124,45 @@ func GetFiles(c *gin.Context) {
 		return
 	}
 
-	var result = []GetFilesResponse{}
+	var filesResponse = []GetFilesFileItem{}
+	var foldersResponse = []GetFilesFolderItem{}
 
 	for i := range files {
-		result = append(result, GetFilesResponse{
-			ID:                files[i].ID,
-			EncryptedMetadata: files[i].EncryptedMetadata,
-			Size:              files[i].Size,
-			CreatedAt:         files[i].CreatedAt.Time,
+		filesResponse = append(filesResponse, GetFilesFileItem{
+			ID:        files[i].ID,
+			Size:      files[i].Size,
+			CreatedAt: files[i].CreatedAt.Time,
+			Envelope:  files[i].Envelope,
+			KemCipher: files[i].KemCipher,
 		})
 	}
 
 	for i := range folders {
-		result = append(result, GetFilesResponse{
-			ID:                folders[i].ID,
-			EncryptedMetadata: folders[i].EncryptedMetadata,
-			CreatedAt:         folders[i].CreatedAt.Time,
+		foldersResponse = append(foldersResponse, GetFilesFolderItem{
+			ID:        folders[i].ID,
+			Envelope:  folders[i].Envelope,
+			KemCipher: folders[i].KemCipher,
+			CreatedAt: folders[i].CreatedAt.Time,
 		})
 	}
 
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "list_folder",
 		"dirId":  payload.DirID,
-	}, cur.EncryptedMetadata)
+	}, cur.Envelope, cur.KemCipher)
 
-	utils.SuccessResponse(c, result)
+	utils.SuccessResponse(c, GetFilesResponse{
+		Files:   filesResponse,
+		Folders: foldersResponse,
+	})
 }
 
 type GetFileResponse struct {
-	Chunks            int32       `json:"chunks"`
-	ChunkSize         int64       `json:"chunkSize"`
-	Size              int64       `json:"size"`
-	EncryptedKey      utils.Bytes `json:"encryptedKey"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+	Chunks    int32       `json:"chunks"`
+	ChunkSize int64       `json:"chunkSize"`
+	Size      int64       `json:"size"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
 }
 
 func GetFile(c *gin.Context) {
@@ -173,14 +192,14 @@ func GetFile(c *gin.Context) {
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "get_file_metadata",
 		"fileId": fileID,
-	}, file.EncryptedMetadata)
+	}, file.Envelope, file.KemCipher)
 
 	utils.SuccessResponse(c, GetFileResponse{
-		Chunks:            file.Chunks,
-		EncryptedKey:      file.EncryptedKey,
-		Size:              file.Size,
-		ChunkSize:         file.ChunkSize,
-		EncryptedMetadata: file.EncryptedMetadata,
+		Chunks:    file.Chunks,
+		Envelope:  file.Envelope,
+		KemCipher: file.KemCipher,
+		Size:      file.Size,
+		ChunkSize: file.ChunkSize,
 	})
 }
 
@@ -246,7 +265,7 @@ func GetChunk(c *gin.Context) {
 		"action":     "get_file_chunk",
 		"fileId":     fileID,
 		"chunkIndex": chunkIndex,
-	}, file.EncryptedMetadata)
+	}, file.Envelope, file.KemCipher)
 
 	utils.SuccessResponse(c, GetChunkResponse{
 		URL:     req.URL,
@@ -254,8 +273,8 @@ func GetChunk(c *gin.Context) {
 	})
 }
 
-type UpdateFilePayload struct {
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+type UpdateMetadataPayload struct {
+	Envelope utils.Bytes `json:"envelope"`
 }
 
 func UpdateFile(c *gin.Context) {
@@ -268,7 +287,7 @@ func UpdateFile(c *gin.Context) {
 		return
 	}
 
-	var payload UpdateFilePayload
+	var payload UpdateMetadataPayload
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		utils.ErrorResponse(c, 400, "Invalid request")
@@ -290,8 +309,8 @@ func UpdateFile(c *gin.Context) {
 	}
 
 	err = db.Query().SetFileMetadata(ctx, sqlc.SetFileMetadataParams{
-		EncryptedMetadata: payload.EncryptedMetadata,
-		ID:                fileID,
+		Envelope: payload.Envelope,
+		ID:       fileID,
 	})
 
 	if err != nil {
@@ -302,13 +321,9 @@ func UpdateFile(c *gin.Context) {
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "update_file",
 		"fileId": fileID,
-	}, payload.EncryptedMetadata)
+	}, payload.Envelope, file.KemCipher)
 
 	utils.SuccessResponse(c, 204)
-}
-
-type UpdateFolderPayload struct {
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
 }
 
 func UpdateFolder(c *gin.Context) {
@@ -321,7 +336,7 @@ func UpdateFolder(c *gin.Context) {
 		return
 	}
 
-	var payload UpdateFolderPayload
+	var payload UpdateMetadataPayload
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		utils.ErrorResponse(c, 400, "Invalid request")
@@ -343,8 +358,8 @@ func UpdateFolder(c *gin.Context) {
 	}
 
 	err = db.Query().SetFolderMetadata(ctx, sqlc.SetFolderMetadataParams{
-		EncryptedMetadata: payload.EncryptedMetadata,
-		ID:                folderID,
+		Envelope: payload.Envelope,
+		ID:       folderID,
 	})
 
 	if err != nil {
@@ -355,7 +370,7 @@ func UpdateFolder(c *gin.Context) {
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":   "update_folder",
 		"folderId": folderID,
-	}, payload.EncryptedMetadata)
+	}, payload.Envelope, folder.KemCipher)
 
 	utils.SuccessResponse(c, 204)
 }
@@ -392,8 +407,6 @@ func DeleteFile(c *gin.Context) {
 		return
 	}
 
-	meta := file.EncryptedMetadata
-
 	keys, err := db.Query().GetFileS3Keys(ctx, payload.FileID)
 
 	if err != nil {
@@ -405,7 +418,7 @@ func DeleteFile(c *gin.Context) {
 		ID:      payload.FileID,
 		OwnerID: userID,
 	}); err != nil {
-		utils.ErrorResponse(c, 500, "Failed when deleting file")
+		utils.ErrorResponse(c, 500, "Failed when deleting file: %v", err)
 		return
 	}
 
@@ -417,7 +430,7 @@ func DeleteFile(c *gin.Context) {
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "delete_file",
 		"fileId": payload.FileID,
-	}, meta)
+	}, file.Envelope, file.KemCipher)
 
 	utils.SuccessResponse(c, nil)
 }
@@ -475,7 +488,7 @@ func MoveFile(c *gin.Context) {
 		"action":     "move_file",
 		"fileId":     fileID,
 		"destFolder": dest.ID,
-	}, file.EncryptedMetadata)
+	}, file.Envelope, file.KemCipher)
 
 	utils.SuccessResponse(c, nil)
 }
@@ -561,14 +574,15 @@ func MoveFolder(c *gin.Context) {
 		"action":     "move_folder",
 		"folderId":   folderID,
 		"destFolder": dest.ID,
-	}, folder.EncryptedMetadata)
+	}, folder.Envelope, folder.KemCipher)
 
 	utils.SuccessResponse(c, nil)
 }
 
 type NewFolderPayload struct {
-	ParentID          int64       `json:"parentId"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+	ParentID  int64       `json:"parentId"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
 }
 
 type NewFolderResponse struct {
@@ -624,7 +638,8 @@ func NewFolder(c *gin.Context) {
 	}
 
 	folder, err := db.Query().NewFolder(ctx, sqlc.NewFolderParams{
-		EncryptedMetadata: payload.EncryptedMetadata,
+		Envelope:  payload.Envelope,
+		KemCipher: payload.KemCipher,
 		ParentID: pgtype.Int8{
 			Valid: true,
 			Int64: parent.ID,
@@ -641,7 +656,7 @@ func NewFolder(c *gin.Context) {
 		"action":   "create_folder",
 		"folderId": folder.ID,
 		"parentId": parent.ID,
-	}, payload.EncryptedMetadata)
+	}, payload.Envelope, payload.KemCipher)
 
 	utils.SuccessResponse(c, NewFolderResponse{
 		ID: folder.ID,
@@ -680,8 +695,6 @@ func DeleteFolder(c *gin.Context) {
 		return
 	}
 
-	meta := folder.EncryptedMetadata
-
 	keys, err := db.Query().TraverseChunks(ctx, payload.FolderID)
 	if err != nil {
 		utils.ErrorResponse(c, 500, "Failed when listing files")
@@ -706,7 +719,7 @@ func DeleteFolder(c *gin.Context) {
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":   "delete_folder",
 		"folderId": payload.FolderID,
-	}, meta)
+	}, folder.Envelope, folder.KemCipher)
 
 	utils.SuccessResponse(c, nil)
 }

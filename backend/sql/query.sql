@@ -3,9 +3,9 @@
 INSERT INTO users (
     email, username, opaque_record, credential_identifier, permission, capacity,
     kdf_salt, kdf_memory_cost, kdf_time_cost,
-    public_key, encrypted_private_key, root_folder
+    kem_pub, kem_pri, sgn_pub, sgn_pri, root_folder
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 RETURNING *;
 
 -- name: GetOpaqueClientRecord :one
@@ -32,8 +32,7 @@ WHERE id = $1;
 
 -- name: NewFile :one
 INSERT INTO files (
-    owner_id, encrypted_metadata, encrypted_key,
-    chunks, size
+    owner_id, envelope, kem_cipher, chunks, size
 )
 VALUES (
     $1, $2, $3, $4, $5
@@ -42,12 +41,12 @@ RETURNING *;
 
 -- name: SetFileMetadata :exec
 UPDATE files
-SET encrypted_metadata = $1
+SET envelope = $1
 WHERE id = $2;
 
 -- name: SetFolderMetadata :exec
 UPDATE folders
-SET encrypted_metadata = $1
+SET envelope = $1
 WHERE id = $2;
 
 -- name: GetUsedCapacity :one
@@ -65,9 +64,9 @@ SELECT (
 
 -- name: NewUpload :one
 INSERT INTO uploads (
-    user_id, chunks, chunk_size, size, expires_at, parent_id, encrypted_metadata
+    user_id, chunks, chunk_size, size, expires_at, parent_id, envelope, kem_cipher
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 
@@ -101,9 +100,9 @@ WHERE id = $1 AND expires_at > NOW();
 
 -- name: MigrateUpload :one
 INSERT INTO
-    files (owner_id, encrypted_metadata, parent_id, encrypted_key, chunks, size, chunk_size)
+    files (owner_id, envelope, kem_cipher, parent_id, chunks, size, chunk_size)
 SELECT
-    user_id, encrypted_metadata, parent_id, $2 AS encrypted_key, chunks, size, chunk_size
+    user_id, envelope, kem_cipher, parent_id, chunks, size, chunk_size
 FROM uploads u
 WHERE u.id = $1
 RETURNING id;
@@ -125,8 +124,8 @@ SELECT * FROM upload_chunks
 WHERE upload_id = $1;
 
 -- name: NewFolder :one
-INSERT INTO folders(encrypted_metadata, parent_id, owner_id)
-VALUES ($1, $2, $3)
+INSERT INTO folders(envelope, kem_cipher, parent_id, owner_id)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: SetRootFolder :exec
@@ -160,8 +159,10 @@ SELECT s3_key FROM file_chunks
 WHERE file_id = $1;
 
 -- name: DeleteFile :exec
-DELETE FROM files
-WHERE id = $1 AND owner_id = $2;
+WITH _ps AS (DELETE FROM public_shares WHERE file_id = $1),
+_s AS (DELETE FROM shares WHERE file_id = $1)
+DELETE FROM files f
+WHERE f.id = $1 AND f.owner_id = $2;
 
 -- name: ListUploadChunks :many
 SELECT s3_key FROM upload_chunks WHERE upload_id = $1;
@@ -181,11 +182,11 @@ WHERE id = $1 AND completed_at IS NULL;
 
 
 -- name: InsertLog :exec
-INSERT INTO logs (owner_id, level, message, encrypted_metadata)
-VALUES ($1, $2, $3, $4);
+INSERT INTO logs (owner_id, level, message_envelope, message_kem_cipher, extra_envelope, extra_kem_cipher)
+VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: ListLogsForOwner :many
-SELECT id, level, message, encrypted_metadata, created_at
+SELECT id, level, message_envelope, message_kem_cipher, extra_envelope, extra_kem_cipher, created_at
 FROM logs
 WHERE owner_id = sqlc.arg(owner_id)
   AND (sqlc.arg(level_filter)::text = '' OR level::text = sqlc.arg(level_filter))
@@ -293,20 +294,20 @@ SELECT * FROM users
 WHERE username = $1;
 
 -- name: FindUserByUsername :many
-SELECT id, username, public_key FROM users
+SELECT id, username, kem_pub, sgn_pub FROM users
 WHERE username ILIKE CONCAT('%', @key::TEXT, '%');
 
 -- name: FindUserByEmail :many
-SELECT id, username, public_key FROM users
+SELECT id, username, kem_pub, sgn_pub FROM users
 WHERE email ILIKE CONCAT('%', @key::TEXT, '%');
 
 -- name: NewShare :one
-INSERT INTO shares(file_id, sender_id, receiver_id, encrypted_fek, encrypted_metadata)
+INSERT INTO shares(file_id, sender_id, receiver_id, envelope, kem_cipher)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetShares :many
-SELECT s.*, u.username AS sender FROM shares s
+SELECT s.*, u.username AS sender, u.kem_pub, u.sgn_pub FROM shares s
 INNER JOIN users u ON s.sender_id = u.id
 WHERE s.receiver_id = $1 AND s.expires_at > NOW()
 ORDER BY s.created_at DESC
@@ -314,18 +315,20 @@ LIMIT $2 OFFSET $3;
 
 -- name: GetSharesBySender :many
 SELECT
-    s.id, s.sender_id, s.receiver_id, u.username AS receiver,
-    f.encrypted_metadata, s.created_at, s.expires_at
+    s.id, s.sender_id, s.receiver_id, rec.username AS receiver, sender.sgn_pub,
+    f.envelope, f.kem_cipher, s.created_at, s.expires_at
 FROM shares s
 INNER JOIN files f ON s.file_id = f.id
-INNER JOIN users u ON s.receiver_id = u.id
+INNER JOIN users rec ON s.receiver_id = rec.id
+INNER JOIN users sender ON s.sender_id = sender.id
 WHERE s.sender_id = $1 AND s.expires_at > NOW()
 ORDER BY s.created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: GetShare :one
-SELECT s.*, f.chunks, f.size, f.chunk_size FROM shares s
+SELECT s.*, f.chunks, f.size, f.chunk_size, su.sgn_pub FROM shares s
 INNER JOIN files f ON s.file_id = f.id
+INNER JOIN users su ON s.sender_id = su.id
 WHERE s.id = $1 AND s.expires_at > NOW();
 
 -- name: GetShareChunk :one
@@ -344,7 +347,7 @@ WHERE id = $1;
 --#region Public sharing
 
 -- name: NewPublicShare :one
-INSERT INTO public_shares(file_id, owner_id, key, encrypted_key, encrypted_metadata)
+INSERT INTO public_shares(file_id, owner_id, key, envelope, kem_cipher)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
@@ -406,7 +409,8 @@ UPDATE users SET
     kdf_salt = $4,
     kdf_memory_cost = $5,
     kdf_time_cost = $6,
-    encrypted_private_key = $7,
+    kem_pri = $7,
+    sgn_pri = $8,
     updated_at = NOW()
 WHERE id = $1;
 

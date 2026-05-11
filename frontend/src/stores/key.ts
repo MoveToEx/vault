@@ -1,9 +1,10 @@
+import type { Keypair, Serialized } from "@/lib/types";
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 type Payload = {
   umk: string;
-  privKey: string;
-  pubKey: string;
+  kem: Serialized<Keypair>;
+  sign: Serialized<Keypair>;
 };
 
 export const KeySlice = createSlice({

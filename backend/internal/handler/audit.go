@@ -12,11 +12,13 @@ import (
 )
 
 type AuditLogItem struct {
-	ID                  int64         `json:"id"`
-	Level               sqlc.LogLevel `json:"level"`
-	Message             utils.Bytes   `json:"message"`
-	EncryptedMetadata   utils.Bytes   `json:"encryptedMetadata,omitempty"`
-	CreatedAt           time.Time     `json:"createdAt"`
+	ID              int64         `json:"id"`
+	Level           sqlc.LogLevel `json:"level"`
+	MessageEnvelope utils.Bytes   `json:"messageEnvelope"`
+	MessageCipher   utils.Bytes   `json:"messageCipher"`
+	ExtraEnvelope   utils.Bytes   `json:"extraEnvelope"`
+	ExtraCipher     utils.Bytes   `json:"extraCipher"`
+	CreatedAt       time.Time     `json:"createdAt"`
 }
 
 type ListAuditLogsResponse struct {
@@ -113,13 +115,15 @@ func ListAuditLogs(c *gin.Context) {
 	items := make([]AuditLogItem, 0, len(rows))
 	for i := range rows {
 		item := AuditLogItem{
-			ID:        rows[i].ID,
-			Level:     rows[i].Level,
-			Message:   rows[i].Message,
-			CreatedAt: rows[i].CreatedAt.Time,
+			ID:              rows[i].ID,
+			Level:           rows[i].Level,
+			MessageEnvelope: rows[i].MessageEnvelope,
+			MessageCipher:   rows[i].MessageKemCipher,
+			CreatedAt:       rows[i].CreatedAt.Time,
 		}
-		if len(rows[i].EncryptedMetadata) > 0 {
-			item.EncryptedMetadata = rows[i].EncryptedMetadata
+		if len(rows[i].ExtraEnvelope) > 0 {
+			item.ExtraEnvelope = rows[i].ExtraEnvelope
+			item.ExtraCipher = rows[i].ExtraKemCipher
 		}
 		items = append(items, item)
 	}

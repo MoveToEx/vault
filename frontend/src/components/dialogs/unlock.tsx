@@ -15,15 +15,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
 import { useState } from "react";
-import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
 import { formatError, logout } from "@/lib/utils";
 import { argon2id } from "@/workers";
 import { useAppDispatch } from "@/stores";
 import { set } from "@/stores/key";
-import sodium, { to_base64, from_base64 } from "libsodium-wrappers";
+import { to_base64, from_base64 } from "libsodium-wrappers";
 import { Spinner } from "../ui/spinner";
 import { Key, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PrivateKey } from "@/lib/crypto_wrappers";
 
 const schema = z.object({
   password: z.string(),
@@ -61,20 +61,20 @@ export default function UnlockDialog({
         hashLength: 32,
       });
 
-      const kek = kdf(umk, "KEK");
-
-      await sodium.ready;
-
-      const privKey = aeadCompositeDecrypt(
-        from_base64(auth.encryptedPrivateKey),
-        kek,
-      );
+      const kemPri = PrivateKey.decrypt(umk, from_base64(auth.kemPri));
+      const sgnPri = PrivateKey.decrypt(umk, from_base64(auth.sgnPri));
 
       dispatch(
         set({
           umk: to_base64(umk),
-          privKey: to_base64(privKey),
-          pubKey: auth.publicKey,
+          kem: {
+            privateKey: to_base64(kemPri),
+            publicKey: auth.kemPub,
+          },
+          sign: {
+            privateKey: to_base64(sgnPri),
+            publicKey: auth.sgnPub
+          }
         }),
       );
 

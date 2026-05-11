@@ -14,9 +14,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
-import { useAppSelector } from "@/stores";
-import { seal } from "@/lib/crypto";
-import { from_base64, from_string, ready } from "libsodium-wrappers";
+import { useAppSelector, useKeys } from "@/stores";
 import api from "@/lib/api";
 import { useMemo, useState } from "react";
 import { Spinner } from "../ui/spinner";
@@ -24,6 +22,7 @@ import { mutate } from "@/lib/swr";
 import { Dialog as BaseDialog } from "@base-ui/react";
 import { useTranslation } from "react-i18next";
 import { formatError } from "@/lib/utils";
+import { Envelope } from "@/lib/crypto_wrappers";
 
 const handle = BaseDialog.createHandle();
 
@@ -45,7 +44,7 @@ export default function NewFolderDialog() {
       name: "",
     },
   });
-  const keys = useAppSelector((state) => state.key.value);
+  const keys = useKeys();
   const path = useAppSelector((state) => state.path.value);
 
   const [loading, setLoading] = useState(false);
@@ -56,19 +55,14 @@ export default function NewFolderDialog() {
     setLoading(true);
 
     try {
-      await ready;
-
-      const metadata = seal(
-        from_string(JSON.stringify({
-          name: data.name,
-          type: "folder",
-        })),
-        from_base64(keys.pubKey),
-      );
+      const [kemCipher, envelope] = Envelope.encrypt({
+        name: data.name,
+        type: 'folder'
+      }, keys.sign.privateKey, keys.kem.publicKey);
 
       const parentId = path.length === 0 ? 0 : path[path.length - 1].id;
 
-      await api.newFolder(parentId, metadata);
+      await api.newFolder(parentId, { envelope, kemCipher });
 
       handle.close();
       mutate("file");

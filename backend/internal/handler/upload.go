@@ -19,9 +19,9 @@ import (
 )
 
 var (
-	errTooManyUploadSessions       = errors.New("too many upload sessions")
-	errInsufficientUploadCapacity  = errors.New("insufficient capacity")
-	errUploadParentOwnership       = errors.New("parent ownership mismatch")
+	errTooManyUploadSessions      = errors.New("too many upload sessions")
+	errInsufficientUploadCapacity = errors.New("insufficient capacity")
+	errUploadParentOwnership      = errors.New("parent ownership mismatch")
 )
 
 func GetUploadSessions(c *gin.Context) {
@@ -38,15 +38,16 @@ func GetUploadSessions(c *gin.Context) {
 
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action": "list_upload_sessions",
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, up)
 }
 
 type InitUploadPayload struct {
-	Size              int64       `json:"size"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	ParentID          int64       `json:"parentId"`
+	Size      int64       `json:"size"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
+	ParentID  int64       `json:"parentId"`
 }
 
 type InitUploadResponse struct {
@@ -121,12 +122,13 @@ func InitUpload(c *gin.Context) {
 		}
 
 		upload, err := tx.NewUpload(ctx, sqlc.NewUploadParams{
-			UserID:            userID,
-			EncryptedMetadata: payload.EncryptedMetadata,
-			Size:              payload.Size,
-			Chunks:            int32(chunks),
-			ChunkSize:         chunkSize,
-			ParentID:          parent.ID,
+			UserID:    userID,
+			Envelope:  payload.Envelope,
+			KemCipher: payload.KemCipher,
+			Size:      payload.Size,
+			Chunks:    int32(chunks),
+			ChunkSize: chunkSize,
+			ParentID:  parent.ID,
 			ExpiresAt: pgtype.Timestamptz{
 				Valid: true,
 				Time:  time.Now().Add(time.Duration(siteCfg.UploadExpirySeconds) * time.Second),
@@ -162,7 +164,7 @@ func InitUpload(c *gin.Context) {
 		"uploadId": up.ID,
 		"size":     payload.Size,
 		"parentId": up.ParentID,
-	}, payload.EncryptedMetadata)
+	}, payload.Envelope, payload.KemCipher)
 
 	utils.SuccessResponse(c, InitUploadResponse{
 		ID:        up.ID,
@@ -250,7 +252,7 @@ func UploadChunkInit(c *gin.Context) {
 		"action":     "upload_chunk_presign",
 		"uploadId":   uploadID,
 		"chunkIndex": chunkIndex,
-	}, up.EncryptedMetadata)
+	}, up.Envelope, up.KemCipher)
 
 	utils.SuccessResponse(c, UploadChunkInitResponse{
 		URL:     req.URL,
@@ -318,13 +320,9 @@ func UploadChunkComplete(c *gin.Context) {
 		"action":     "upload_chunk_complete",
 		"uploadId":   uploadID,
 		"chunkIndex": chunkIndex,
-	}, up.EncryptedMetadata)
+	}, up.Envelope, up.KemCipher)
 
 	utils.SuccessResponse(c, nil)
-}
-
-type UploadCompletePayload struct {
-	EncryptedKey utils.Bytes `json:"encryptedKey"`
 }
 
 func UploadComplete(c *gin.Context) {
@@ -333,13 +331,6 @@ func UploadComplete(c *gin.Context) {
 	uploadID, err := strconv.ParseInt(c.Param("upload_id"), 10, 64)
 
 	if err != nil {
-		utils.ErrorResponse(c, 400, "Invalid request")
-		return
-	}
-
-	var payload UploadCompletePayload
-
-	if err := c.ShouldBindJSON(&payload); err != nil {
 		utils.ErrorResponse(c, 400, "Invalid request")
 		return
 	}
@@ -365,10 +356,7 @@ func UploadComplete(c *gin.Context) {
 			return err
 		}
 
-		fid, err := tx.MigrateUpload(ctx, sqlc.MigrateUploadParams{
-			ID:           uploadID,
-			EncryptedKey: payload.EncryptedKey,
-		})
+		fid, err := tx.MigrateUpload(ctx, uploadID)
 
 		if err != nil {
 			return err
@@ -398,7 +386,7 @@ func UploadComplete(c *gin.Context) {
 		"action":   "upload_complete",
 		"uploadId": uploadID,
 		"fileId":   completedFileID,
-	}, upload.EncryptedMetadata)
+	}, upload.Envelope, upload.KemCipher)
 
 	utils.SuccessResponse(c, nil)
 }

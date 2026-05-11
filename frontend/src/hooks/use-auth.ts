@@ -6,9 +6,11 @@ import { useLocalStorage } from "usehooks-ts";
 
 type AuthResponse = {
   id: number;
+  kemPub: string;
+  kemPri: string;
+  sgnPub: string;
+  sgnPri: string;
   username: string;
-  publicKey: string;
-  encryptedPrivateKey: string;
   rootFolder: number;
   createdAt: string;
   permission: number;

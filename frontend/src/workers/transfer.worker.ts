@@ -1,18 +1,15 @@
-import { aeadComposite, aeadCompositeDecrypt, open, seal } from "@/lib/crypto";
+import { aeadComposite, aeadCompositeDecrypt } from "@/lib/crypto";
 import type {
-  Metadata,
   TransferCommand,
   TransferMessage,
   WithId,
   WorkerRequest,
   WorkerResponse,
 } from "@/lib/types";
-import { from_base64, to_string } from "libsodium-wrappers";
 import axios from "axios";
-import sodium from "libsodium-wrappers";
+import sodium, { from_base64, to_base64 } from "libsodium-wrappers";
 import { formatError } from "@/lib/utils";
-
-type FileMetadata = Extract<Metadata, { type: 'file' }>;
+import { Envelope, PublicShare } from "@/lib/crypto_wrappers";
 
 async function rpc<R extends WorkerRequest>(
   req: R,
@@ -44,7 +41,7 @@ function post<R extends TransferMessage>(message: R) {
   self.postMessage(message);
 }
 
-async function upload(file: File, parentId: number, publicKey: Uint8Array) {
+async function upload(file: File, parentId: number, signPriv: Uint8Array, kemPub: Uint8Array) {
   const transferId = crypto.randomUUID();
 
   try {
@@ -60,18 +57,16 @@ async function upload(file: File, parentId: number, publicKey: Uint8Array) {
 
     const fek = sodium.crypto_aead_xchacha20poly1305_ietf_keygen();
 
-    const metadata = seal(
-      JSON.stringify({
-        name: file.name,
-        mime: file.type,
-        type: "file",
-      }),
-      publicKey,
-    );
+    const [kemCipher, envelope] = Envelope.encrypt({
+      name: file.name,
+      type: "file",
+      key: to_base64(fek),
+    }, signPriv, kemPub);
 
     const { id, chunks, chunkSize } = await rpc({
       type: "init",
-      metadata,
+      envelope,
+      kemCipher,
       parentId,
       size: file.size,
       transferId,
@@ -143,12 +138,9 @@ async function upload(file: File, parentId: number, publicKey: Uint8Array) {
       });
     }
 
-    const efek = seal(fek, publicKey);
-
     await rpc({
       type: "ack",
       uploadId: id,
-      encryptedKey: efek,
       transferId,
     });
 
@@ -170,7 +162,7 @@ type Downloadable = {
   chunkSize: number;
   size: number;
   key: Uint8Array;
-  metadata: FileMetadata;
+  name: string;
 }
 
 type Resolved = {
@@ -196,14 +188,14 @@ async function download({ resolve, resolveChunk, transferId }: DownloadParams) {
       size: 0,
     });
 
-    const { chunks, chunkSize, size, key, metadata } = await resolve();
+    const { chunks, chunkSize, size, key, name } = await resolve();
 
     post({
       type: "transfer-started",
       transferId,
       chunks,
       chunkSize,
-      filename: metadata.name,
+      filename: name,
       size,
     });
 
@@ -263,7 +255,7 @@ async function download({ resolve, resolveChunk, transferId }: DownloadParams) {
     await rpc({
       type: "download",
       blob,
-      filename: metadata.name,
+      filename: name,
       transferId,
     });
   }
@@ -281,7 +273,7 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
 
   switch (params.type) {
     case "enqueue-upload": {
-      await upload(params.file, params.parentId, params.publicKey);
+      await upload(params.file, params.parentId, params.signPriv, params.kemPub);
       break;
     }
     case "enqueue-download": {
@@ -289,20 +281,25 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
 
       await download({
         async resolve() {
-          const { encryptedKey, encryptedMetadata, ...rest } = await rpc({
+          const file = await rpc({
             type: "get-file",
             fileId: params.fileId,
             transferId,
           });
 
+          const result = Envelope.decrypt(
+            file.envelope,
+            file.kemCipher,
+            params.signPub,
+            params.kem.privateKey,
+          );
+
+          if (result.type !== 'file') throw new Error('unexpected target type');
+
           return {
-            key: open(from_base64(encryptedKey), params.publicKey, params.privateKey),
-            metadata: JSON.parse(
-              to_string(
-                open(from_base64(encryptedMetadata), params.publicKey, params.privateKey)
-              )
-            ),
-            ...rest
+            ...file,
+            name: result.name,
+            key: from_base64(result.key),
           };
         },
         async resolveChunk(index) {
@@ -323,27 +320,27 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
 
       await download({
         async resolve() {
-          const { encryptedKey, encryptedMetadata, ...rest } = await rpc({
+          const { envelope, kemCipher, ...rest } = await rpc({
             type: "get-public-share",
-            key: params.key,
+            key: params.sid,
             transferId,
           });
 
+          const metadata = PublicShare.decrypt(envelope, kemCipher, params.signPub, params.key);
+
+          if (metadata.type !== 'file') throw new Error('unexpected item type');
+
           return {
             ...rest,
-            key: open(encryptedKey, params.publicKey, params.privateKey),
-            metadata: JSON.parse(
-              to_string(
-                open(encryptedMetadata, params.publicKey, params.privateKey)
-              )
-            ),
+            name: metadata.name,
+            key: from_base64(metadata.key),
           };
         },
         async resolveChunk(index) {
           return await rpc({
             type: "resolve-public-share-chunk",
             index,
-            key: params.key,
+            key: params.sid,
             transferId,
           })
         },
@@ -356,20 +353,20 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
 
       await download({
         async resolve() {
-          const { encryptedKey, encryptedMetadata, ...rest } = await rpc({
+          const file = await rpc({
             type: "get-share",
             shareId: params.shareId,
             transferId,
           });
 
+          const result = Envelope.decrypt(file.envelope, file.kemCipher, params.signPub, params.kem.privateKey);
+
+          if (result.type !== 'file') throw new Error('unexpected item type');
+          
           return {
-            key: open(encryptedKey, params.publicKey, params.privateKey),
-            metadata: JSON.parse(
-              to_string(
-                open(encryptedMetadata, params.publicKey, params.privateKey)
-              )
-            ),
-            ...rest
+            ...file,
+            name: result.name,
+            key: from_base64(result.key),
           };
         },
         async resolveChunk(index) {

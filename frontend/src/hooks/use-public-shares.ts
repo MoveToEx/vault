@@ -1,14 +1,6 @@
 import useTaggedSWR from "@/lib/swr";
-import instance from "@/lib/axios";
-import type { Wrapped } from "@/lib/types";
 import useAuth from "./use-auth";
-
-type PublicShare = {
-  key: string,
-  createdAt: string,
-  expiresAt: string,
-  encryptedMetadata: string,
-};
+import api from "@/lib/api";
 
 export default function usePublicShares(page: number) {
   const { data } = useAuth();
@@ -16,11 +8,9 @@ export default function usePublicShares(page: number) {
   return useTaggedSWR({
     id: "public-shares",
     tags: ["public-share", "self"],
-    args: [data?.id, page],
+    args: [data?.id, page] as const,
     fetcher: async (_, page) => {
-      const response = await instance.get<Wrapped<PublicShare[]>>(`/public-shares?offset=${((page ?? 1) - 1) * 24}&limit=24`);
-
-      return response.data.data;
+      return await api.getPublicShares((page - 1) * 24, 24);
     },
   });
 }

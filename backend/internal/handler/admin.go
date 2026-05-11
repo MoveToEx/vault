@@ -117,7 +117,7 @@ func AdminPatchSiteConfig(c *gin.Context) {
 
 	utils.AppendLog(ctx, c.GetInt64("UserID"), sqlc.LogLevelInfo, map[string]any{
 		"action": "admin_site_config_update",
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, nil)
 }
@@ -256,7 +256,7 @@ func AdminPatchUserCapacity(c *gin.Context) {
 		"action":       "admin_user_capacity",
 		"targetUserId": id,
 		"capacity":     payload.Capacity,
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, nil)
 }
@@ -329,7 +329,7 @@ func AdminPatchUserActive(c *gin.Context) {
 		"action":       "admin_user_active",
 		"targetUserId": id,
 		"isActive":     payload.IsActive,
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, nil)
 }

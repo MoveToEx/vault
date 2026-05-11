@@ -11,9 +11,7 @@ import { Button } from "../ui/button";
 import { Folder, FolderInput, FolderUp, X } from "lucide-react";
 import { Spinner } from "../ui/spinner";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { open } from "@/lib/crypto";
-import { from_base64, to_string } from "libsodium-wrappers";
-import { useAppSelector } from "@/stores";
+import { useKeys } from "@/stores";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
 import { toast } from "sonner";
@@ -21,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import useAuth from "@/hooks/use-auth";
 import useFiles from "@/hooks/use-files";
 import { formatError } from "@/lib/utils";
+import { Envelope } from "@/lib/crypto_wrappers";
 
 export type MoveDialogPayload = {
   type: "folder" | "file";
@@ -41,7 +40,7 @@ export default function MoveDialog({
   return (
     <Dialog handle={handle}>
       {function Content({ payload }) {
-        const keys = useAppSelector((s) => s.key.value);
+        const keys = useKeys();
         const { data: auth } = useAuth();
         const [browsePath, setBrowsePath] = useState<BrowsePath[]>([]);
         const [loading, setLoading] = useState(false);
@@ -65,22 +64,18 @@ export default function MoveDialog({
         const folders = useMemo<BrowseItem[]>(() => {
           if (!rawItems || !keys) return [];
           const result: BrowseItem[] = [];
-          for (const item of rawItems) {
+          for (const item of rawItems.folders) {
             try {
-              const plaintext = open(
-                from_base64(item.encryptedMetadata),
-                from_base64(keys.pubKey),
-                from_base64(keys.privKey),
-              );
-              const meta = JSON.parse(to_string(plaintext)) as {
-                type: string;
-                name: string;
-              };
-              if (meta.type === "folder") {
-                if (payload?.type === "folder" && item.id === payload.id)
-                  continue;
-                result.push({ id: item.id, name: meta.name });
-              }
+              const metadata = Envelope.decrypt(
+                item.envelope,
+                item.kemCipher,
+                keys.sign.publicKey,
+                keys.kem.privateKey,
+              )
+              if (metadata.type !== 'folder') continue;
+              if (item.id === payload?.id) continue;
+
+              result.push({ id: item.id, name: metadata.name });
             } catch {
               /* skip undecryptable */
             }

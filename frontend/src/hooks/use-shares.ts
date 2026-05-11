@@ -1,18 +1,6 @@
 import useTaggedSWR from "@/lib/swr";
 import useAuth from "./use-auth";
-import instance from "@/lib/axios";
-import type { Wrapped } from "@/lib/types";
-
-type Item = {
-  id: number;
-  senderId: number;
-  receiverId: number;
-  sender: string;
-  encryptedMetadata: string;
-  encryptedKey: string;
-  createdAt: string;
-  expiresAt: string;
-};
+import api from "@/lib/api";
 
 export default function useShares(page: number) {
   const { data } = useAuth();
@@ -22,14 +10,7 @@ export default function useShares(page: number) {
     tags: ["self", "share"],
     args: [data?.id, page] as const,
     fetcher: async (_, page) => {
-      const response = await instance.get<Wrapped<Item[]>>("/share", {
-        params: {
-          offset: (page - 1) * 24,
-          limit: 24,
-        },
-      });
-
-      return response.data.data;
+      return await api.getShares((page - 1) * 24, 24);
     },
   });
 }

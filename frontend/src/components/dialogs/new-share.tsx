@@ -16,9 +16,7 @@ import { Input } from "../ui/input";
 import { Copy, File, Info, Share2 } from "lucide-react";
 import { Button } from "../ui/button";
 import api from "@/lib/api";
-import { useAppSelector } from "@/stores";
-import { open, seal } from "@/lib/crypto";
-import sodium, { from_base64, to_base64 } from "libsodium-wrappers-sumo";
+import { useKeys } from "@/stores";
 import { Alert, AlertDescription } from "../ui/alert";
 import useUsers from "@/hooks/use-users";
 import { Spinner } from "../ui/spinner";
@@ -27,6 +25,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { formatError } from "@/lib/utils";
+import { Envelope, PublicShare } from "@/lib/crypto_wrappers";
 
 type Payload = {
   id: number;
@@ -89,7 +88,7 @@ function PublicLinkDialog({ handle }: { handle: BaseDialog.Handle<LinkPayload> }
 function PrivateShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog.Handle<Payload> }) {
   const { t } = useTranslation();
 
-  const keys = useAppSelector((state) => state.key.value);
+  const keys = useKeys();
   const [loading, setLoading] = useState(false);
 
   const submit = async (data: z.infer<typeof schema>) => {
@@ -98,32 +97,25 @@ function PrivateShareTab({ fileId, handle }: { fileId: number, handle: BaseDialo
     setLoading(true);
 
     try {
-      await sodium.ready;
+      const file = await api.getFile(fileId);
 
-      const { encryptedKey, encryptedMetadata } = await api.getFile(fileId);
+      const plaintext = Envelope.decrypt(file.envelope, file.kemCipher, keys.sign.publicKey, keys.kem.privateKey);
 
-      const pubKey = from_base64(keys.pubKey);
-      const privKey = from_base64(keys.privKey);
+      const { kemPub } = await api.getUser(data.receiver);
 
-      const fek = open(from_base64(encryptedKey), pubKey, privKey);
-      const metadata = open(
-        from_base64(encryptedMetadata),
-        pubKey,
-        privKey,
-      );
-
-      const { publicKey } = await api.getUser(data.receiver);
+      const [kemCipher, envelope] = Envelope.encrypt(plaintext, keys.sign.privateKey, kemPub);
 
       await api.createShare({
-        encryptedKey: seal(fek, publicKey),
-        encryptedMetadata: seal(metadata, publicKey),
-        fileId: fileId,
+        kemCipher,
+        envelope,
+        fileId,
         receiver: data.receiver,
       });
 
       handle.close();
       toast.success(t("common.shareCreated"));
     } catch (e) {
+      console.log(e);
       form.setError("root", {
         type: 'custom',
         message: formatError(e)
@@ -188,7 +180,7 @@ function PrivateShareTab({ fileId, handle }: { fileId: number, handle: BaseDialo
 function PublicShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog.Handle<Payload> }) {
   const { t } = useTranslation();
 
-  const keys = useAppSelector((state) => state.key.value);
+  const keys = useKeys();
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
@@ -197,32 +189,23 @@ function PublicShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog
     setLoading(true);
 
     try {
-      await sodium.ready;
+      const file = await api.getFile(fileId);
 
-      const { encryptedKey, encryptedMetadata } = await api.getFile(fileId);
+      const plaintext = Envelope.decrypt(file.envelope, file.kemCipher, keys.sign.publicKey, keys.kem.privateKey);
 
-      const pubKey = from_base64(keys.pubKey);
-      const privKey = from_base64(keys.privKey);
+      if (plaintext.type !== 'file') return;
 
-      const fek = open(from_base64(encryptedKey), pubKey, privKey);
-      const metadata = open(
-        from_base64(encryptedMetadata),
-        pubKey,
-        privKey,
-      );
-
-      const keypair = sodium.crypto_box_keypair();
+      const [sk, kemCipher, envelope] = PublicShare.encrypt(plaintext, keys.sign.privateKey)
 
       const result = await api.createPublicShare({
-        encryptedKey: seal(fek, keypair.publicKey),
-        encryptedMetadata: seal(metadata, keypair.publicKey),
+        kemCipher,
+        envelope,
         fileId,
       });
 
       const url = new URL(`/ps/${result.key}`, `${window.location.protocol}//${window.location.host}`);
 
-      url.searchParams.append('sk', to_base64(keypair.privateKey));
-      url.searchParams.append('pk', to_base64(keypair.publicKey));
+      url.hash = '#' + sk;
 
       toast.success(t("common.shareCreated"));
 

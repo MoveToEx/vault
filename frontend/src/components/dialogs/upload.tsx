@@ -7,8 +7,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Field, FieldDescription } from "@/components/ui/field";
-import { useAppDispatch, useAppSelector } from "@/stores";
-import { from_base64 } from "libsodium-wrappers";
+import { useAppDispatch, useAppSelector, useKeys } from "@/stores";
 import { FileIcon, Upload } from "lucide-react";
 import { useState } from "react";
 import { Dialog as BaseDialog } from "@base-ui/react";
@@ -21,7 +20,7 @@ const handle = BaseDialog.createHandle();
 
 export default function UploadDialog() {
   const { t } = useTranslation();
-  const keys = useAppSelector((state) => state.key.value);
+  const keys = useKeys();
   const dispatch = useAppDispatch();
 
   const path = useAppSelector((state) => state.path.value);
@@ -33,7 +32,7 @@ export default function UploadDialog() {
 
     const pathId = path.length === 0 ? 0 : path[path.length - 1].id;
 
-    transferBridge.enqueueUpload(file, pathId, from_base64(keys.pubKey));
+    transferBridge.enqueueUpload(file, pathId, keys.sign.privateKey, keys.kem.publicKey);
 
     dispatch(toggleTransferList(true));
 

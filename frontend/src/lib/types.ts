@@ -1,9 +1,43 @@
 /** Tags for SWR cache keys and `mutate()` invalidation (see `lib/swr.ts`). */
 export type SwrTag = "file" | "user" | "self" | "share" | "log" | "admin" | "public-share";
 
+export type Unserializable = Uint8Array;
+
+type SerializedPrimitive<T> = T extends Unserializable ? string : T;
+
+type SerializedArray<T extends unknown[]> = T extends []
+  ? []
+  : T extends [infer P, ...infer U]
+  ? [Serialized<P>, ...SerializedArray<U>]
+  : T extends (infer Q)[]
+  ? SerializedPrimitive<Q>[]
+  : never;
+
+type SerializedObj<T> = {
+  [K in keyof T]: Serialized<T[K]>;
+};
+
+export type Serialized<T> = T extends Unserializable
+  ? string
+  : T extends object
+  ? SerializedObj<T>
+  : T extends unknown[]
+  ? SerializedArray<T>
+  : SerializedPrimitive<T>;
+
 export type Wrapped<T> = {
   error?: string;
   data: T;
+};
+
+export type Keypair = {
+  publicKey: Uint8Array;
+  privateKey: Uint8Array;
+};
+
+export type EncryptedEnvelope = {
+  envelope: Uint8Array,
+  kemCipher: Uint8Array,
 };
 
 export type KDFParameters = {
@@ -15,13 +49,14 @@ export type KDFParameters = {
 export type Metadata = FileMetadata | FolderMetadata;
 
 export type FileMetadata = {
+  type: 'file',
   name: string,
-  type: 'file'
+  key: string,  // base64
 };
 
 export type FolderMetadata = {
+  type: 'folder',
   name: string,
-  type: 'folder'
 };
 
 export type TransferMessage = (
@@ -79,26 +114,27 @@ export type TransferCommand =
   | {
     type: "enqueue-upload";
     file: File;
-    publicKey: Uint8Array;
+    signPriv: Uint8Array;
+    kemPub: Uint8Array;
     parentId: number;
   }
   | {
     type: "enqueue-download";
     fileId: number;
-    publicKey: Uint8Array;
-    privateKey: Uint8Array;
+    signPub: Uint8Array;
+    kem: Keypair;
   }
   | {
     type: "enqueue-download-share";
     shareId: number;
-    publicKey: Uint8Array;
-    privateKey: Uint8Array;
+    signPub: Uint8Array;
+    kem: Keypair;
   }
   | {
     type: 'enqueue-download-public-share';
+    sid: string;
+    signPub: Uint8Array;
     key: string;
-    publicKey: Uint8Array;
-    privateKey: Uint8Array;
   }
   | {
     type: "pause-transfer";
@@ -126,11 +162,14 @@ export type WorkerRequest = (
     chunkIndex: number;
   }
   | {
+    type: "get-user-pk";
+    username: string;
+  }
+  | {
     type: "init";
-    metadata: Uint8Array;
     parentId: number;
     size: number;
-  }
+  } & EncryptedEnvelope
   | {
     type: "chunk-ack";
     uploadId: number;
@@ -140,7 +179,6 @@ export type WorkerRequest = (
   | {
     type: "ack";
     uploadId: number;
-    encryptedKey: Uint8Array;
   }
   | {
     type: "get-file";
@@ -190,6 +228,10 @@ export type WorkerResponse = (
     chunkSize: number;
   }
   | {
+    type: "get-user-pk";
+    signPub: Uint8Array;
+  }
+  | {
     type: "chunk-ack";
   }
   | {
@@ -200,9 +242,7 @@ export type WorkerResponse = (
     chunks: number;
     chunkSize: number;
     size: number;
-    encryptedKey: string;
-    encryptedMetadata: string;
-  }
+  } & EncryptedEnvelope
   | {
     type: "get-share";
     chunks: number;
@@ -210,9 +250,7 @@ export type WorkerResponse = (
     size: number;
     receiverId: number;
     senderId: number;
-    encryptedKey: Uint8Array;
-    encryptedMetadata: Uint8Array;
-  }
+  } & EncryptedEnvelope
   | {
     type: "get-share-chunk";
     url: string;
@@ -224,9 +262,7 @@ export type WorkerResponse = (
     chunkSize: number;
     size: number;
     owner: string;
-    encryptedKey: Uint8Array;
-    encryptedMetadata: Uint8Array;
-  }
+  } & EncryptedEnvelope
   | {
     type: 'resolve-public-share-chunk',
     url: string;

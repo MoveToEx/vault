@@ -37,9 +37,10 @@ import { set } from "@/stores/key";
 import { toggleLoginDialog, toggleRegisterDialog } from "@/stores/ui";
 import sodium, { from_string, to_base64 } from "libsodium-wrappers";
 import api from "@/lib/api";
-import { aeadCompositeDecrypt, kdf } from "@/lib/crypto";
 import { useTranslation } from "react-i18next";
 import { formatError } from "@/lib/utils";
+import type { Keypair } from "@/lib/types";
+import { PrivateKey } from "@/lib/crypto_wrappers";
 
 const schema = z.object({
   username: z.string(),
@@ -92,10 +93,8 @@ export default function LoginDialog() {
       }
 
       const {
-        refreshToken,
-        kdf: kdfParams,
-        encryptedPrivateKey,
-        publicKey
+        refreshToken, kdf: kdfParams,
+        kemPri, kemPub, sgnPri, sgnPub
       } = await api.finishLogin(
         new Uint8Array(fin.ke3.serialize()),
         loginStateID,
@@ -111,20 +110,32 @@ export default function LoginDialog() {
         hashLength: 32,
       });
 
-      const kek = kdf(umk, "KEK");
-
-      const privKey = aeadCompositeDecrypt(encryptedPrivateKey, kek);
+      const sk = {
+        publicKey: sgnPub,
+        privateKey: PrivateKey.decrypt(umk, sgnPri),
+      } as Keypair;
+      
+      const kem = {
+        publicKey: kemPub,
+        privateKey: PrivateKey.decrypt(umk, kemPri)
+      } as Keypair;
 
       setRefreshToken(refreshToken);
       dispatch(
         set({
           umk: to_base64(umk),
-          privKey: to_base64(privKey),
-          pubKey: to_base64(publicKey)
+          kem: {
+            publicKey: to_base64(kem.publicKey),
+            privateKey: to_base64(kem.privateKey),
+          },
+          sign: {
+            publicKey: to_base64(sk.publicKey),
+            privateKey: to_base64(sk.privateKey),
+          },
         }),
       );
 
-      mutate("self");
+      await mutate("self");
       dispatch(toggleLoginDialog(false));
     } catch (e) {
       form.setError("root", {

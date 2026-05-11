@@ -3,17 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import usePublicShare from "@/hooks/use-public-share";
-import { open } from "@/lib/crypto";
-import type { FileMetadata } from "@/lib/types";
 import { formatSize } from "@/lib/utils";
-import { from_base64, to_string } from "libsodium-wrappers-sumo";
 import { Download } from "lucide-react";
 import { useMemo } from "react";
-import { useParams, useSearchParams } from "react-router"
+import { useLocation, useParams } from "react-router"
 import { transferBridge } from '@/lib/transfer-bridge';
 import { useAppDispatch } from "@/stores";
 import { toggleTransferList } from "@/stores/ui";
 import { useTranslation } from "react-i18next";
+import { PublicShare } from "@/lib/crypto_wrappers";
 
 export default function PublicSharePage() {
   const { t } = useTranslation();
@@ -21,28 +19,27 @@ export default function PublicSharePage() {
   const dispatch = useAppDispatch();
 
   const { data, isLoading } = usePublicShare(params.key ?? '');
-
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   const metadata = useMemo(() => {
     if (!data) return null;
 
-    const sk = searchParams.get('sk'), pk = searchParams.get('pk');
+    const k = location.hash.slice(1);
 
-    if (!sk || !pk) return null;
-
-    let plaintext: Uint8Array;
+    if (!k) return null;
 
     try {
-      const privateKey = from_base64(sk), publicKey = from_base64(pk);
-      plaintext = open(from_base64(data.encryptedMetadata), publicKey, privateKey);
+      return PublicShare.decrypt(
+        data.envelope,
+        data.kemCipher,
+        data.sgnPub,
+        k
+      );
     }
     catch {
       return null;
     }
-
-    return JSON.parse(to_string(plaintext)) as FileMetadata;
-  }, [data, searchParams]);
+  }, [data, location]);
 
   if (isLoading) {
     return (
@@ -81,15 +78,11 @@ export default function PublicSharePage() {
           <Separator className='m-0' />
           <div className='my-4 flex flex-col items-center'>
             <Button className='w-48' variant='outline' onClick={() => {
-              const sk = searchParams.get('sk'), pk = searchParams.get('pk'), key = params.key;
+              const k = location.hash.slice(1), sid = params.key;
 
-              if (!sk || !pk || !key) return null;
+              if (!k || !sid) return null;
 
-              transferBridge.enqueueDownloadPublicShare(
-                key,
-                from_base64(pk),
-                from_base64(sk)
-              );
+              transferBridge.enqueueDownloadPublicShare(sid, k, data.sgnPub);
               dispatch(toggleTransferList(true));
             }}>
               <Download />

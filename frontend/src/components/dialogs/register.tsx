@@ -32,15 +32,14 @@ import {
   type RegistrationClient,
 } from "@cloudflare/opaque-ts";
 import { Slider } from "../ui/slider";
-import { aeadComposite, kdf, seal } from "@/lib/crypto";
 import { argon2id } from "@/workers";
 import sodium from "libsodium-wrappers";
-import { mutate } from "@/lib/swr";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleRegisterDialog } from "@/stores/ui";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 import { formatError } from "@/lib/utils";
+import { Envelope, PrivateKey } from "@/lib/crypto_wrappers";
 
 export default function RegisterDialog() {
   const { t } = useTranslation();
@@ -84,8 +83,6 @@ export default function RegisterDialog() {
   });
 
   const onSubmit = async (data: z.infer<typeof registerSchema>) => {
-    await sodium.ready;
-
     if (data.confirmPassword !== data.password) {
       form.setError("confirmPassword", {
         type: "validate",
@@ -122,8 +119,7 @@ export default function RegisterDialog() {
         throw fin;
       }
 
-      const salt = new Uint8Array(16);
-      window.crypto.getRandomValues(salt);
+      const salt = sodium.randombytes_buf(16);
 
       const umk = await argon2id({
         iterations: data.kdfTimeCost,
@@ -133,27 +129,30 @@ export default function RegisterDialog() {
         hashLength: 32,
       });
 
-      const { publicKey, privateKey } = sodium.crypto_box_keypair();
+      const kem = sodium.crypto_kem_keypair();
+      const sgn = sodium.crypto_sign_keypair();
 
-      const kek = kdf(umk, "KEK");
-
-      const rootMetadata = seal(
-        JSON.stringify({
-          type: "folder",
-          name: "/",
-        }),
-        publicKey,
-      );
-
-      const epk = aeadComposite(privateKey, kek);
+      const [cipher, root] = Envelope.encrypt({
+        type: 'folder',
+        name: '/'
+      }, sgn.privateKey, kem.publicKey);
 
       await api.completeRegistration({
         email: data.email,
         username: data.username,
         opaqueRecord: new Uint8Array(fin.record.serialize()),
-        publicKey,
-        privateKey: epk,
-        rootMetadata,
+        kem: {
+          publicKey: kem.publicKey,
+          privateKey: PrivateKey.encrypt(umk, kem.privateKey),
+        },
+        sgn: {
+          publicKey: sgn.publicKey,
+          privateKey: PrivateKey.encrypt(umk, sgn.privateKey),
+        },
+        root: {
+          envelope: root,
+          kemCipher: cipher,
+        },
         kdf: {
           salt,
           memoryCost: data.kdfMemoryCost,
@@ -163,8 +162,6 @@ export default function RegisterDialog() {
 
       toast.success(t("common.signedUp"));
       dispatch(toggleRegisterDialog(false));
-
-      mutate("file");
     } catch (e) {
       form.setError("root", {
         type: "custom",

@@ -76,21 +76,17 @@ func RegisterStart(c *gin.Context) {
 	})
 }
 
-type KDFParameters struct {
-	Salt       utils.Bytes `json:"salt"`
-	MemoryCost int32       `json:"memoryCost"`
-	TimeCost   int32       `json:"timeCost"`
-}
-
 type RegisterFinishPayload struct {
-	Email               string        `json:"email"`
-	Username            string        `json:"username"`
-	PublicKey           utils.Bytes   `json:"publicKey"`
-	EncryptedPrivateKey utils.Bytes   `json:"encryptedPrivateKey"`
-	OpaqueRecord        utils.Bytes   `json:"opaqueRecord"`
-	KDF                 KDFParameters `json:"kdf"`
+	Email        string      `json:"email"`
+	Username     string      `json:"username"`
+	OpaqueRecord utils.Bytes `json:"opaqueRecord"`
 
-	EncryptedRootMetadata utils.Bytes `json:"encryptedRootMetadata"`
+	KDF utils.KDFParameters `json:"kdf"`
+
+	RootKemCipher utils.Bytes `json:"rootKemCipher"`
+	RootEnvelope  utils.Bytes `json:"rootEnvelope"`
+
+	utils.PrivateKeySuite
 }
 
 func RegisterFinish(c *gin.Context) {
@@ -139,8 +135,10 @@ func RegisterFinish(c *gin.Context) {
 			Email:    payload.Email,
 			Username: payload.Username,
 
-			PublicKey:           payload.PublicKey,
-			EncryptedPrivateKey: payload.EncryptedPrivateKey,
+			KemPub: payload.KemPub,
+			KemPri: payload.KemPri,
+			SgnPub: payload.SgnPub,
+			SgnPri: payload.SgnPri,
 
 			CredentialIdentifier: credID,
 			OpaqueRecord:         record.Serialize(),
@@ -157,8 +155,9 @@ func RegisterFinish(c *gin.Context) {
 		}
 
 		folder, txErr := qtx.NewFolder(ctx, sqlc.NewFolderParams{
-			EncryptedMetadata: payload.EncryptedRootMetadata,
-			OwnerID:           user.ID,
+			Envelope:  payload.RootEnvelope,
+			KemCipher: payload.RootKemCipher,
+			OwnerID:   user.ID,
 		})
 		if txErr != nil {
 			return txErr
@@ -174,13 +173,13 @@ func RegisterFinish(c *gin.Context) {
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when completing registration")
+		utils.ErrorResponse(c, 500, "Failed when completing registration: %v", err)
 		return
 	}
 
-	utils.AppendLogWithPublicKey(ctx, user.ID, user.PublicKey, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLogWithPublicKey(ctx, user.ID, user.KemPub, sqlc.LogLevelInfo, map[string]any{
 		"action": "register",
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, nil)
 }
@@ -279,10 +278,11 @@ type LoginFinishPayload struct {
 }
 
 type LoginFinishResponse struct {
-	RefreshToken        string        `json:"refreshToken"`
-	KDF                 KDFParameters `json:"kdf"`
-	EncryptedPrivateKey utils.Bytes   `json:"encryptedPrivateKey"`
-	PublicKey           utils.Bytes   `json:"publicKey"`
+	utils.PrivateKeySuite
+
+	RefreshToken string `json:"refreshToken"`
+
+	KDF utils.KDFParameters `json:"kdf"`
 }
 
 func LoginFinish(c *gin.Context) {
@@ -352,15 +352,14 @@ func LoginFinish(c *gin.Context) {
 		return
 	}
 
-	utils.AppendLogWithPublicKey(ctx, user.ID, user.PublicKey, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLogWithPublicKey(ctx, user.ID, user.KemPub, sqlc.LogLevelInfo, map[string]any{
 		"action": "login",
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, LoginFinishResponse{
-		RefreshToken:        session.RefreshToken,
-		EncryptedPrivateKey: user.EncryptedPrivateKey,
-		PublicKey:           user.PublicKey,
-		KDF: KDFParameters{
+		RefreshToken:    session.RefreshToken,
+		PrivateKeySuite: utils.GetPrivateSuite(user),
+		KDF: utils.KDFParameters{
 			Salt:       user.KdfSalt,
 			MemoryCost: user.KdfMemoryCost,
 			TimeCost:   user.KdfTimeCost,
@@ -369,16 +368,15 @@ func LoginFinish(c *gin.Context) {
 }
 
 type GetResponse struct {
-	ID                  int64       `json:"id"`
-	Username            string      `json:"username"`
-	PublicKey           utils.Bytes `json:"publicKey"`
-	EncryptedPrivateKey utils.Bytes `json:"encryptedPrivateKey"`
-	RootFolder          int64       `json:"rootFolder"`
-	CreatedAt           time.Time   `json:"createdAt"`
-	Permission          int64       `json:"permission"`
-	KDFSalt             utils.Bytes `json:"kdfSalt"`
-	KDFMemoryCost       int32       `json:"kdfMemoryCost"`
-	KDFTimeCost         int32       `json:"kdfTimeCost"`
+	utils.PrivateKeySuite
+	ID            int64       `json:"id"`
+	Username      string      `json:"username"`
+	RootFolder    int64       `json:"rootFolder"`
+	CreatedAt     time.Time   `json:"createdAt"`
+	Permission    int64       `json:"permission"`
+	KDFSalt       utils.Bytes `json:"kdfSalt"`
+	KDFMemoryCost int32       `json:"kdfMemoryCost"`
+	KDFTimeCost   int32       `json:"kdfTimeCost"`
 }
 
 func GetIdentity(c *gin.Context) {
@@ -394,16 +392,15 @@ func GetIdentity(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, GetResponse{
-		ID:                  user.ID,
-		Username:            user.Username,
-		PublicKey:           user.PublicKey,
-		EncryptedPrivateKey: user.EncryptedPrivateKey,
-		RootFolder:          user.RootFolder.Int64,
-		CreatedAt:           user.CreatedAt.Time,
-		Permission:          user.Permission,
-		KDFSalt:             user.KdfSalt,
-		KDFMemoryCost:       user.KdfMemoryCost,
-		KDFTimeCost:         user.KdfTimeCost,
+		ID:              user.ID,
+		Username:        user.Username,
+		PrivateKeySuite: utils.GetPrivateSuite(user),
+		RootFolder:      user.RootFolder.Int64,
+		CreatedAt:       user.CreatedAt.Time,
+		Permission:      user.Permission,
+		KDFSalt:         user.KdfSalt,
+		KDFMemoryCost:   user.KdfMemoryCost,
+		KDFTimeCost:     user.KdfTimeCost,
 	})
 }
 
@@ -469,7 +466,7 @@ func Refresh(c *gin.Context) {
 
 	utils.AppendLog(c.Request.Context(), ref.UserID, sqlc.LogLevelTrace, map[string]any{
 		"action": "session_refresh",
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, RefreshResponse{
 		Token:        token,
@@ -533,9 +530,10 @@ func PasswordChangeStart(c *gin.Context) {
 }
 
 type PasswordChangeFinishPayload struct {
-	OpaqueRecord        utils.Bytes   `json:"opaqueRecord"`
-	EncryptedPrivateKey utils.Bytes   `json:"encryptedPrivateKey"`
-	KDF                 KDFParameters `json:"kdf"`
+	OpaqueRecord utils.Bytes         `json:"opaqueRecord"`
+	KemPri       utils.Bytes         `json:"kemPri"`
+	SgnPri       utils.Bytes         `json:"sgnPri"`
+	KDF          utils.KDFParameters `json:"kdf"`
 }
 
 func PasswordChangeFinish(c *gin.Context) {
@@ -584,15 +582,16 @@ func PasswordChangeFinish(c *gin.Context) {
 		KdfSalt:              payload.KDF.Salt,
 		KdfMemoryCost:        payload.KDF.MemoryCost,
 		KdfTimeCost:          payload.KDF.TimeCost,
-		EncryptedPrivateKey:  payload.EncryptedPrivateKey,
+		KemPri:               payload.KemPri,
+		SgnPri:               payload.SgnPri,
 	}); err != nil {
 		utils.ErrorResponse(c, 500, "Failed when updating credentials")
 		return
 	}
 
-	utils.AppendLogWithPublicKey(ctx, userID, u.PublicKey, sqlc.LogLevelCritical, map[string]any{
+	utils.AppendLogWithPublicKey(ctx, userID, u.KemPub, sqlc.LogLevelCritical, map[string]any{
 		"action": "password_change",
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, nil)
 }

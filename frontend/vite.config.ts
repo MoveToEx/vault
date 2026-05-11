@@ -13,6 +13,9 @@ export default defineConfig({
     }),
     tailwindcss(),
   ],
+  worker: {
+    format: 'es',
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

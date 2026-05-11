@@ -21,10 +21,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useAuth from "@/hooks/use-auth";
 import useTaggedSWR, { mutate as revalidateByTag } from "@/lib/swr";
-import { aeadComposite, kdf } from "@/lib/crypto";
 import { formatError, logout } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { reset as resetKeys, set as setKeys } from "@/stores/key";
+import { PrivateKey } from "@/lib/crypto_wrappers";
 import {
   OpaqueClient,
   OpaqueID,
@@ -53,7 +53,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useTranslation } from "react-i18next";
 
 function formatTs(iso: string) {
   try {
@@ -67,7 +66,6 @@ function formatTs(iso: string) {
 }
 
 export default function UserSettingsPage() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: auth, isLoading: authLoading, reset: resetAuth } = useAuth();
 
@@ -80,7 +78,7 @@ export default function UserSettingsPage() {
   if (authLoading || auth === undefined) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Spinner /> {t("common.loadingEllipsis")}
+        <Spinner /> Loading...
       </div>
     );
   }
@@ -103,7 +101,7 @@ export default function UserSettingsPage() {
         >
           <TabsTrigger value="security" className="justify-start gap-2">
             <Shield className="size-4" />
-            {t("common.security")}
+            Security
           </TabsTrigger>
         </TabsList>
 
@@ -120,7 +118,6 @@ export default function UserSettingsPage() {
 }
 
 function Sessions() {
-  const { t } = useTranslation();
   const { data, isLoading, mutate } = useTaggedSWR({
     id: "sessions",
     tags: ["user", "self"],
@@ -131,40 +128,40 @@ function Sessions() {
   async function revoke(id: number) {
     try {
       await api.revokeSession(id);
-      toast.success(t("common.sessionInvalidated"));
+      toast.success("Session invalidated.");
       await mutate();
       await revalidateByTag("self");
     } catch (e) {
       const msg =
         e instanceof AxiosError ? e.response?.data?.error : undefined;
-      toast.error(msg ?? t("common.couldNotRevokeSession"));
+      toast.error(msg ?? "Could not revoke session.");
     }
   }
 
   return (
     <div className='p-2'>
       <div className='flex flex-col justify-center items-start gap-2'>
-        <span className='text-lg'>{t("common.loginSessions")}</span>
+        <span className='text-lg'>Login sessions</span>
         <span className='text-muted-foreground'>
-          {t("common.loginSessionsHint")}
+          Refresh-token sessions for this account
         </span>
       </div>
       <div>
         {isLoading ? (
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Spinner /> {t("common.loadingSessions")}
+            <Spinner /> Loading sessions...
           </div>
         ) : !data?.length ? (
           <p className="text-muted-foreground text-sm">
-            {t("common.noActiveSessions")}
+            No active sessions.
           </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("common.createdCol")}</TableHead>
-                <TableHead>{t("common.expiresCol")}</TableHead>
-                <TableHead>{t("common.lastUsedCol")}</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Expires</TableHead>
+                <TableHead>Last used</TableHead>
                 <TableHead className="w-30"></TableHead>
               </TableRow>
             </TableHeader>
@@ -175,7 +172,7 @@ function Sessions() {
                     {formatTs(s.createdAt)}
                     {s.current ? (
                       <span className="text-foreground ml-2 rounded border border-border px-1.5 py-0.5 text-xs">
-                        {t("common.thisDevice")}
+                        This device
                       </span>
                     ) : null}
                   </TableCell>
@@ -183,7 +180,7 @@ function Sessions() {
                     {formatTs(s.expiresAt)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {s.lastUsedAt ? formatTs(s.lastUsedAt) : t("common.dash")}
+                    {s.lastUsedAt ? formatTs(s.lastUsedAt) : "—"}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -192,7 +189,7 @@ function Sessions() {
                       size="sm"
                       onClick={() => revoke(s.id)}
                     >
-                      {t("common.invalidate")}
+                      Invalidate
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -217,7 +214,6 @@ function ChangePassword({
     kdfParallelism: number;
   };
 }) {
-  const { t } = useTranslation();
   const keys = useAppSelector((s) => s.key.value);
   const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
@@ -227,24 +223,24 @@ function ChangePassword({
     () =>
       z
         .object({
-          currentPassword: z.string().min(1, t("common.enterCurrentPassword")),
+          currentPassword: z.string().min(1, "Enter your current password"),
           newPassword: z
             .string()
-            .min(8, t("common.atLeast8"))
-            .max(128, t("common.atMost128")),
+            .min(8, "At least 8 characters")
+            .max(128, "At most 128 characters"),
           confirmPassword: z
             .string()
-            .min(8, t("common.atLeast8"))
-            .max(128, t("common.atMost128")),
+            .min(8, "At least 8 characters")
+            .max(128, "At most 128 characters"),
           kdfMemoryCost: z.number().min(64).max(1024),
           kdfTimeCost: z.number().min(1).max(100),
           kdfParallelism: z.number().min(1).max(4),
         })
         .refine((d) => d.newPassword === d.confirmPassword, {
-          message: t("common.passwordsMismatch"),
+          message: "Passwords do not match",
           path: ["confirmPassword"],
         }),
-    [t],
+    [],
   );
 
   const form = useForm<z.infer<typeof changePwdSchema>>({
@@ -288,7 +284,7 @@ function ChangePassword({
       if (!sodium.memcmp(from_base64(keys.umk), testUmk)) {
         form.setError("currentPassword", {
           type: "validate",
-          message: t("common.currentPasswordIncorrect"),
+          message: "Current password is incorrect",
         });
         return;
       }
@@ -325,12 +321,16 @@ function ChangePassword({
         hashLength: 32,
       });
 
-      const kek = kdf(umk, "KEK");
-      const epk = aeadComposite(from_base64(keys.privKey), kek);
-
       await api.passwordChangeFinish({
         opaqueRecord: new Uint8Array(fin.record.serialize()),
-        privateKey: epk,
+        kemPri: PrivateKey.encrypt(
+          umk,
+          from_base64(keys.kem.privateKey),
+        ),
+        sgnPri: PrivateKey.encrypt(
+          umk,
+          from_base64(keys.sign.privateKey),
+        ),
         kdf: {
           salt,
           memoryCost: data.kdfMemoryCost,
@@ -338,12 +338,12 @@ function ChangePassword({
         },
       });
 
-      toast.success(t("common.passwordUpdated"));
+      toast.success("Password updated");
       dispatch(
         setKeys({
           umk: to_base64(umk),
-          privKey: keys.privKey,
-          pubKey: keys.pubKey,
+          kem: keys.kem,
+          sign: keys.sign,
         }),
       );
       await revalidateByTag("self");
@@ -360,12 +360,12 @@ function ChangePassword({
   return (
     <div className='p-2'>
       <div className='flex flex-col justify-center items-start gap-2 pb-4'>
-        <span className='text-lg'>{t("common.changePassword")}</span>
+        <span className='text-lg'>Change password</span>
       </div>
       <div>
         {!keys ? (
           <p className="text-muted-foreground text-sm">
-            {t("common.unlockVaultHint")}
+            Unlock your vault (lock icon in the sidebar account menu) to change your password.
           </p>
         ) : (
           <form
@@ -384,7 +384,7 @@ function ChangePassword({
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor="pwd-current">
-                      {t("common.currentPassword")}
+                      Current password
                     </FieldLabel>
                     <Input
                       {...field}
@@ -404,7 +404,7 @@ function ChangePassword({
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor="pwd-new">
-                      {t("common.newPassword")}
+                      New password
                     </FieldLabel>
                     <Input
                       {...field}
@@ -424,7 +424,7 @@ function ChangePassword({
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
                     <FieldLabel htmlFor="pwd-confirm">
-                      {t("common.confirmNewPassword")}
+                      Confirm new password
                     </FieldLabel>
                     <Input
                       {...field}
@@ -447,13 +447,13 @@ function ChangePassword({
                 onClick={() => setShowKDF((v) => !v)}
               >
                 {showKDF ? <ChevronUp /> : <ChevronDown />}
-                {t("common.advanced")}
+                Advanced
               </Button>
             </div>
 
             {showKDF ? (
               <FieldSet>
-                <FieldLegend>{t("common.kdfNewPassword")}</FieldLegend>
+                <FieldLegend>KDF (new password)</FieldLegend>
                 <FieldGroup>
                   <Controller
                     name="kdfTimeCost"
@@ -461,7 +461,7 @@ function ChangePassword({
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
                         <FieldLabel className="flex flex-row items-center justify-between">
-                          <span>{t("common.timeCost")}</span>
+                          <span>Time cost</span>
                           <span>{field.value}</span>
                         </FieldLabel>
                         <Slider
@@ -484,7 +484,7 @@ function ChangePassword({
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
                         <FieldLabel className="flex flex-row items-center justify-between">
-                          <span>{t("common.memoryCost")}</span>
+                          <span>Memory cost</span>
                           <span>{field.value} MiB</span>
                         </FieldLabel>
                         <Slider
@@ -507,7 +507,7 @@ function ChangePassword({
 
             <Button type="submit" disabled={loading}>
               {loading ? <Spinner /> : null}
-              {t("common.updatePassword")}
+              Update password
             </Button>
           </form>
         )}
@@ -523,7 +523,6 @@ function DeleteAccount({
   username: string;
   resetAuth: () => void;
 }) {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [open, setOpen] = useState(false);
@@ -532,13 +531,13 @@ function DeleteAccount({
 
   async function onDelete() {
     if (confirm !== username) {
-      toast.error(t("common.typeUsernameToConfirm"));
+      toast.error("Type your username exactly to confirm.");
       return;
     }
     setLoading(true);
     try {
       await api.deleteAccount(confirm);
-      toast.success(t("common.accountDeleted"));
+      toast.success("Account deleted.");
       resetAuth();
       dispatch(resetKeys());
       logout();
@@ -547,7 +546,7 @@ function DeleteAccount({
     } catch (e) {
       const msg =
         e instanceof AxiosError ? e.response?.data?.error : undefined;
-      toast.error(msg ?? t("common.couldNotDeleteAccount"));
+      toast.error(msg ?? "Could not delete account.");
     } finally {
       setLoading(false);
       setOpen(false);
@@ -558,9 +557,9 @@ function DeleteAccount({
   return (
     <div className="p-2 border-destructive/35">
       <div className='flex flex-col justify-center items-start gap-2 pb-4'>
-        <span className="text-destructive">{t("common.deleteAccount")}</span>
+        <span className="text-destructive">Delete account</span>
         <span className='text-muted-foreground'>
-          {t("common.deleteAccountWarning")}
+          Permanently remove your account, encrypted vault, and all your files. This cannot be undone.
         </span>
       </div>
       <div>
@@ -570,13 +569,13 @@ function DeleteAccount({
             variant="destructive"
             onClick={() => setOpen(true)}
           >
-            {t("common.deleteMyAccount")}
+            Delete my account
           </Button>
           <AlertDialogContent className="sm:max-w-md">
             <AlertDialogHeader>
-              <AlertDialogTitle>{t("common.deleteAccountTitle")}</AlertDialogTitle>
+              <AlertDialogTitle>Delete account?</AlertDialogTitle>
               <AlertDialogDescription>
-                {t("common.deleteAccountTypeUsername", { username })}
+                {`This permanently deletes your data. Type ${username} to confirm.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <Input
@@ -587,7 +586,7 @@ function DeleteAccount({
             />
             <AlertDialogFooter className="mt-4">
               <AlertDialogCancel type="button">
-                {t("common.cancel")}
+                Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 type="button"
@@ -599,7 +598,7 @@ function DeleteAccount({
                 }}
               >
                 {loading ? <Spinner /> : null}
-                {t("common.deleteForever")}
+                Delete forever
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

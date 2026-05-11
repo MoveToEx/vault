@@ -1,9 +1,7 @@
 import NewFolderDialog from "@/components/dialogs/new-folder";
 import UploadDialog from "@/components/dialogs/upload";
 import useFiles from "@/hooks/use-files";
-import { open } from "@/lib/crypto";
-import { useAppDispatch, useAppSelector } from "@/stores";
-import { from_base64, to_string } from "libsodium-wrappers";
+import { useAppDispatch, useAppSelector, useKeys } from "@/stores";
 import { Fragment, useMemo } from "react";
 import {
   Table,
@@ -32,27 +30,33 @@ import FilePopupMenu from "@/components/file-popup-menu";
 import { useTranslation } from "react-i18next";
 import ExtIcon from "@/components/icon";
 import { toast } from "sonner";
+import { Envelope } from "@/lib/crypto_wrappers";
 
 type Item =
   | {
     type: "file";
     name: string;
-    mime: string;
     size: number;
     id: number;
     createdAt: Date;
+    kemCipher: Uint8Array;
+    envelope: Uint8Array;
   }
   | {
     type: "folder";
     name: string;
     id: number;
     createdAt: Date;
+    kemCipher: Uint8Array;
+    envelope: Uint8Array;
   };
 
 const fileMenuHandle = Menu.createHandle<{
   type: "folder" | "file";
   id: number;
   name: string;
+  kemCipher: Uint8Array;
+  envelope: Uint8Array;
 }>();
 
 function splitExt(filename: string): [string, string] {
@@ -63,7 +67,7 @@ function splitExt(filename: string): [string, string] {
 
 function FileList() {
   const { t } = useTranslation();
-  const keys = useAppSelector((state) => state.key.value);
+  const keys = useKeys();
   const path = useAppSelector((state) => state.path.value);
   const dispatch = useAppDispatch();
 
@@ -76,21 +80,19 @@ function FileList() {
     const result: Item[] = [];
     
     try {
-      for (const { encryptedMetadata, size, id, createdAt } of data) {
-        const plaintext = open(
-          from_base64(encryptedMetadata),
-          from_base64(keys.pubKey),
-          from_base64(keys.privKey),
-        );
+      for (const { size, id, createdAt, envelope, kemCipher } of data.files) {
+        const metadata = Envelope.decrypt(envelope, kemCipher, keys.sign.publicKey, keys.kem.privateKey);
 
-        const metadata = {
-          ...JSON.parse(to_string(plaintext)),
+        const item = {
+          ...metadata,
           size,
           id,
           createdAt: new Date(createdAt),
+          kemCipher,
+          envelope,
         };
 
-        result.push(metadata);
+        result.push(item);
       }
 
       return result.sort((x, y) => {
@@ -181,8 +183,8 @@ function FileList() {
 
                       transferBridge.enqueueDownload(
                         val.id,
-                        from_base64(keys.pubKey),
-                        from_base64(keys.privKey),
+                        keys.sign.publicKey,
+                        keys.kem,
                       );
                       dispatch(toggleTransferList(true));
                     }}
@@ -192,7 +194,7 @@ function FileList() {
                 )}
                 <Menu.Trigger
                   handle={fileMenuHandle}
-                  payload={{ type: val.type, id: val.id, name: val.name }}
+                  payload={val}
                   render={
                     <Button
                       className="duration-[0] invisible group-hover:visible"

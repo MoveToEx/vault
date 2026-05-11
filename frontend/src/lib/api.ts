@@ -1,39 +1,25 @@
 import { type AxiosResponse } from "axios";
 import instance from "./axios";
-import { from_base64, to_base64 } from "libsodium-wrappers";
-import type { KDFParameters, Wrapped } from "./types";
+import { base64_variants, from_base64, to_base64 } from "libsodium-wrappers";
+import type { EncryptedEnvelope, KDFParameters, Keypair, Serialized, Wrapped } from "./types";
 
-type Unserializable = Uint8Array;
-
-type SerializedPrimitive<T> = T extends Unserializable ? string : T;
-
-type SerializedArray<T extends unknown[]> = T extends []
-  ? []
-  : T extends [infer P, ...infer U]
-  ? [Serialized<P>, ...SerializedArray<U>]
-  : T extends (infer Q)[]
-  ? SerializedPrimitive<Q>[]
-  : never;
-
-type SerializedObj<T> = {
-  [K in keyof T]: Serialized<T[K]>;
-};
-
-type Serialized<T> = T extends Unserializable
-  ? string
-  : T extends object
-  ? SerializedObj<T>
-  : T extends unknown[]
-  ? SerializedArray<T>
-  : SerializedPrimitive<T>;
-
-type GetFileResponse = Wrapped<{
+type GetFileResponse = {
   chunks: number;
   chunkSize: number;
   size: number;
-  encryptedKey: string; // [ ] string -> Uint8Array
-  encryptedMetadata: string;
-}>;
+} & EncryptedEnvelope;
+
+type GetFilesResponse = {
+  files: ({
+    id: number,
+    createdAt: string,
+    size: number,
+  } & EncryptedEnvelope)[],
+  folders: ({
+    id: number,
+    createdAt: string,
+  } & EncryptedEnvelope)[]
+}
 
 type PresignResponse = Wrapped<{
   method: string;
@@ -55,9 +41,9 @@ type FinishRegistrationPayload = {
   email: string;
   username: string;
   opaqueRecord: Uint8Array;
-  publicKey: Uint8Array;
-  privateKey: Uint8Array;
-  rootMetadata: Uint8Array;
+  kem: Keypair;
+  sgn: Keypair;
+  root: EncryptedEnvelope;
   kdf: KDFParameters;
 };
 
@@ -68,16 +54,23 @@ type StartLoginResponse = {
 
 type FinishLoginResponse = {
   refreshToken: string;
-  encryptedPrivateKey: Uint8Array;
-  publicKey: Uint8Array;
+  kemPub: Uint8Array;
+  kemPri: Uint8Array;
+  sgnPub: Uint8Array;
+  sgnPri: Uint8Array;
+  kdf: KDFParameters;
+};
+
+type PasswordChangeFinishPayload = {
+  opaqueRecord: Uint8Array;
+  kemPri: Uint8Array;
+  sgnPri: Uint8Array;
   kdf: KDFParameters;
 };
 
 type CreatePublicSharePayload = {
   fileId: number;
-  encryptedMetadata: Uint8Array;
-  encryptedKey: Uint8Array;
-};
+} & EncryptedEnvelope;
 
 type GetPublicShareResponse = {
   key: string,
@@ -86,16 +79,23 @@ type GetPublicShareResponse = {
   chunks: number,
   chunkSize: number,
   createdAt: string,
-  encryptedMetadata: string,
-  encryptedKey: string,
-}
+  sgnPub: Uint8Array,
+} & EncryptedEnvelope;
+
+type GetSharesResponse = ({
+  id: number;
+  senderId: number;
+  receiverId: number;
+  sender: string;
+  sgnPub: Uint8Array;
+  createdAt: string;
+  expiresAt: string;
+} & EncryptedEnvelope)[];
 
 type CreateSharePayload = {
   receiver: string;
   fileId: number;
-  encryptedMetadata: Uint8Array;
-  encryptedKey: Uint8Array;
-};
+} & EncryptedEnvelope;
 
 type NewShareResponse = {
   id: number;
@@ -108,7 +108,8 @@ type NewPublicShareResponse = {
 type GetUserResponse = {
   id: number;
   username: string;
-  publicKey: Uint8Array;
+  kemPub: Uint8Array;
+  sgnPub: Uint8Array;
 };
 
 type GetShareResposne = {
@@ -117,10 +118,22 @@ type GetShareResposne = {
   size: number;
   senderId: number;
   receiverId: number;
+} & EncryptedEnvelope;
 
-  encryptedKey: Uint8Array;
-  encryptedMetadata: Uint8Array;
-};
+type GetPublicSharesResponse = ({
+  key: string,
+  createdAt: string,
+  expiresAt: string,
+} & EncryptedEnvelope)[];
+
+type GetMySharesResponse = ({
+  id: number;
+  senderId: number;
+  receiverId: number;
+  receiver: string;
+  createdAt: string;
+  expiresAt: string;
+} & EncryptedEnvelope)[];
 
 const api = {
   async deleteFile(id: number) {
@@ -130,15 +143,15 @@ const api = {
     await instance.delete(`/folder/${id}`);
   },
 
-  async renameFile(id: number, metadata: Uint8Array) {
+  async renameFile(id: number, envelope: Uint8Array) {
     await instance.post(`/files/${id}`, {
-      encryptedMetadata: to_base64(metadata),
+      envelope: to_base64(envelope),
     });
   },
 
-  async renameFolder(id: number, metadata: Uint8Array) {
+  async renameFolder(id: number, envelope: Uint8Array) {
     await instance.put(`/folder/${id}`, {
-      encryptedMetadata: to_base64(metadata),
+      envelope: to_base64(envelope),
     });
   },
 
@@ -150,19 +163,50 @@ const api = {
     await instance.patch(`/folder/${id}/move`, { destinationFolderId });
   },
 
-  async newFolder(parent: number, metadata: Uint8Array) {
+  async newFolder(parent: number, { envelope, kemCipher }: EncryptedEnvelope) {
     await instance.post("/folder", {
       parentId: parent,
-      encryptedMetadata: to_base64(metadata),
+      envelope: to_base64(envelope),
+      kemCipher: to_base64(kemCipher),
     });
   },
 
   async getFile(id: number) {
-    const response: AxiosResponse<GetFileResponse> = await instance.get(
+    const response: AxiosResponse<Serialized<Wrapped<GetFileResponse>>> = await instance.get(
       `/files/${id}`,
     );
 
-    return response.data.data;
+    return {
+      ...response.data.data,
+      envelope: from_base64(response.data.data.envelope),
+      kemCipher: from_base64(response.data.data.kemCipher),
+    };
+  },
+
+  async getFiles(folder: number) {
+    const response: AxiosResponse<Serialized<Wrapped<GetFilesResponse>>> = await instance.get(
+      `/files`,
+      {
+        params: {
+          dir: folder
+        }
+      }
+    );
+
+    const data = response.data.data;
+
+    return {
+      files: data.files.map(it => ({
+        ...it,
+        envelope: from_base64(it.envelope),
+        kemCipher: from_base64(it.kemCipher),
+      })),
+      folders: data.folders.map(it => ({
+        ...it,
+        envelope: from_base64(it.envelope),
+        kemCipher: from_base64(it.kemCipher),
+      })),
+    }
   },
 
   async getChunk(id: number, index: number) {
@@ -180,12 +224,13 @@ const api = {
     return response.data.data;
   },
 
-  async initUpload(size: number, metadata: Uint8Array, parentId: number) {
+  async initUpload(size: number, envelope: Uint8Array, kemCipher: Uint8Array, parentId: number) {
     const response: AxiosResponse<InitUploadResponse> = await instance.post(
       "/upload/init",
       {
         size,
-        encryptedMetadata: to_base64(metadata),
+        envelope: to_base64(envelope),
+        kemCipher: to_base64(kemCipher),
         parentId,
       },
     );
@@ -193,10 +238,8 @@ const api = {
     return response.data.data;
   },
 
-  async completeUpload(id: number, encryptedKey: Uint8Array) {
-    await instance.post(`/upload/${id}`, {
-      encryptedKey: to_base64(encryptedKey),
-    });
+  async completeUpload(id: number) {
+    await instance.post(`/upload/${id}`);
   },
 
   async completeChunk(id: number, index: number, size: number) {
@@ -222,9 +265,12 @@ const api = {
       email: payload.email,
       username: payload.username,
       opaqueRecord: to_base64(payload.opaqueRecord),
-      publicKey: to_base64(payload.publicKey),
-      encryptedPrivateKey: to_base64(payload.privateKey),
-      encryptedRootMetadata: to_base64(payload.rootMetadata),
+      kemPub: to_base64(payload.kem.publicKey),
+      kemPri: to_base64(payload.kem.privateKey),
+      sgnPub: to_base64(payload.sgn.publicKey),
+      sgnPri: to_base64(payload.sgn.privateKey),
+      rootKemCipher: to_base64(payload.root.kemCipher),
+      rootEnvelope: to_base64(payload.root.envelope),
       kdf: {
         ...payload.kdf,
         salt: to_base64(payload.kdf.salt),
@@ -260,8 +306,10 @@ const api = {
 
     return {
       ...data,
-      encryptedPrivateKey: from_base64(data.encryptedPrivateKey),
-      publicKey: from_base64(data.publicKey),
+      kemPub: from_base64(data.kemPub),
+      kemPri: from_base64(data.kemPri),
+      sgnPub: from_base64(data.sgnPub),
+      sgnPri: from_base64(data.sgnPri),
       kdf: {
         ...data.kdf,
         salt: from_base64(data.kdf.salt),
@@ -270,8 +318,8 @@ const api = {
   },
 
   async createShare({
-    encryptedKey,
-    encryptedMetadata,
+    envelope,
+    kemCipher,
     fileId,
     receiver,
   }: CreateSharePayload) {
@@ -280,8 +328,8 @@ const api = {
       {
         fileId,
         receiver,
-        encryptedKey: to_base64(encryptedKey),
-        encryptedMetadata: to_base64(encryptedMetadata),
+        envelope: to_base64(envelope),
+        kemCipher: to_base64(kemCipher),
       },
     );
 
@@ -289,30 +337,35 @@ const api = {
   },
 
   async createPublicShare({
-    encryptedKey,
-    encryptedMetadata,
+    kemCipher,
+    envelope,
     fileId,
   }: CreatePublicSharePayload) {
     const response = await instance.post<Serialized<Wrapped<NewPublicShareResponse>>>(
       "/public-shares",
       {
         fileId,
-        encryptedKey: to_base64(encryptedKey),
-        encryptedMetadata: to_base64(encryptedMetadata),
+        kemCipher: to_base64(kemCipher),
+        envelope: to_base64(envelope),
       },
     );
 
     return response.data.data;
   },
 
-  async getPublicShare(key: string) {
-    const response = await instance.get<Serialized<Wrapped<GetPublicShareResponse>>>(`/public-share/${key}`);
+  async getPublicShare(sid: string) {
+    const response = await instance.get<Serialized<Wrapped<GetPublicShareResponse>>>(`/public-share/${sid}`);
 
-    return response.data.data;
+    return {
+      ...response.data.data,
+      envelope: from_base64(response.data.data.envelope),
+      kemCipher: from_base64(response.data.data.kemCipher),
+      sgnPub: from_base64(response.data.data.sgnPub),
+    };
   },
 
-  async resolvePublicShareChunk(key: string, index: number) {
-    const response = await instance.get<PresignResponse>(`/public-share/${key}/${index + 1}`);
+  async resolvePublicShareChunk(sid: string, index: number) {
+    const response = await instance.get<PresignResponse>(`/public-share/${sid}/${index + 1}`);
 
     return response.data.data;
   },
@@ -326,8 +379,40 @@ const api = {
 
     return {
       ...data,
-      publicKey: from_base64(data.publicKey),
+      kemPub: from_base64(data.kemPub),
+      sgnPub: from_base64(data.sgnPub)
     } as GetUserResponse;
+  },
+
+  async getShares(offset: number, limit: number) {
+    const response = await instance.get<Serialized<Wrapped<GetSharesResponse>>>("/share", {
+      params: {
+        offset,
+        limit,
+      },
+    });
+
+    return response.data.data.map(it => ({
+      ...it,
+      envelope: from_base64(it.envelope),
+      kemCipher: from_base64(it.kemCipher),
+      sgnPub: from_base64(it.sgnPub)
+    }));
+  },
+
+  async getMyShares(offset: number, limit: number) {
+    const response = await instance.get<Serialized<Wrapped<GetMySharesResponse>>>("/share/my", {
+      params: {
+        offset,
+        limit,
+      },
+    });
+
+    return response.data.data.map(it => ({
+      ...it,
+      envelope: from_base64(it.envelope),
+      kemCipher: from_base64(it.kemCipher),
+    }));
   },
 
   async getShare(shareId: number) {
@@ -339,9 +424,26 @@ const api = {
 
     return {
       ...data,
-      encryptedKey: from_base64(data.encryptedKey),
-      encryptedMetadata: from_base64(data.encryptedMetadata),
+      envelope: from_base64(data.envelope),
+      kemCipher: from_base64(data.kemCipher),
     } as GetShareResposne;
+  },
+
+  async getPublicShares(offset: number, limit: number) {
+    const response = await instance.get<Serialized<Wrapped<GetPublicSharesResponse>>>(
+      `/public-shares`,
+      {
+        params: {
+          offset, limit
+        }
+      }
+    );
+
+    return response.data.data.map(it => ({
+      ...it,
+      envelope: from_base64(it.envelope),
+      kemCipher: from_base64(it.kemCipher),
+    }));
   },
 
   async getShareChunk(shareId: number, index: number) {
@@ -371,19 +473,36 @@ const api = {
     if (filters?.to) params.to = filters.to;
 
     const response = await instance.get<
-      Wrapped<{
+      Serialized<Wrapped<{
         total: number;
         items: Array<{
           id: number;
           level: string;
-          message: string;
-          encryptedMetadata?: string;
+          messageEnvelope: Uint8Array;
+          messageCipher: Uint8Array;
+          extraEnvelope?: Uint8Array;
+          extraCipher?: Uint8Array;
           createdAt: string;
         }>;
-      }>
+      }>>
     >("/audit/logs", { params });
 
-    return response.data.data;
+    const data = response.data.data;
+
+    return {
+      total: data.total,
+      items: data.items.map((it) => ({
+        ...it,
+        messageEnvelope: from_base64(it.messageEnvelope),
+        messageCipher: from_base64(it.messageCipher),
+        extraEnvelope: it.extraEnvelope
+          ? from_base64(it.extraEnvelope)
+          : undefined,
+        extraCipher: it.extraCipher
+          ? from_base64(it.extraCipher)
+          : undefined,
+      })),
+    };
   },
 
   async getAdminStats() {
@@ -480,14 +599,14 @@ const api = {
     return from_base64(response.data.data.message);
   },
 
-  async passwordChangeFinish(payload: {
-    opaqueRecord: Uint8Array;
-    privateKey: Uint8Array;
-    kdf: KDFParameters;
-  }) {
+  async passwordChangeFinish(payload: PasswordChangeFinishPayload) {
     await instance.post("/me/password/finish", {
-      opaqueRecord: to_base64(payload.opaqueRecord),
-      encryptedPrivateKey: to_base64(payload.privateKey),
+      opaqueRecord: to_base64(
+        payload.opaqueRecord,
+        base64_variants.URLSAFE_NO_PADDING,
+      ),
+      kemPri: to_base64(payload.kemPri, base64_variants.URLSAFE_NO_PADDING),
+      sgnPri: to_base64(payload.sgnPri, base64_variants.URLSAFE_NO_PADDING),
       kdf: {
         ...payload.kdf,
         salt: to_base64(payload.kdf.salt),

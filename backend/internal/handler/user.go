@@ -13,9 +13,9 @@ type GetUserPayload struct {
 }
 
 type GetUserResponse struct {
-	ID        int64       `json:"id"`
-	Username  string      `json:"username"`
-	PublicKey utils.Bytes `json:"publicKey"`
+	utils.KeySuite
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
 }
 
 func GetUser(c *gin.Context) {
@@ -40,11 +40,11 @@ func GetUser(c *gin.Context) {
 		"action":       "user_profile_lookup",
 		"targetUserId": user.ID,
 		"username":     payload.Username,
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, GetUserResponse{
-		ID:        user.ID,
-		Username:  user.Username,
-		PublicKey: user.PublicKey,
+		ID:       user.ID,
+		Username: user.Username,
+		KeySuite: utils.GetSuite(user),
 	})
 }

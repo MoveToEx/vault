@@ -1,6 +1,5 @@
 -- +goose Up
 SELECT 'up SQL query';
-
 CREATE TYPE log_level AS ENUM('trace', 'info', 'warning', 'critical');
 
 CREATE TABLE IF NOT EXISTS users (
@@ -17,10 +16,11 @@ CREATE TABLE IF NOT EXISTS users (
     kdf_salt BYTEA NOT NULL,
     kdf_memory_cost INTEGER NOT NULL,
     kdf_time_cost INTEGER NOT NULL,
-    kdf_parallelism INTEGER NOT NULL,
 
-    public_key BYTEA NOT NULL,
-    encrypted_private_key BYTEA NOT NULL,
+    kem_pub BYTEA NOT NULL,      -- kem public key
+    kem_pri BYTEA NOT NULL,      -- encrypted kem private key
+    sgn_pub BYTEA NOT NULL,      -- signing public key
+    sgn_pri BYTEA NOT NULL,      -- encrypted signing private key
 
     root_folder BIGINT,
 
@@ -46,10 +46,9 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS files (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     owner_id BIGINT NOT NULL REFERENCES users(id),
-    
-    encrypted_metadata BYTEA NOT NULL,
 
-    encrypted_key BYTEA NOT NULL,
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
 
     parent_id BIGINT NOT NULL,
 
@@ -57,8 +56,7 @@ CREATE TABLE IF NOT EXISTS files (
     chunk_size BIGINT NOT NULL,
     size BIGINT NOT NULL,
 
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS file_chunks (
@@ -73,12 +71,12 @@ CREATE TABLE IF NOT EXISTS file_chunks (
 CREATE TABLE IF NOT EXISTS folders (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 
-    encrypted_metadata BYTEA NOT NULL,
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
 
     parent_id BIGINT REFERENCES folders(id),
     owner_id BIGINT NOT NULL REFERENCES users(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS logs (
@@ -86,8 +84,12 @@ CREATE TABLE IF NOT EXISTS logs (
     owner_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
     level LOG_LEVEL NOT NULL DEFAULT 'info',
-    message BYTEA NOT NULL,
-    encrypted_metadata BYTEA,
+
+    message_envelope BYTEA NOT NULL,
+    message_kem_cipher BYTEA NOT NULL,
+
+    extra_envelope BYTEA,
+    extra_kem_cipher BYTEA,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -106,7 +108,8 @@ CREATE TABLE IF NOT EXISTS uploads (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     user_id BIGINT NOT NULL REFERENCES users(id),
 
-    encrypted_metadata BYTEA NOT NULL,
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
 
     parent_id BIGINT NOT NULL,
 
@@ -137,17 +140,45 @@ CREATE TABLE IF NOT EXISTS shares (
     sender_id BIGINT NOT NULL REFERENCES users(id),
     receiver_id BIGINT NOT NULL REFERENCES users(id),
     
-    encrypted_fek BYTEA NOT NULL,
-    encrypted_metadata BYTEA NOT NULL,
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
     
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
 );
 
+CREATE TABLE IF NOT EXISTS public_shares (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+
+    key VARCHAR(32) NOT NULL UNIQUE,
+
+    file_id BIGINT NOT NULL REFERENCES files(id),
+    owner_id BIGINT NOT NULL REFERENCES users(id),
+
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
+);
+
+CREATE INDEX IF NOT EXISTS public_shares_key_idx ON public_shares(key);
+
+CREATE TABLE IF NOT EXISTS site_config (
+    id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    upload_expiry_seconds INTEGER NOT NULL DEFAULT 10800,
+    registration_open BOOLEAN NOT NULL DEFAULT TRUE,
+    default_user_capacity_bytes BIGINT NOT NULL DEFAULT 2147483648,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- +goose Down
 SELECT 'down SQL query';
 
+DROP TABLE IF EXISTS site_config;
+
 DROP TABLE IF EXISTS shares;
+DROP TABLE IF EXISTS public_shares;
 
 DROP TABLE IF EXISTS upload_chunks;
 DROP TABLE IF EXISTS uploads;

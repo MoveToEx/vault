@@ -14,21 +14,22 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
-import { useAppSelector } from "@/stores";
+import { useKeys } from "@/stores";
 import { useEffect, useState } from "react";
-import { seal } from "@/lib/crypto";
-import { from_base64, from_string, ready } from "libsodium-wrappers";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
 import { Spinner } from "../ui/spinner";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { formatError } from "@/lib/utils";
+import { Envelope } from "@/lib/crypto_wrappers";
 
 export type RenameDialogPayload = {
   type: "folder" | "file";
-  id: number;
   name: string;
+  id: number;
+  kemCipher: Uint8Array,
+  envelope: Uint8Array,
 };
 
 const schema = z.object({
@@ -45,7 +46,7 @@ export default function RenameDialog({
   return (
     <Dialog handle={handle}>
       {function Content({ payload }) {
-        const keys = useAppSelector((state) => state.key.value);
+        const keys = useKeys();
         const [loading, setLoading] = useState(false);
         const form = useForm<z.infer<typeof schema>>({
           resolver: zodResolver(schema),
@@ -61,26 +62,21 @@ export default function RenameDialog({
         }, [payload?.name, form]);
 
         const submit = async (data: z.infer<typeof schema>) => {
-          if (!payload?.id || !payload?.type || !keys) return;
-
+          if (!payload || !keys) return;
+          
           setLoading(true);
           try {
-            await ready;
+            const metadata = Envelope.decrypt(payload.envelope, payload.kemCipher, keys.sign.publicKey, keys.kem.privateKey);
 
-            const metadata = seal(
-              from_string(
-                JSON.stringify({
-                  type: payload.type,
-                  name: data.name,
-                }),
-              ),
-              from_base64(keys.pubKey),
-            );
+            const cipher = Envelope.replace(payload.kemCipher, {
+              ...metadata,
+              name: data.name
+            }, keys.sign.privateKey, keys.kem.privateKey);
 
             if (payload.type === "file") {
-              await api.renameFile(payload.id, metadata);
+              await api.renameFile(payload.id, cipher);
             } else {
-              await api.renameFolder(payload.id, metadata);
+              await api.renameFolder(payload.id, cipher);
             }
 
             await mutate("file");

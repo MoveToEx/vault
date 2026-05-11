@@ -56,15 +56,15 @@ func (ns NullLogLevel) Value() (driver.Value, error) {
 }
 
 type File struct {
-	ID                int64              `json:"id"`
-	OwnerID           int64              `json:"ownerId"`
-	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	EncryptedKey      []byte             `json:"encryptedKey"`
-	ParentID          int64              `json:"parentId"`
-	Chunks            int32              `json:"chunks"`
-	ChunkSize         int64              `json:"chunkSize"`
-	Size              int64              `json:"size"`
-	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ID        int64              `json:"id"`
+	OwnerID   int64              `json:"ownerId"`
+	Envelope  []byte             `json:"envelope"`
+	KemCipher []byte             `json:"kemCipher"`
+	ParentID  int64              `json:"parentId"`
+	Chunks    int32              `json:"chunks"`
+	ChunkSize int64              `json:"chunkSize"`
+	Size      int64              `json:"size"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
 }
 
 type FileChunk struct {
@@ -74,31 +74,34 @@ type FileChunk struct {
 }
 
 type Folder struct {
-	ID                int64              `json:"id"`
-	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	ParentID          pgtype.Int8        `json:"parentId"`
-	OwnerID           int64              `json:"ownerId"`
-	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ID        int64              `json:"id"`
+	Envelope  []byte             `json:"envelope"`
+	KemCipher []byte             `json:"kemCipher"`
+	ParentID  pgtype.Int8        `json:"parentId"`
+	OwnerID   int64              `json:"ownerId"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
 }
 
 type Log struct {
-	ID                int64              `json:"id"`
-	OwnerID           int64              `json:"ownerId"`
-	Level             LogLevel           `json:"level"`
-	Message           []byte             `json:"message"`
-	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
+	ID               int64              `json:"id"`
+	OwnerID          int64              `json:"ownerId"`
+	Level            LogLevel           `json:"level"`
+	MessageEnvelope  []byte             `json:"messageEnvelope"`
+	MessageKemCipher []byte             `json:"messageKemCipher"`
+	ExtraEnvelope    []byte             `json:"extraEnvelope"`
+	ExtraKemCipher   []byte             `json:"extraKemCipher"`
+	CreatedAt        pgtype.Timestamptz `json:"createdAt"`
 }
 
 type PublicShare struct {
-	ID                int64              `json:"id"`
-	Key               string             `json:"key"`
-	FileID            int64              `json:"fileId"`
-	OwnerID           int64              `json:"ownerId"`
-	EncryptedKey      []byte             `json:"encryptedKey"`
-	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
-	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+	ID        int64              `json:"id"`
+	Key       string             `json:"key"`
+	FileID    int64              `json:"fileId"`
+	OwnerID   int64              `json:"ownerId"`
+	Envelope  []byte             `json:"envelope"`
+	KemCipher []byte             `json:"kemCipher"`
+	CreatedAt pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt pgtype.Timestamptz `json:"expiresAt"`
 }
 
 type Session struct {
@@ -111,14 +114,14 @@ type Session struct {
 }
 
 type Share struct {
-	ID                int64              `json:"id"`
-	FileID            int64              `json:"fileId"`
-	SenderID          int64              `json:"senderId"`
-	ReceiverID        int64              `json:"receiverId"`
-	EncryptedFek      []byte             `json:"encryptedFek"`
-	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
-	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+	ID         int64              `json:"id"`
+	FileID     int64              `json:"fileId"`
+	SenderID   int64              `json:"senderId"`
+	ReceiverID int64              `json:"receiverId"`
+	Envelope   []byte             `json:"envelope"`
+	KemCipher  []byte             `json:"kemCipher"`
+	CreatedAt  pgtype.Timestamptz `json:"createdAt"`
+	ExpiresAt  pgtype.Timestamptz `json:"expiresAt"`
 }
 
 type SiteConfig struct {
@@ -130,16 +133,17 @@ type SiteConfig struct {
 }
 
 type Upload struct {
-	ID                int64              `json:"id"`
-	UserID            int64              `json:"userId"`
-	EncryptedMetadata []byte             `json:"encryptedMetadata"`
-	ParentID          int64              `json:"parentId"`
-	Chunks            int32              `json:"chunks"`
-	ChunkSize         int64              `json:"chunkSize"`
-	Size              int64              `json:"size"`
-	CreatedAt         pgtype.Timestamptz `json:"createdAt"`
-	CompletedAt       pgtype.Timestamptz `json:"completedAt"`
-	ExpiresAt         pgtype.Timestamptz `json:"expiresAt"`
+	ID          int64              `json:"id"`
+	UserID      int64              `json:"userId"`
+	Envelope    []byte             `json:"envelope"`
+	KemCipher   []byte             `json:"kemCipher"`
+	ParentID    int64              `json:"parentId"`
+	Chunks      int32              `json:"chunks"`
+	ChunkSize   int64              `json:"chunkSize"`
+	Size        int64              `json:"size"`
+	CreatedAt   pgtype.Timestamptz `json:"createdAt"`
+	CompletedAt pgtype.Timestamptz `json:"completedAt"`
+	ExpiresAt   pgtype.Timestamptz `json:"expiresAt"`
 }
 
 type UploadChunk struct {
@@ -160,8 +164,10 @@ type User struct {
 	KdfSalt              []byte             `json:"kdfSalt"`
 	KdfMemoryCost        int32              `json:"kdfMemoryCost"`
 	KdfTimeCost          int32              `json:"kdfTimeCost"`
-	PublicKey            []byte             `json:"publicKey"`
-	EncryptedPrivateKey  []byte             `json:"encryptedPrivateKey"`
+	KemPub               []byte             `json:"kemPub"`
+	KemPri               []byte             `json:"kemPri"`
+	SgnPub               []byte             `json:"sgnPub"`
+	SgnPri               []byte             `json:"sgnPri"`
 	RootFolder           pgtype.Int8        `json:"rootFolder"`
 	IsActive             bool               `json:"isActive"`
 	IsLocked             bool               `json:"isLocked"`

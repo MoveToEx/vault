@@ -20,9 +20,9 @@ type FindUserPayload struct {
 }
 
 type FindUserItem struct {
-	ID        int64       `json:"id"`
-	Username  string      `json:"username"`
-	PublicKey utils.Bytes `json:"publicKey"`
+	utils.KeySuite
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
 }
 
 func FindUser(c *gin.Context) {
@@ -47,9 +47,12 @@ func FindUser(c *gin.Context) {
 
 		for i := range user {
 			result = append(result, FindUserItem{
-				ID:        user[i].ID,
-				Username:  user[i].Username,
-				PublicKey: user[i].PublicKey,
+				ID:       user[i].ID,
+				Username: user[i].Username,
+				KeySuite: utils.KeySuite{
+					KemPub: user[i].KemPub,
+					SgnPub: user[i].SgnPub,
+				},
 			})
 		}
 	} else {
@@ -62,9 +65,12 @@ func FindUser(c *gin.Context) {
 
 		for i := range user {
 			result = append(result, FindUserItem{
-				ID:        user[i].ID,
-				Username:  user[i].Username,
-				PublicKey: user[i].PublicKey,
+				ID:       user[i].ID,
+				Username: user[i].Username,
+				KeySuite: utils.KeySuite{
+					KemPub: user[i].KemPub,
+					SgnPub: user[i].SgnPub,
+				},
 			})
 		}
 	}
@@ -78,7 +84,7 @@ func FindUser(c *gin.Context) {
 		"action":     "share_user_lookup",
 		"searchBy":   searchBy,
 		"matchCount": len(result),
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, result)
 }
@@ -87,8 +93,8 @@ type CreateSharePayload struct {
 	Receiver string `json:"receiver"`
 	FileID   int64  `json:"fileId"`
 
-	EncryptedKey      utils.Bytes `json:"encryptedKey"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
 }
 
 type CreateShareResponse struct {
@@ -135,13 +141,12 @@ func CreateShare(c *gin.Context) {
 		FileID:     file.ID,
 		SenderID:   userID,
 		ReceiverID: receiver.ID,
-
-		EncryptedFek:      payload.EncryptedKey,
-		EncryptedMetadata: payload.EncryptedMetadata,
+		Envelope:   payload.Envelope,
+		KemCipher:  payload.KemCipher,
 	})
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when creating share")
+		utils.ErrorResponse(c, 500, "Failed when creating share: %v", err)
 		return
 	}
 
@@ -151,7 +156,7 @@ func CreateShare(c *gin.Context) {
 		"fileId":       file.ID,
 		"receiverId":   receiver.ID,
 		"receiverName": receiver.Username,
-	}, file.EncryptedMetadata)
+	}, file.Envelope, file.KemCipher)
 
 	utils.SuccessResponse(c, CreateShareResponse{
 		ID: share.ID,
@@ -164,14 +169,15 @@ type GetSharesPayload struct {
 }
 
 type GetSharesResponse struct {
-	ID                int64       `json:"id"`
-	SenderID          int64       `json:"senderId"`
-	ReceiverID        int64       `json:"receiverId"`
-	Sender            string      `json:"sender"`
-	EncryptedKey      utils.Bytes `json:"encryptedKey"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	CreatedAt         time.Time   `json:"createdAt"`
-	ExpiresAt         time.Time   `json:"expiresAt"`
+	ID         int64       `json:"id"`
+	SenderID   int64       `json:"senderId"`
+	ReceiverID int64       `json:"receiverId"`
+	Sender     string      `json:"sender"`
+	Envelope   utils.Bytes `json:"envelope"`
+	KemCipher  utils.Bytes `json:"kemCipher"`
+	SgnPub     utils.Bytes `json:"sgnPub"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	ExpiresAt  time.Time   `json:"expiresAt"`
 }
 
 func GetShares(c *gin.Context) {
@@ -201,14 +207,15 @@ func GetShares(c *gin.Context) {
 
 	for i := range shares {
 		result = append(result, GetSharesResponse{
-			ID:                shares[i].ID,
-			SenderID:          shares[i].SenderID,
-			ReceiverID:        shares[i].ReceiverID,
-			EncryptedKey:      shares[i].EncryptedFek,
-			EncryptedMetadata: shares[i].EncryptedMetadata,
-			CreatedAt:         shares[i].CreatedAt.Time,
-			ExpiresAt:         shares[i].ExpiresAt.Time,
-			Sender:            shares[i].Sender,
+			ID:         shares[i].ID,
+			SenderID:   shares[i].SenderID,
+			ReceiverID: shares[i].ReceiverID,
+			Envelope:   shares[i].Envelope,
+			KemCipher:  shares[i].KemCipher,
+			SgnPub:     shares[i].SgnPub,
+			CreatedAt:  shares[i].CreatedAt.Time,
+			ExpiresAt:  shares[i].ExpiresAt.Time,
+			Sender:     shares[i].Sender,
 		})
 	}
 
@@ -216,19 +223,21 @@ func GetShares(c *gin.Context) {
 		"action": "share_incoming_list",
 		"limit":  payload.Limit,
 		"offset": payload.Offset,
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, result)
 }
 
 type GetMySharesResponse struct {
-	ID                int64       `json:"id"`
-	SenderID          int64       `json:"senderId"`
-	ReceiverID        int64       `json:"receiverId"`
-	Receiver          string      `json:"receiver"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	CreatedAt         time.Time   `json:"createdAt"`
-	ExpiresAt         time.Time   `json:"expiresAt"`
+	ID         int64       `json:"id"`
+	SenderID   int64       `json:"senderId"`
+	ReceiverID int64       `json:"receiverId"`
+	Receiver   string      `json:"receiver"`
+	Envelope   utils.Bytes `json:"envelope"`
+	KemCipher  utils.Bytes `json:"kemCipher"`
+	SgnPub     utils.Bytes `json:"sgnPub"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	ExpiresAt  time.Time   `json:"expiresAt"`
 }
 
 func GetMyShares(c *gin.Context) {
@@ -253,13 +262,15 @@ func GetMyShares(c *gin.Context) {
 
 	for i := range shares {
 		result = append(result, GetMySharesResponse{
-			ID:                shares[i].ID,
-			SenderID:          shares[i].SenderID,
-			ReceiverID:        shares[i].ReceiverID,
-			Receiver:          shares[i].Receiver,
-			EncryptedMetadata: shares[i].EncryptedMetadata,
-			CreatedAt:         shares[i].CreatedAt.Time,
-			ExpiresAt:         shares[i].ExpiresAt.Time,
+			ID:         shares[i].ID,
+			SenderID:   shares[i].SenderID,
+			ReceiverID: shares[i].ReceiverID,
+			Receiver:   shares[i].Receiver,
+			Envelope:   shares[i].Envelope,
+			KemCipher:  shares[i].KemCipher,
+			SgnPub:     shares[i].SgnPub,
+			CreatedAt:  shares[i].CreatedAt.Time,
+			ExpiresAt:  shares[i].ExpiresAt.Time,
 		})
 	}
 
@@ -267,7 +278,7 @@ func GetMyShares(c *gin.Context) {
 		"action": "share_outgoing_list",
 		"limit":  limit,
 		"offset": offset,
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, result)
 }
@@ -279,8 +290,10 @@ type GetShareResponse struct {
 	SenderID   int64 `json:"senderId"`
 	ReceiverID int64 `json:"receiverId"`
 
-	EncryptedKey      utils.Bytes `json:"encryptedKey"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
+
+	SgnPub utils.Bytes `json:"sgnPub"`
 }
 
 type GetSharePayload struct {
@@ -314,7 +327,7 @@ func GetShare(c *gin.Context) {
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":  "share_get_metadata",
 		"shareId": payload.ShareID,
-	}, share.EncryptedMetadata)
+	}, share.Envelope, share.KemCipher)
 
 	utils.SuccessResponse(c, GetShareResponse{
 		Chunks:     share.Chunks,
@@ -323,8 +336,10 @@ func GetShare(c *gin.Context) {
 		SenderID:   share.SenderID,
 		ReceiverID: share.ReceiverID,
 
-		EncryptedKey:      share.EncryptedFek,
-		EncryptedMetadata: share.EncryptedMetadata,
+		Envelope:  share.Envelope,
+		KemCipher: share.KemCipher,
+
+		SgnPub: share.SgnPub,
 	})
 }
 
@@ -382,7 +397,7 @@ func GetShareChunk(c *gin.Context) {
 		"action":     "share_download_chunk",
 		"shareId":    payload.ShareID,
 		"chunkIndex": payload.ChunkIndex,
-	}, chunk.EncryptedMetadata)
+	}, chunk.Envelope, chunk.KemCipher)
 
 	utils.SuccessResponse(c, GetShareChunkResponse{
 		URL:     req.URL,
@@ -419,8 +434,6 @@ func DeleteShare(c *gin.Context) {
 		return
 	}
 
-	meta := share.EncryptedMetadata
-
 	err = db.Query().InvalidateShare(ctx, payload.ShareID)
 
 	if err != nil {
@@ -431,16 +444,17 @@ func DeleteShare(c *gin.Context) {
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":  "share_revoke",
 		"shareId": payload.ShareID,
-	}, meta)
+	}, share.Envelope, share.KemCipher)
 
 	utils.SuccessResponse(c, nil)
 }
 
 type ListPublicSharesItem struct {
-	Key              string      `json:"key"`
-	EncrypedMetadata utils.Bytes `json:"encryptedMetadata"`
-	CreatedAt        time.Time   `json:"createdAt"`
-	ExpiresAt        time.Time   `json:"expiresAt"`
+	Key       string      `json:"key"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
+	CreatedAt time.Time   `json:"createdAt"`
+	ExpiresAt time.Time   `json:"expiresAt"`
 }
 
 func ListPublicShares(c *gin.Context) {
@@ -465,10 +479,11 @@ func ListPublicShares(c *gin.Context) {
 
 	for i := range shares {
 		result = append(result, ListPublicSharesItem{
-			Key:              shares[i].Key,
-			EncrypedMetadata: shares[i].File.EncryptedMetadata,
-			CreatedAt:        shares[i].CreatedAt.Time,
-			ExpiresAt:        shares[i].ExpiresAt.Time,
+			Key:       shares[i].Key,
+			Envelope:  shares[i].File.Envelope,
+			KemCipher: shares[i].File.KemCipher,
+			CreatedAt: shares[i].CreatedAt.Time,
+			ExpiresAt: shares[i].ExpiresAt.Time,
 		})
 	}
 
@@ -478,8 +493,8 @@ func ListPublicShares(c *gin.Context) {
 type CreatePublicSharePayload struct {
 	FileID int64 `json:"fileId"`
 
-	EncryptedKey      utils.Bytes `json:"encryptedKey"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
 }
 
 type CreatePublicShareResponse struct {
@@ -519,12 +534,11 @@ func CreatePublicShare(c *gin.Context) {
 	}
 
 	share, err := db.Query().NewPublicShare(ctx, sqlc.NewPublicShareParams{
-		FileID:  file.ID,
-		OwnerID: userID,
-		Key:     key,
-
-		EncryptedKey:      payload.EncryptedKey,
-		EncryptedMetadata: payload.EncryptedMetadata,
+		FileID:    file.ID,
+		OwnerID:   userID,
+		Key:       key,
+		Envelope:  payload.Envelope,
+		KemCipher: payload.KemCipher,
 	})
 
 	if err != nil {
@@ -536,7 +550,7 @@ func CreatePublicShare(c *gin.Context) {
 		"action":  "public_share_create",
 		"shareId": share.ID,
 		"fileId":  file.ID,
-	}, file.EncryptedMetadata)
+	}, file.Envelope, file.KemCipher)
 
 	utils.SuccessResponse(c, CreatePublicShareResponse{
 		ID:  share.ID,
@@ -545,14 +559,15 @@ func CreatePublicShare(c *gin.Context) {
 }
 
 type GetPublicShareResponse struct {
-	Key               string      `json:"key"`
-	Owner             string      `json:"owner"`
-	Size              int64       `json:"size"`
-	Chunks            int32       `json:"chunks"`
-	ChunkSize         int64       `json:"chunkSize"`
-	CreatedAt         time.Time   `json:"createdAt"`
-	EncryptedMetadata utils.Bytes `json:"encryptedMetadata"`
-	EncryptedKey      utils.Bytes `json:"encryptedKey"`
+	Key       string      `json:"key"`
+	Owner     string      `json:"owner"`
+	Size      int64       `json:"size"`
+	Chunks    int32       `json:"chunks"`
+	ChunkSize int64       `json:"chunkSize"`
+	CreatedAt time.Time   `json:"createdAt"`
+	Envelope  utils.Bytes `json:"envelope"`
+	KemCipher utils.Bytes `json:"kemCipher"`
+	SgnPub    utils.Bytes `json:"sgnPub"`
 }
 
 func GetPublicShare(c *gin.Context) {
@@ -572,14 +587,15 @@ func GetPublicShare(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, GetPublicShareResponse{
-		Key:               key,
-		Owner:             share.User.Username,
-		Size:              share.File.Size,
-		Chunks:            share.File.Chunks,
-		ChunkSize:         share.File.ChunkSize,
-		CreatedAt:         share.CreatedAt.Time,
-		EncryptedMetadata: share.EncryptedMetadata,
-		EncryptedKey:      share.EncryptedKey,
+		Key:       key,
+		Owner:     share.User.Username,
+		Size:      share.File.Size,
+		Chunks:    share.File.Chunks,
+		ChunkSize: share.File.ChunkSize,
+		CreatedAt: share.CreatedAt.Time,
+		Envelope:  share.Envelope,
+		KemCipher: share.KemCipher,
+		SgnPub:    share.User.SgnPub,
 	})
 }
 
@@ -606,7 +622,7 @@ func ResolvePublicShare(c *gin.Context) {
 	share, err := db.Query().GetPublicShare(ctx, payload.Key)
 
 	if err != nil {
-		utils.ErrorResponse(c, 500, "Failed when getting share")
+		utils.ErrorResponse(c, 500, "Failed when getting share: %v", err)
 		return
 	}
 

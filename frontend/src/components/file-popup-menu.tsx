@@ -26,18 +26,21 @@ import { mutate } from "@/lib/swr";
 import NewShareDialog from "./dialogs/new-share";
 import RenameDialog, { type RenameDialogPayload } from "./dialogs/rename";
 import MoveDialog, { type MoveDialogPayload } from "./dialogs/move";
-import type { Metadata } from "@/lib/types";
 import { useTranslation } from "react-i18next";
 
 type Payload = {
   type: "folder" | "file";
   id: number;
   name: string;
+  kemCipher: Uint8Array;
+  envelope: Uint8Array;
 };
 
 type DeletePayload = {
-  id: number
-} & Metadata;
+  type: "folder" | "file";
+  id: number;
+  name: string;
+};
 
 const deleteHandle = BaseAlertDialog.createHandle<DeletePayload>();
 const shareHandle = BaseDialog.createHandle<{ id: number; name: string }>();

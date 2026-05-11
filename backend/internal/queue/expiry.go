@@ -42,8 +42,6 @@ func cleanupExpiredUpload(ctx context.Context, uploadID int64) error {
 		return nil
 	}
 
-	meta := upload.EncryptedMetadata
-
 	chunks, err := db.Query().GetUploadChunks(ctx, uploadID)
 	if err != nil {
 		return err
@@ -62,7 +60,7 @@ func cleanupExpiredUpload(ctx context.Context, uploadID int64) error {
 
 	utils.AppendLog(ctx, upload.UserID, sqlc.LogLevelInfo, map[string]string{
 		"action": "upload_expire",
-	}, meta)
+	}, upload.Envelope, upload.KemCipher)
 
 	return nil
 

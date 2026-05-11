@@ -99,7 +99,7 @@ func RevokeSession(c *gin.Context) {
 	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
 		"action":    "session_revoke",
 		"sessionId": id,
-	}, nil)
+	}, nil, nil)
 
 	utils.SuccessResponse(c, nil)
 }

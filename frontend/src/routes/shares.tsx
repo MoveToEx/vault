@@ -17,12 +17,10 @@ import {
 import useAuth from "@/hooks/use-auth";
 import useMyShares from "@/hooks/use-my-shares";
 import useShares from "@/hooks/use-shares";
-import { open } from "@/lib/crypto";
 import { transferBridge } from "@/lib/transfer-bridge";
 import type { FileMetadata } from "@/lib/types";
-import { useAppDispatch, useAppSelector } from "@/stores";
+import { useAppDispatch, useKeys } from "@/stores";
 import { toggleTransferList } from "@/stores/ui";
-import { from_base64, to_string } from "libsodium-wrappers";
 import { Ban, Download, Share2 } from "lucide-react";
 import {
   useMemo,
@@ -36,12 +34,14 @@ import { useTranslation } from "react-i18next";
 import usePublicShares from "@/hooks/use-public-shares";
 import RevokePublicShareDialog from "@/components/dialogs/revoke-public-share";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Envelope } from "@/lib/crypto_wrappers";
 
 type ShareMetadata = FileMetadata & {
   createdAt: Date;
   expiresAt: Date;
   id: number;
   sender: string;
+  sgnPub: Uint8Array;
 };
 
 type MyShareMetadata = FileMetadata & {
@@ -101,7 +101,7 @@ function SharedWithMe() {
   const { data, isLoading } = useShares(page);
   const { data: user } = useAuth();
 
-  const keys = useAppSelector(state => state.key.value);
+  const keys = useKeys();
   const dispatch = useAppDispatch();
 
   const decrypted = useMemo(() => {
@@ -110,15 +110,14 @@ function SharedWithMe() {
     const result: ShareMetadata[] = [];
 
     for (const it of data) {
-      const metadata: FileMetadata = JSON.parse(
-        to_string(
-          open(
-            from_base64(it.encryptedMetadata),
-            from_base64(keys.pubKey),
-            from_base64(keys.privKey),
-          ),
-        ),
+      const metadata = Envelope.decrypt(
+        it.envelope,
+        it.kemCipher,
+        it.sgnPub,
+        keys.kem.privateKey
       );
+
+      if (metadata.type !== 'file') continue; // expected never
 
       result.push({
         ...metadata,
@@ -126,6 +125,7 @@ function SharedWithMe() {
         expiresAt: new Date(it.expiresAt),
         id: it.id,
         sender: it.sender,
+        sgnPub: it.sgnPub,
       });
     }
 
@@ -177,8 +177,8 @@ function SharedWithMe() {
                     onClick={() => {
                       transferBridge.enqueueDownloadShare(
                         it.id,
-                        from_base64(keys.pubKey),
-                        from_base64(keys.privKey),
+                        it.sgnPub,
+                        keys.kem,
                       );
                       dispatch(toggleTransferList(true));
                     }}
@@ -214,7 +214,7 @@ function SharedByMe() {
   const { data, isLoading } = useMyShares(page);
   const { data: user } = useAuth();
 
-  const keys = useAppSelector((state) => state.key.value);
+  const keys = useKeys();
 
   const decrypted = useMemo(() => {
     if (!data || !user || !keys) return [];
@@ -222,15 +222,9 @@ function SharedByMe() {
     const result: MyShareMetadata[] = [];
 
     for (const it of data) {
-      const metadata: FileMetadata = JSON.parse(
-        to_string(
-          open(
-            from_base64(it.encryptedMetadata),
-            from_base64(keys.pubKey),
-            from_base64(keys.privKey),
-          ),
-        ),
-      );
+      const metadata = Envelope.decrypt(it.envelope, it.kemCipher, keys.sign.publicKey, keys.kem.privateKey);
+
+      if (metadata.type !== 'file') continue;   // never
 
       result.push({
         ...metadata,
@@ -329,7 +323,7 @@ function PublicShares() {
   const { data, isLoading } = usePublicShares(page);
   const { data: user } = useAuth();
 
-  const keys = useAppSelector((state) => state.key.value);
+  const keys = useKeys();
 
   const decrypted = useMemo(() => {
     if (!data || !user || !keys) return [];
@@ -337,15 +331,9 @@ function PublicShares() {
     const result: PublicShareMetadata[] = [];
 
     for (const it of data) {
-      const metadata: FileMetadata = JSON.parse(
-        to_string(
-          open(
-            from_base64(it.encryptedMetadata),
-            from_base64(keys.pubKey),
-            from_base64(keys.privKey),
-          ),
-        ),
-      );
+      const metadata = Envelope.decrypt(it.envelope, it.kemCipher, keys.sign.publicKey, keys.kem.privateKey);
+
+      if (metadata.type !== 'file') continue;
 
       result.push({
         ...metadata,
@@ -384,7 +372,7 @@ function PublicShares() {
             <TableHead>{t("common.fileName")}</TableHead>
             <TableHead>{t("common.sharedAt")}</TableHead>
             <TableHead>{t("common.expiresAt")}</TableHead>
-            <TableHead>{t("common.shareKeyColumn")}</TableHead>
+            <TableHead>SID</TableHead>
             <TableHead>{t("common.action")}</TableHead>
           </TableRow>
         </TableHeader>

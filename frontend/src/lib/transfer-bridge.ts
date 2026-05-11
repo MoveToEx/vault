@@ -1,5 +1,6 @@
 import { store } from "@/stores";
 import type {
+  Keypair,
   TransferCommand,
   TransferMessage,
   WithId,
@@ -20,7 +21,6 @@ import {
 } from "@/stores/transfer";
 import { mutate } from "./swr";
 import api from "@/lib/api";
-import { from_base64 } from "libsodium-wrappers";
 import { formatError } from "./utils";
 
 class TransferBridge {
@@ -37,47 +37,48 @@ class TransferBridge {
     });
   }
 
-  enqueueUpload(file: File, dir: number, publicKey: Uint8Array) {
+  enqueueUpload(file: File, dir: number, signPriv: Uint8Array, kemPub: Uint8Array) {
     this.post({
       type: "enqueue-upload",
       file,
       parentId: dir,
-      publicKey,
+      signPriv,
+      kemPub,
     });
   }
 
-  enqueueDownload(fileId: number, publicKey: Uint8Array, privateKey: Uint8Array) {
+  enqueueDownload(fileId: number, signPub: Uint8Array, kem: Keypair) {
     this.post({
       type: "enqueue-download",
       fileId,
-      publicKey,
-      privateKey,
+      signPub,
+      kem
     });
   }
 
   enqueueDownloadShare(
     shareId: number,
-    pubKey: Uint8Array,
-    privKey: Uint8Array,
+    signPub: Uint8Array,
+    kem: Keypair
   ) {
     this.post({
       type: "enqueue-download-share",
       shareId,
-      publicKey: pubKey,
-      privateKey: privKey,
+      signPub,
+      kem
     });
   }
 
   enqueueDownloadPublicShare(
+    sid: string,
     key: string,
-    pubKey: Uint8Array,
-    privKey: Uint8Array,
+    signPub: Uint8Array,
   ) {
     this.post({
       type: 'enqueue-download-public-share',
+      sid,
       key,
-      publicKey: pubKey,
-      privateKey: privKey,
+      signPub,
     })
   }
 
@@ -89,6 +90,13 @@ class TransferBridge {
     try {
       switch (message.type) {
         //#region Upload
+        case "get-user-pk": {
+          const { $id, username } = message;
+          const response = await api.getUser(username);
+
+          this.post({ type: 'get-user-pk', signPub: response.sgnPub, $id });
+          break;
+        }
         case "presign": {
           const { uploadId, chunkIndex, $id } = message;
           const response = await api.presignUploadChunk(uploadId, chunkIndex);
@@ -99,18 +107,19 @@ class TransferBridge {
           break;
         }
         case "init": {
-          const { size, metadata, parentId, $id } = message;
+          const { size, envelope, kemCipher, parentId, $id } = message;
           const { id, chunks, chunkSize } = await api.initUpload(
             size,
-            metadata,
+            envelope,
+            kemCipher,
             parentId,
           );
           this.post({ type: "init", chunks, chunkSize, id, $id });
           break;
         }
         case "ack": {
-          const { encryptedKey, uploadId, $id } = message;
-          await api.completeUpload(uploadId, encryptedKey);
+          const { uploadId, $id } = message;
+          await api.completeUpload(uploadId);
 
           this.post({ type: "ack", $id });
           break;
@@ -151,13 +160,11 @@ class TransferBridge {
             type: 'get-public-share',
             ...result,
             $id,
-            encryptedKey: from_base64(result.encryptedKey),
-            encryptedMetadata: from_base64(result.encryptedMetadata)
           });
 
           break;
         }
-          
+
         case 'resolve-public-share-chunk': {
           const { key, index, $id } = message;
 

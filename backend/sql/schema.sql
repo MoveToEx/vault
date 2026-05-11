@@ -19,8 +19,10 @@ CREATE TABLE IF NOT EXISTS users (
     kdf_memory_cost INTEGER NOT NULL,
     kdf_time_cost INTEGER NOT NULL,
 
-    public_key BYTEA NOT NULL,
-    encrypted_private_key BYTEA NOT NULL,
+    kem_pub BYTEA NOT NULL,      -- kem public key
+    kem_pri BYTEA NOT NULL,      -- encrypted kem private key
+    sgn_pub BYTEA NOT NULL,      -- signing public key
+    sgn_pri BYTEA NOT NULL,      -- encrypted signing private key
 
     root_folder BIGINT,
 
@@ -46,10 +48,9 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS files (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     owner_id BIGINT NOT NULL REFERENCES users(id),
-    
-    encrypted_metadata BYTEA NOT NULL,
 
-    encrypted_key BYTEA NOT NULL,
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
 
     parent_id BIGINT NOT NULL,
 
@@ -72,7 +73,8 @@ CREATE TABLE IF NOT EXISTS file_chunks (
 CREATE TABLE IF NOT EXISTS folders (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 
-    encrypted_metadata BYTEA NOT NULL,
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
 
     parent_id BIGINT REFERENCES folders(id),
     owner_id BIGINT NOT NULL REFERENCES users(id),
@@ -84,8 +86,12 @@ CREATE TABLE IF NOT EXISTS logs (
     owner_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
     level LOG_LEVEL NOT NULL DEFAULT 'info',
-    message BYTEA NOT NULL,
-    encrypted_metadata BYTEA,
+
+    message_envelope BYTEA NOT NULL,
+    message_kem_cipher BYTEA NOT NULL,
+
+    extra_envelope BYTEA,
+    extra_kem_cipher BYTEA,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -104,7 +110,8 @@ CREATE TABLE IF NOT EXISTS uploads (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     user_id BIGINT NOT NULL REFERENCES users(id),
 
-    encrypted_metadata BYTEA NOT NULL,
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
 
     parent_id BIGINT NOT NULL,
 
@@ -135,8 +142,8 @@ CREATE TABLE IF NOT EXISTS shares (
     sender_id BIGINT NOT NULL REFERENCES users(id),
     receiver_id BIGINT NOT NULL REFERENCES users(id),
     
-    encrypted_fek BYTEA NOT NULL,
-    encrypted_metadata BYTEA NOT NULL,
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
     
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
@@ -150,8 +157,8 @@ CREATE TABLE IF NOT EXISTS public_shares (
     file_id BIGINT NOT NULL REFERENCES files(id),
     owner_id BIGINT NOT NULL REFERENCES users(id),
 
-    encrypted_key BYTEA NOT NULL,
-    encrypted_metadata BYTEA NOT NULL,
+    envelope BYTEA NOT NULL,
+    kem_cipher BYTEA NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days'
