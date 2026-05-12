@@ -1,3 +1,5 @@
+import type { transferRpcHandlers } from "./transfer-rpc";
+
 /** Tags for SWR cache keys and `mutate()` invalidation (see `lib/swr.ts`). */
 export type SwrTag = "file" | "user" | "self" | "share" | "log" | "admin" | "public-share";
 
@@ -151,134 +153,43 @@ export type TransferCommand =
 
 // Worker RPC
 
-export type WithId<T> = {
-  $id: string;
-} & T;
+type RpcSpec = Record<string, (payload: never) => unknown>;
 
-export type WorkerRequest = (
-  | {
-    type: "presign";
-    uploadId: number;
-    chunkIndex: number;
-  }
-  | {
-    type: "get-user-pk";
-    username: string;
-  }
-  | {
-    type: "init";
-    parentId: number;
-    size: number;
-  } & EncryptedEnvelope
-  | {
-    type: "chunk-ack";
-    uploadId: number;
-    chunkIndex: number;
-    size: number;
-  }
-  | {
-    type: "ack";
-    uploadId: number;
-  }
-  | {
-    type: "get-file";
-    fileId: number;
-  }
-  | {
-    type: "get-file-chunk";
-    fileId: number;
-    chunkIndex: number;
-  }
-  | {
-    type: 'get-public-share',
-    key: string,
-  }
-  | {
-    type: 'resolve-public-share-chunk',
-    key: string,
-    index: number,
-  }
-  | {
-    type: "get-share";
-    shareId: number;
-  }
-  | {
-    type: "get-share-chunk";
-    shareId: number;
-    chunkIndex: number;
-  }
-  | {
-    type: "download";
-    blob: Blob;
-    filename: string;
-  }
-) & {
-  transferId: string;
-};
+export type RpcPayload<T extends RpcSpec, K extends keyof T> =
+  Parameters<T[K]>[0];
 
-export type WorkerResponse = (
-  | {
-    type: "presign";
-    url: string;
-  }
-  | {
-    type: "init";
-    id: number;
-    chunks: number;
-    chunkSize: number;
-  }
-  | {
-    type: "get-user-pk";
-    signPub: Uint8Array;
-  }
-  | {
-    type: "chunk-ack";
-  }
-  | {
-    type: "ack";
-  }
-  | {
-    type: "get-file";
-    chunks: number;
-    chunkSize: number;
-    size: number;
-  } & EncryptedEnvelope
-  | {
-    type: "get-share";
-    chunks: number;
-    chunkSize: number;
-    size: number;
-    receiverId: number;
-    senderId: number;
-  } & EncryptedEnvelope
-  | {
-    type: "get-share-chunk";
-    url: string;
-    headers: Record<string, string[]>
-  }
-  | {
-    type: 'get-public-share',
-    chunks: number;
-    chunkSize: number;
-    size: number;
-    owner: string;
-  } & EncryptedEnvelope
-  | {
-    type: 'resolve-public-share-chunk',
-    url: string;
-    headers: Record<string, string[]>
-  }
-  | {
-    type: "get-file-chunk";
-    url: string;
-    headers: Record<string, string[]>
-  }
-  | {
-    type: "download";
-  }
-) & {
-  error?: string;
-};
+export type RpcResult<T extends RpcSpec, K extends keyof T> =
+  T[K] extends (payload: never) => infer R ? Awaited<R> : never;
+
+type RpcResponseBody<T extends RpcSpec, K extends keyof T> =
+  RpcResult<T, K> extends void ? unknown : RpcResult<T, K>;
+
+export type RpcRequest<T extends RpcSpec, K extends keyof T = keyof T> = {
+  [P in K]: {
+    type: P;
+    $id: string;
+  } & RpcPayload<T, P>;
+}[K];
+
+export type RpcResponse<T extends RpcSpec, K extends keyof T = keyof T> = {
+  [P in K]:
+    | ({
+      type: P;
+      $id: string;
+      error?: undefined;
+    } & RpcResponseBody<T, P>)
+    | {
+      type: P;
+      $id: string;
+      error: string;
+    };
+}[K];
+
+export type TransferRpc = typeof transferRpcHandlers;
+
+export type WorkerRequest = RpcRequest<TransferRpc>;
+
+export type WorkerResponse = RpcResponse<TransferRpc>;
 
 declare module "axios" {
   export interface AxiosRequestConfig {

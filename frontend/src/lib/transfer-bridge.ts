@@ -3,7 +3,6 @@ import type {
   Keypair,
   TransferCommand,
   TransferMessage,
-  WithId,
   WorkerRequest,
   WorkerResponse,
 } from "./types";
@@ -20,8 +19,8 @@ import {
   transferStarted,
 } from "@/stores/transfer";
 import { mutate } from "./swr";
-import api from "@/lib/api";
 import { formatError } from "./utils";
+import { transferRpcHandlers } from "@/lib/transfer-rpc";
 
 class TransferBridge {
   private worker: Worker;
@@ -82,141 +81,36 @@ class TransferBridge {
     })
   }
 
-  post(message: TransferCommand | WithId<WorkerResponse>) {
+  post(message: TransferCommand | WorkerResponse) {
     this.worker.postMessage(message);
   }
 
-  private async onMessage(message: TransferMessage | WithId<WorkerRequest>) {
+  private postRpcResult(message: WorkerRequest, result: unknown) {
+    if (result === undefined) {
+      this.post({ type: message.type, $id: message.$id } as WorkerResponse);
+      return;
+    }
+
+    const payload =
+      result !== null && typeof result === "object" ? result : {};
+
+    this.post({
+      type: message.type,
+      $id: message.$id,
+      ...payload,
+    } as WorkerResponse);
+  }
+
+  private async onMessage(message: TransferMessage | WorkerRequest) {
     try {
+      if ("$id" in message) {
+        const result = await transferRpcHandlers[message.type](message as never);
+
+        this.postRpcResult(message, result);
+        return;
+      }
+
       switch (message.type) {
-        //#region Upload
-        case "get-user-pk": {
-          const { $id, username } = message;
-          const response = await api.getUser(username);
-
-          this.post({ type: 'get-user-pk', signPub: response.sgnPub, $id });
-          break;
-        }
-        case "presign": {
-          const { uploadId, chunkIndex, $id } = message;
-          const response = await api.presignUploadChunk(uploadId, chunkIndex);
-
-          const { url } = response;
-          this.post({ type: "presign", url, $id });
-
-          break;
-        }
-        case "init": {
-          const { size, envelope, kemCipher, parentId, $id } = message;
-          const { id, chunks, chunkSize } = await api.initUpload(
-            size,
-            envelope,
-            kemCipher,
-            parentId,
-          );
-          this.post({ type: "init", chunks, chunkSize, id, $id });
-          break;
-        }
-        case "ack": {
-          const { uploadId, $id } = message;
-          await api.completeUpload(uploadId);
-
-          this.post({ type: "ack", $id });
-          break;
-        }
-        case "chunk-ack": {
-          const { chunkIndex, size, uploadId, $id } = message;
-          await api.completeChunk(uploadId, chunkIndex, size);
-
-          this.post({ type: "chunk-ack", $id });
-          break;
-        }
-
-        //#endregion
-
-        //#region Share
-        case "get-share": {
-          const { shareId, $id } = message;
-          const result = await api.getShare(shareId);
-
-          this.post({ type: "get-share", ...result, $id });
-          break;
-        }
-        case "get-share-chunk": {
-          const { shareId, chunkIndex, $id } = message;
-          const result = await api.getShareChunk(shareId, chunkIndex);
-
-          this.post({ type: "get-share-chunk", ...result, $id });
-          break;
-        }
-        //#endregion
-
-        //#region Public Share
-        case 'get-public-share': {
-          const { key, $id } = message;
-          const result = await api.getPublicShare(key);
-
-          this.post({
-            type: 'get-public-share',
-            ...result,
-            $id,
-          });
-
-          break;
-        }
-
-        case 'resolve-public-share-chunk': {
-          const { key, index, $id } = message;
-
-          const result = await api.resolvePublicShareChunk(key, index);
-
-          this.post({
-            type: 'resolve-public-share-chunk',
-            ...result,
-            $id,
-          });
-          break;
-        }
-
-        //#endregion
-
-        //#region Download
-        case "get-file": {
-          const { fileId, $id } = message;
-
-          const result = await api.getFile(fileId);
-
-          this.post({ type: "get-file", $id, ...result });
-          break;
-        }
-        case "get-file-chunk": {
-          const { fileId, chunkIndex, $id } = message;
-          const { url, headers } = await api.getChunk(fileId, chunkIndex);
-
-          this.post({ type: "get-file-chunk", url, headers, $id });
-
-          break;
-        }
-        case "download": {
-          const { blob, $id, filename } = message;
-          const url = URL.createObjectURL(blob);
-
-          const elem = document.createElement("a");
-          elem.href = url;
-          elem.download = filename;
-
-          document.body.appendChild(elem);
-          elem.click();
-
-          document.body.removeChild(elem);
-          URL.revokeObjectURL(url);
-
-          this.post({ type: "download", $id });
-          break;
-        }
-        //#endregion
-
-        //#region Messages
         case "transfer-created": {
           store.dispatch(transferCreated(message));
           break;
@@ -272,16 +166,24 @@ class TransferBridge {
           store.dispatch(transferFailed(message));
           break;
         }
-
-        //#endregion
       }
     } catch (e) {
+      const error = formatError(e);
+
       store.dispatch(
         transferFailed({
           transferId: message.transferId,
-          error: formatError(e)
+          error,
         }),
       );
+
+      if ("$id" in message) {
+        this.post({
+          type: message.type,
+          $id: message.$id,
+          error,
+        } as WorkerResponse);
+      }
     }
   }
 }

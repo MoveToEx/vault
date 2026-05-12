@@ -1,9 +1,10 @@
 import { aeadComposite, aeadCompositeDecrypt } from "@/lib/crypto";
 import type {
+  RpcPayload,
+  RpcResult,
   TransferCommand,
+  TransferRpc,
   TransferMessage,
-  WithId,
-  WorkerRequest,
   WorkerResponse,
 } from "@/lib/types";
 import axios from "axios";
@@ -11,29 +12,34 @@ import sodium, { from_base64, to_base64 } from "libsodium-wrappers";
 import { formatError } from "@/lib/utils";
 import { Envelope, PublicShare } from "@/lib/crypto_wrappers";
 
-async function rpc<R extends WorkerRequest>(
-  req: R,
-): Promise<Extract<WorkerResponse, { type: R["type"] }>> {
+async function rpc<K extends keyof TransferRpc>(
+  type: K,
+  payload: RpcPayload<TransferRpc, K>,
+): Promise<RpcResult<TransferRpc, K>> {
   return new Promise((resolve, reject) => {
     const $id = crypto.randomUUID();
 
     const listener = (
-      event: MessageEvent<WithId<Extract<WorkerResponse, { type: R["type"] }>>>,
+      event: MessageEvent<TransferCommand | WorkerResponse>,
     ) => {
-      if (event.data.type === req.type && event.data.$id === $id) {
+      if (
+        "$id" in event.data &&
+        event.data.type === type &&
+        event.data.$id === $id
+      ) {
         self.removeEventListener("message", listener);
 
         if (event.data.error) {
           reject(new Error(event.data.error));
         } else {
-          resolve(event.data);
+          resolve(event.data as RpcResult<TransferRpc, K>);
         }
       }
     };
 
     self.addEventListener("message", listener);
 
-    self.postMessage({ ...req, $id });
+    self.postMessage({ type, ...payload, $id });
   });
 }
 
@@ -63,8 +69,7 @@ async function upload(file: File, parentId: number, signPriv: Uint8Array, kemPub
       key: to_base64(fek),
     }, signPriv, kemPub);
 
-    const { id, chunks, chunkSize } = await rpc({
-      type: "init",
+    const { id, chunks, chunkSize } = await rpc("init", {
       envelope,
       kemCipher,
       parentId,
@@ -90,8 +95,7 @@ async function upload(file: File, parentId: number, signPriv: Uint8Array, kemPub
         transferId,
       });
 
-      const { url } = await rpc({
-        type: "presign",
+      const { url } = await rpc("presign", {
         uploadId: id,
         chunkIndex: i,
         transferId,
@@ -123,8 +127,7 @@ async function upload(file: File, parentId: number, signPriv: Uint8Array, kemPub
 
       acc += sent;
 
-      await rpc({
-        type: "chunk-ack",
+      await rpc("chunk-ack", {
         uploadId: id,
         chunkIndex: i,
         size: slice.size,
@@ -138,8 +141,7 @@ async function upload(file: File, parentId: number, signPriv: Uint8Array, kemPub
       });
     }
 
-    await rpc({
-      type: "ack",
+    await rpc("ack", {
       uploadId: id,
       transferId,
     });
@@ -252,8 +254,7 @@ async function download({ resolve, resolveChunk, transferId }: DownloadParams) {
 
     const blob = new Blob(result);
 
-    await rpc({
-      type: "download",
+    await rpc("download", {
       blob,
       filename: name,
       transferId,
@@ -281,8 +282,7 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
 
       await download({
         async resolve() {
-          const file = await rpc({
-            type: "get-file",
+          const file = await rpc("get-file", {
             fileId: params.fileId,
             transferId,
           });
@@ -303,8 +303,7 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
           };
         },
         async resolveChunk(index) {
-          return await rpc({
-            type: "get-file-chunk",
+          return await rpc("get-file-chunk", {
             chunkIndex: index,
             fileId: params.fileId,
             transferId,
@@ -320,8 +319,7 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
 
       await download({
         async resolve() {
-          const { envelope, kemCipher, ...rest } = await rpc({
-            type: "get-public-share",
+          const { envelope, kemCipher, ...rest } = await rpc("get-public-share", {
             key: params.sid,
             transferId,
           });
@@ -337,8 +335,7 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
           };
         },
         async resolveChunk(index) {
-          return await rpc({
-            type: "resolve-public-share-chunk",
+          return await rpc("resolve-public-share-chunk", {
             index,
             key: params.sid,
             transferId,
@@ -353,8 +350,7 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
 
       await download({
         async resolve() {
-          const file = await rpc({
-            type: "get-share",
+          const file = await rpc("get-share", {
             shareId: params.shareId,
             transferId,
           });
@@ -370,8 +366,7 @@ self.onmessage = async (e: MessageEvent<TransferCommand | WorkerResponse>) => {
           };
         },
         async resolveChunk(index) {
-          return await rpc({
-            type: "get-share-chunk",
+          return await rpc("get-share-chunk", {
             chunkIndex: index,
             shareId: params.shareId,
             transferId,
