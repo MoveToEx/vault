@@ -139,11 +139,11 @@ WHERE parent_id = $1;
 
 -- name: GetFolder :one
 SELECT * FROM folders
-WHERE id = $1 AND deleted_at ISNULL;
+WHERE id = $1;
 
 -- name: GetSubfolders :many
 SELECT * FROM folders
-WHERE parent_id = $1 AND deleted_at ISNULL;
+WHERE parent_id = $1;
 
 -- name: GetFile :one
 SELECT * FROM files
