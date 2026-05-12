@@ -18,7 +18,6 @@ import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { Spinner } from "../ui/spinner";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 import { formatError } from "@/lib/utils";
 
 export type SetUserCapacityPayload = {
@@ -42,14 +41,13 @@ export default function SetUserCapacityDialog({
   return (
     <Dialog handle={handle}>
       {function Content({ payload }) {
-        const { t } = useTranslation();
         const [loading, setLoading] = useState(false);
 
         const schema = z.object({
           capacityGiB: z.coerce
             .number()
-            .min(1, t("common.minGib"))
-            .max(1024, t("common.maxGib")),
+            .min(1, "Minimum 1 GiB")
+            .max(1024, "Maximum 1024 GiB"),
         });
 
         const form = useForm<FormValues>({
@@ -78,7 +76,7 @@ export default function SetUserCapacityDialog({
               payload.userId,
               Math.round(values.capacityGiB * 1024 ** 3),
             );
-            toast.success(t("common.capacityUpdated"));
+            toast.success("Capacity updated.");
             handle.close();
             await onSaved?.();
           } catch (e) {
@@ -95,7 +93,7 @@ export default function SetUserCapacityDialog({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {t("common.storageCapacityTitle")}
+                Storage capacity
                 {payload?.username ? ` — ${payload.username}` : ""}
               </DialogTitle>
             </DialogHeader>
@@ -111,7 +109,7 @@ export default function SetUserCapacityDialog({
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel htmlFor="form-set-user-capacity-gib">
-                        {t("common.capacityGib")}
+                        {"Capacity (GiB)"}
                       </FieldLabel>
                       <Input
                         {...field}
@@ -143,13 +141,13 @@ export default function SetUserCapacityDialog({
                 disabled={loading}
               >
                 {loading ? <Spinner /> : <Check />}
-                {t("common.save")}
+                Save
               </Button>
               <DialogClose
                 render={
                   <Button variant="outline" disabled={loading}>
                     <X />
-                    {t("common.cancel")}
+                    Cancel
                   </Button>
                 }
               />

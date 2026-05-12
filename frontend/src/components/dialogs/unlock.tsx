@@ -22,7 +22,6 @@ import { set } from "@/stores/key";
 import { to_base64, from_base64 } from "libsodium-wrappers";
 import { Spinner } from "../ui/spinner";
 import { Key, LogOut } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { PrivateKey } from "@/lib/crypto_wrappers";
 
 const schema = z.object({
@@ -34,7 +33,6 @@ export default function UnlockDialog({
 }: {
   handle: BaseAlertDialog.Handle<void>;
 }) {
-  const { t } = useTranslation();
   const { data: auth, reset, error } = useAuth();
   const [loading, setLoading] = useState(false);
   const dispatch = useAppDispatch();
@@ -93,9 +91,9 @@ export default function UnlockDialog({
     <AlertDialog handle={handle} onOpenChangeComplete={() => form.reset()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{t("common.unlockTitle")}</AlertDialogTitle>
+          <AlertDialogTitle>Enter password to unlock vault</AlertDialogTitle>
           <AlertDialogDescription>
-            {t("common.unlockDescription", { username: auth?.username ?? "" })}
+            {`You're logged in as ${auth?.username ?? ""}.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -107,13 +105,13 @@ export default function UnlockDialog({
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-unlock-password">
-                    {t("common.password")}
+                    Password
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-unlock-password"
                     type="password"
-                    placeholder={t("common.placeholderPassword")}
+                    placeholder={"••••••••"}
                     autoComplete="current-password"
                     disabled={loading || error}
                   />
@@ -136,7 +134,7 @@ export default function UnlockDialog({
               handle.close();
             }}
           >
-            <LogOut /> {t("common.logout")}
+            <LogOut /> Logout
           </AlertDialogAction>
           <AlertDialogAction
             form="form-unlock"
@@ -145,7 +143,7 @@ export default function UnlockDialog({
           >
             {loading && <Spinner />}
             {loading || <Key />}
-            {t("common.continue")}
+            Continue
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

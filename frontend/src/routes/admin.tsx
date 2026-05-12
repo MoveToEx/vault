@@ -2,31 +2,28 @@ import RequireAdmin from "@/components/require-admin";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Settings, Users } from "lucide-react";
 import { NavLink, Outlet } from "react-router";
-import { useTranslation } from "react-i18next";
 
 const links = [
   {
     to: "/admin",
-    labelKey: "common.dashboard" as const,
+    label: "Dashboard",
     icon: LayoutDashboard,
     end: true,
   },
   {
     to: "/admin/config",
-    labelKey: "common.siteConfiguration" as const,
+    label: "Site configuration",
     icon: Settings,
   },
-  { to: "/admin/users", labelKey: "common.usersNav" as const, icon: Users },
+  { to: "/admin/users", label: "Users", icon: Users },
 ];
 
 export default function AdminSection() {
-  const { t } = useTranslation();
-
   return (
     <RequireAdmin>
       <div className="flex flex-col gap-8 max-w-5xl mx-auto w-full">
         <nav className="flex flex-wrap gap-2 border-b pb-3">
-          {links.map(({ to, labelKey, icon: Icon, end }) => (
+          {links.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -41,7 +38,7 @@ export default function AdminSection() {
               }
             >
               <Icon className="size-4 shrink-0" />
-              {t(labelKey)}
+              {label}
             </NavLink>
           ))}
         </nav>

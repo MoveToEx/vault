@@ -22,7 +22,6 @@ import useUsers from "@/hooks/use-users";
 import { Spinner } from "../ui/spinner";
 import { Fragment, useState } from "react";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { formatError } from "@/lib/utils";
 import { Envelope, PublicShare } from "@/lib/crypto_wrappers";
@@ -43,7 +42,6 @@ type LinkPayload = {
 const linkHandle = BaseDialog.createHandle<LinkPayload>();
 
 function PublicLinkDialog({ handle }: { handle: BaseDialog.Handle<LinkPayload> }) {
-  const { t } = useTranslation();
 
   return (
     <Dialog handle={handle}>
@@ -51,7 +49,7 @@ function PublicLinkDialog({ handle }: { handle: BaseDialog.Handle<LinkPayload> }
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              <span className="text-xl">{t("common.publicShareLinkTitle")}</span>
+              <span className="text-xl">Public share link</span>
             </DialogTitle>
           </DialogHeader>
 
@@ -60,7 +58,7 @@ function PublicLinkDialog({ handle }: { handle: BaseDialog.Handle<LinkPayload> }
 
             <Button size='icon-sm' onClick={async () => {
               await navigator.clipboard.writeText(payload?.link ?? '');
-              toast.success(t("common.copiedToClipboard"));
+              toast.success("Copied to clipboard");
             }}>
               <Copy size={16} />
             </Button>
@@ -69,13 +67,13 @@ function PublicLinkDialog({ handle }: { handle: BaseDialog.Handle<LinkPayload> }
           <Alert className="border-0">
             <Info />
             <AlertDescription>
-              <p>{t("common.publicLinkStoreOnceWarning")}</p>
+              <p>{"Store this link safely. You will not be able to see it again."}</p>
             </AlertDescription>
           </Alert>
 
           <DialogFooter>
             <DialogClose
-              render={<Button>{t("common.publicShareLinkDone")}</Button>}
+              render={<Button>Done</Button>}
             />
           </DialogFooter>
         </DialogContent>
@@ -86,7 +84,6 @@ function PublicLinkDialog({ handle }: { handle: BaseDialog.Handle<LinkPayload> }
 }
 
 function PrivateShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog.Handle<Payload> }) {
-  const { t } = useTranslation();
 
   const keys = useKeys();
   const [loading, setLoading] = useState(false);
@@ -113,7 +110,7 @@ function PrivateShareTab({ fileId, handle }: { fileId: number, handle: BaseDialo
       });
 
       handle.close();
-      toast.success(t("common.shareCreated"));
+      toast.success("Created");
     } catch (e) {
       console.log(e);
       form.setError("root", {
@@ -141,7 +138,7 @@ function PrivateShareTab({ fileId, handle }: { fileId: number, handle: BaseDialo
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
                 <FieldLabel htmlFor="form-share-receiver-id">
-                  {t("common.receiverUsername")}
+                  Receiver username
                 </FieldLabel>
                 <UserInput {...field} id="form-share-receiver-id" />
                 {fieldState.invalid && (
@@ -158,19 +155,19 @@ function PrivateShareTab({ fileId, handle }: { fileId: number, handle: BaseDialo
         <Alert className="border-0">
           <Info />
           <AlertDescription>
-            <p>{t("common.shareWarning1")}</p>
-            <p>{t("common.shareWarning2")}</p>
-            <p>{t("common.shareWarning3")}</p>
+            <p>{"By sharing, your file encryption key will be revealed to the other party."}</p>
+            <p>{"They may still decrypt your files offline after expiration if they have downloaded the raw ciphertext."}</p>
+            <p>{"There is no way to revoke such offline access. Proceed with care."}</p>
           </AlertDescription>
         </Alert>
       </div>
 
       <DialogFooter>
         <Button type="submit" form="form-share">
-          <Share2 /> {t("common.create")}
+          <Share2 /> Create
         </Button>
         <DialogClose
-          render={<Button variant="outline">{t("common.cancel")}</Button>}
+          render={<Button variant="outline">Cancel</Button>}
         />
       </DialogFooter>
     </div>
@@ -178,7 +175,6 @@ function PrivateShareTab({ fileId, handle }: { fileId: number, handle: BaseDialo
 }
 
 function PublicShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog.Handle<Payload> }) {
-  const { t } = useTranslation();
 
   const keys = useKeys();
   const [loading, setLoading] = useState(false);
@@ -207,12 +203,12 @@ function PublicShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog
 
       url.hash = '#' + sk;
 
-      toast.success(t("common.shareCreated"));
+      toast.success("Created");
 
       handle.close();
       linkHandle.openWithPayload({ link: url.toString() });
     } catch (e) {
-      toast.error(t("common.failedWithMessage", { message: formatError(e) }));
+      toast.error(`Failed: ${formatError(e)}`);
     } finally {
       setLoading(false);
     }
@@ -224,7 +220,7 @@ function PublicShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog
         <Alert className="border-0">
           <Info />
           <AlertDescription>
-            <p>{t("common.publicShareExposesWarning")}</p>
+            <p>{"A public share exposes the file to anyone with the link."}</p>
             <p className='text-destructive'>Private share should always be preferred over public share when possible.</p>
           </AlertDescription>
         </Alert>
@@ -232,12 +228,12 @@ function PublicShareTab({ fileId, handle }: { fileId: number, handle: BaseDialog
 
       <DialogFooter>
         <Button disabled={loading} onClick={() => submit()}>
-          <Share2 /> {t("common.create")}
+          <Share2 /> Create
         </Button>
         <DialogClose
           render={
             <Button variant="outline">
-              {t("common.cancel")}
+              Cancel
             </Button>
           }
         />
@@ -251,7 +247,6 @@ export default function NewShareDialog({
 }: {
   handle: BaseDialog.Handle<Payload>;
 }) {
-  const { t } = useTranslation();
 
   return (
     <Fragment>
@@ -264,13 +259,13 @@ export default function NewShareDialog({
             <DialogContent>
               <DialogHeader className='min-w-0 w-full'>
                 <DialogTitle>
-                  <span className="text-xl">{t("common.shareFiles")}</span>
+                  <span className="text-xl">Share files</span>
                 </DialogTitle>
                 <DialogDescription>
                   <div className='pt-2 flex flex-row gap-2 items-center'>
                     <File size={16} className='shrink-0' />
                     <span className='truncate'>
-                      {t("common.willShare", { name: payload.name })}
+                      {`Will share ${payload.name}`}
                     </span>
                   </div>
                 </DialogDescription>
@@ -278,8 +273,8 @@ export default function NewShareDialog({
 
               <Tabs defaultValue='private' >
                 <TabsList className='w-full mb-4'>
-                  <TabsTrigger value='private'>{t("common.shareTabPrivate")}</TabsTrigger>
-                  <TabsTrigger value='public'>{t("common.shareTabPublic")}</TabsTrigger>
+                  <TabsTrigger value='private'>Private</TabsTrigger>
+                  <TabsTrigger value='public'>Public</TabsTrigger>
                 </TabsList>
                 <TabsContent value='private'>
                   <PrivateShareTab
@@ -311,7 +306,6 @@ type UserInputProps = {
 };
 
 function UserInput({ value, onChange, disabled = false }: UserInputProps) {
-  const { t } = useTranslation();
   const { data, isLoading } = useUsers(value);
 
   return (
@@ -341,7 +335,7 @@ function UserInput({ value, onChange, disabled = false }: UserInputProps) {
                       disabled
                       className="focus:**:text-accent-foreground gap-2 rounded-sm px-2 py-1.5 text-sm [&_svg:not([class*='size-'])]:size-4 group/dropdown-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0"
                     >
-                      <Spinner /> {t("common.loadingAutocomplete")}
+                      <Spinner /> {"Loading…"}
                     </Autocomplete.Item>
                   )}
                   {!isLoading && data && data.length === 0 && (
@@ -349,7 +343,7 @@ function UserInput({ value, onChange, disabled = false }: UserInputProps) {
                       disabled
                       className="hover:bg-accent hover:text-accent-foreground focus:**:text-accent-foreground gap-2 rounded-sm px-2 py-1.5 text-sm [&_svg:not([class*='size-'])]:size-4 group/dropdown-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0"
                     >
-                      <i>{t("common.noResultFound")}</i>
+                      <i>No result found</i>
                     </Autocomplete.Item>
                   )}
                 </Autocomplete.Status>

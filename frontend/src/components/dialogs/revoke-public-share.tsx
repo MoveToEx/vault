@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
-import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatError } from "@/lib/utils";
 
@@ -26,7 +25,6 @@ export default function RevokePublicShareDialog({
 }: {
   handle: BaseAlertDialog.Handle<Payload>;
 }) {
-  const { t } = useTranslation();
 
   return (
     <AlertDialog handle={handle}>
@@ -41,15 +39,12 @@ export default function RevokePublicShareDialog({
         return (
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>{t("common.confirmRevocation")}</AlertDialogTitle>
+              <AlertDialogTitle>Confirm revocation</AlertDialogTitle>
               <AlertDialogDescription>
                 <p>
-                  {t("common.revokePublicShareMessage", {
-                    key: payload.key,
-                    filename: payload.filename,
-                  })}
+                  {`You are about to revoke the public share of "${payload.filename}" (key: ${payload.key}).`}
                 </p>
-                <p>{t("common.publicShareInvalidatedNote")}</p>
+                <p>{"This share will be instantly invalidated."}</p>
                 {error && (
                   <p className="text-destructive">{error}</p>
                 )}
@@ -58,7 +53,7 @@ export default function RevokePublicShareDialog({
 
             <AlertDialogFooter>
               <AlertDialogCancel disabled={loading}>
-                {t("common.cancel")}
+                Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 disabled={loading}
@@ -68,7 +63,7 @@ export default function RevokePublicShareDialog({
                   try {
                     await api.revokePublicShare(payload.key);
                     mutate("public-share");
-                    toast.success(t("common.publicShareRevoked"));
+                    toast.success("Public share revoked");
                     handle.close();
                   } catch (e) {
                     setError(formatError(e));
@@ -77,7 +72,7 @@ export default function RevokePublicShareDialog({
                   }
                 }}
               >
-                {t("common.continue")}
+                Continue
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

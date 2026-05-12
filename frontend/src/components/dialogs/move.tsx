@@ -15,7 +15,6 @@ import { useKeys } from "@/stores";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 import useAuth from "@/hooks/use-auth";
 import useFiles from "@/hooks/use-files";
 import { formatError } from "@/lib/utils";
@@ -35,7 +34,6 @@ export default function MoveDialog({
 }: {
   handle: BaseDialog.Handle<MoveDialogPayload>;
 }) {
-  const { t } = useTranslation();
 
   return (
     <Dialog handle={handle}>
@@ -95,7 +93,7 @@ export default function MoveDialog({
             }
             await mutate("file");
             handle.close();
-            toast.success(t("common.moved"));
+            toast.success("Moved");
           } catch (e) {
             setError(formatError(e));
           } finally {
@@ -107,7 +105,7 @@ export default function MoveDialog({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {t("common.moveTitle", { name: payload?.name })}
+                {`Move "${payload?.name}"`}
               </DialogTitle>
             </DialogHeader>
 
@@ -146,7 +144,7 @@ export default function MoveDialog({
                     size={16}
                     className="shrink-0 text-muted-foreground"
                   />
-                  {t("common.parentDir")}
+                  {".."}
                 </button>
               )}
               {rawItems === undefined && (
@@ -156,7 +154,7 @@ export default function MoveDialog({
               )}
               {rawItems !== undefined && folders.length === 0 && (
                 <p className="text-center text-muted-foreground text-sm py-6">
-                  {t("common.noSubfolders")}
+                  No subfolders
                 </p>
               )}
               {folders.map((f) => (
@@ -189,13 +187,13 @@ export default function MoveDialog({
                 disabled={loading || destinationId === 0}
               >
                 {loading ? <Spinner /> : <FolderInput size={16} />}
-                {t("common.moveHere")}
+                Move here
               </Button>
               <DialogClose
                 render={
                   <Button variant="outline" disabled={loading}>
                     <X />
-                    {t("common.cancel")}
+                    Cancel
                   </Button>
                 }
               />

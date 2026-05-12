@@ -20,7 +20,6 @@ import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
 import { Spinner } from "../ui/spinner";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
 import { formatError } from "@/lib/utils";
 import { Envelope } from "@/lib/crypto_wrappers";
 
@@ -41,7 +40,6 @@ export default function RenameDialog({
 }: {
   handle: BaseDialog.Handle<RenameDialogPayload>;
 }) {
-  const { t } = useTranslation();
 
   return (
     <Dialog handle={handle}>
@@ -81,7 +79,7 @@ export default function RenameDialog({
 
             await mutate("file");
             handle.close();
-            toast.success(t("common.saved"));
+            toast.success("Saved");
           } catch (e) {
             form.setError("root", {
               type: "custom",
@@ -96,12 +94,7 @@ export default function RenameDialog({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {t("common.renameTitle", {
-                  type:
-                    payload?.type === "folder"
-                      ? t("common.renameTypeFolder")
-                      : t("common.renameTypeFile"),
-                })}
+                {`Rename ${payload?.type === "folder" ? "folder" : "file"}`}
               </DialogTitle>
             </DialogHeader>
 
@@ -113,7 +106,7 @@ export default function RenameDialog({
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
                       <FieldLabel htmlFor="form-rename-name">
-                        {t("common.name")}
+                        Name
                       </FieldLabel>
                       <Input
                         {...field}
@@ -132,13 +125,13 @@ export default function RenameDialog({
             <DialogFooter>
               <Button type="submit" form="form-rename" disabled={loading}>
                 {loading ? <Spinner /> : <Check />}
-                {t("common.save")}
+                Save
               </Button>
               <DialogClose
                 render={
                   <Button variant="outline" disabled={loading}>
                     <X />
-                    {t("common.cancel")}
+                    Cancel
                   </Button>
                 }
               />

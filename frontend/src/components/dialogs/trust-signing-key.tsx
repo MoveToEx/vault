@@ -11,7 +11,6 @@ import {
 import { Button } from "../ui/button";
 import { Check, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Spinner } from "../ui/spinner";
 import {
   signingPublicKeyDigest,
@@ -33,7 +32,6 @@ export default function TrustSigningKeyDialog({
   handle: BaseDialog.Handle<TrustSigningKeyPayload>;
   onTrusted?: () => void;
 }) {
-  const { t } = useTranslation();
 
   return (
     <Dialog handle={handle}>
@@ -55,11 +53,9 @@ export default function TrustSigningKeyDialog({
         return (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t("common.trustSigningKeyTitle")}</DialogTitle>
+              <DialogTitle>Trust signing key</DialogTitle>
               <DialogDescription>
-                {t("common.trustSigningKeyDescription", {
-                  owner: payload?.owner ?? "",
-                })}
+                {`Trust ${payload?.owner ?? ""}'s signing public key before showing encrypted share metadata from this sender.`}
               </DialogDescription>
             </DialogHeader>
 
@@ -67,10 +63,10 @@ export default function TrustSigningKeyDialog({
               <div className="rounded-lg border bg-muted/30 p-3">
                 <div className="mb-1 flex items-center gap-2 text-sm font-medium">
                   <ShieldCheck className="size-4" />
-                  {t("common.signingKeyDigest")}
+                  Signing public key digest
                 </div>
                 <p className="break-all font-mono text-xs text-muted-foreground">
-                  {digest || t("common.loadingEllipsis")}
+                  {digest || "Loading…"}
                 </p>
               </div>
               {error.length > 0 && (
@@ -89,7 +85,7 @@ export default function TrustSigningKeyDialog({
                   try {
                     await trustSigningPublicKey(payload);
                     onTrusted?.();
-                    toast.success(t("common.signingKeyTrusted"));
+                    toast.success("Signing key trusted");
                     handle.close();
                   } catch (e) {
                     setError(formatError(e));
@@ -99,13 +95,13 @@ export default function TrustSigningKeyDialog({
                 }}
               >
                 {loading ? <Spinner /> : <Check />}
-                {t("common.trustKey")}
+                Trust key
               </Button>
               <DialogClose
                 render={
                   <Button variant="outline" disabled={loading}>
                     <X />
-                    {t("common.cancel")}
+                    Cancel
                   </Button>
                 }
               />

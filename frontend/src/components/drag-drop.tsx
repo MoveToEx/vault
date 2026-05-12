@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
-import { useTranslation } from "react-i18next";
 
 export default function DragDrop({
   className = "",
@@ -14,7 +13,6 @@ export default function DragDrop({
   multiple?: boolean,
   onChange: (files: File[]) => void
 }) {
-  const { t } = useTranslation();
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -72,7 +70,7 @@ export default function DragDrop({
       />
       <Upload size={48} />
       <span className="text-md text-center">
-        {t("dragDrop.dropPrompt")}
+        Drop files here or 
         <Button
           type="button"
           variant="link"
@@ -83,7 +81,7 @@ export default function DragDrop({
             }
           }}
         >
-          {t("dragDrop.browse")}
+          browse
         </Button>
       </span>
     </div>

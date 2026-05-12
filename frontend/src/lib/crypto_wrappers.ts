@@ -205,3 +205,30 @@ export const PrivateKey = {
     );
   },
 }
+
+export const FileContent = {
+  encrypt(content: Uint8Array, key: Uint8Array) {
+    const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_IETF_NPUBBYTES);
+    const result = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+      content,
+      null,
+      null,
+      nonce,
+      key
+    );
+
+    return _composite(nonce, result);
+  },
+
+  decrypt(composite: Uint8Array, key: Uint8Array) {
+    const nonce = composite.slice(0, sodium.crypto_aead_xchacha20poly1305_IETF_NPUBBYTES);
+    const cipher = composite.slice(sodium.crypto_aead_xchacha20poly1305_IETF_NPUBBYTES);
+    return sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+      null,
+      cipher,
+      null,
+      nonce,
+      key
+    );
+  }
+}

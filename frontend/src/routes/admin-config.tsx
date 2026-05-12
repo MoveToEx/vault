@@ -16,7 +16,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import { useTranslation } from "react-i18next";
 
 type SiteConfigFormValues = {
   uploadExpiryMinutes: number;
@@ -25,22 +24,21 @@ type SiteConfigFormValues = {
 };
 
 export default function AdminSiteConfigPage() {
-  const { t } = useTranslation();
 
   const siteConfigSchema = useMemo(
     () =>
       z.object({
         uploadExpiryMinutes: z.coerce
           .number()
-          .min(1, t("common.minUploadMinutes"))
-          .max(10080, t("common.maxUploadMinutes")),
+          .min(1, "Minimum 1 minute")
+          .max(10080, "Maximum 7 days (10080 minutes)"),
         registrationOpen: z.boolean(),
         defaultCapacityGiB: z.coerce
           .number()
-          .min(1, t("common.minDefaultGib"))
-          .max(1024, t("common.maxDefaultGib")),
+          .min(1, "Minimum 1 GiB")
+          .max(1024, "Maximum 1024 GiB"),
       }),
-    [t],
+    [],
   );
 
   const siteConfigResolver = useMemo(
@@ -87,7 +85,7 @@ export default function AdminSiteConfigPage() {
           values.defaultCapacityGiB * 1024 ** 3,
         ),
       });
-      toast.success(t("common.siteConfigSaved"));
+      toast.success("Site configuration saved.");
       await mutate();
     } catch (e) {
       form.setError("root", {
@@ -100,7 +98,7 @@ export default function AdminSiteConfigPage() {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Spinner /> {t("common.loadingSiteConfig")}
+        <Spinner /> {"Loading…"}
       </div>
     );
   }
@@ -108,7 +106,7 @@ export default function AdminSiteConfigPage() {
   if (error || !data) {
     return (
       <p className="text-sm text-destructive">
-        {t("common.couldNotLoadSiteConfig")}
+        {"Could not load site configuration."}
       </p>
     );
   }
@@ -125,7 +123,7 @@ export default function AdminSiteConfigPage() {
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="site-config-upload-expiry">
-                {t("common.incompleteUploadExpiry")}
+                {"Incomplete upload expiration (minutes)"}
               </FieldLabel>
               <Input
                 {...field}
@@ -139,7 +137,7 @@ export default function AdminSiteConfigPage() {
                 <FieldError errors={[fieldState.error]} />
               )}
               <p className="text-xs text-muted-foreground">
-                {t("common.incompleteUploadExpiryHint")}
+                {"Upload sessions that are not finished within this window are discarded (between 1 minute and 7 days)."}
               </p>
             </Field>
           )}
@@ -162,7 +160,7 @@ export default function AdminSiteConfigPage() {
                 htmlFor="site-config-reg-open"
                 className="font-normal cursor-pointer"
               >
-                {t("common.allowRegistration")}
+                Allow new user registration
               </Label>
             </div>
           )}
@@ -174,7 +172,7 @@ export default function AdminSiteConfigPage() {
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="site-config-default-cap">
-                {t("common.defaultStorageNewUsers")}
+                {"Default storage for new users (GiB)"}
               </FieldLabel>
               <Input
                 {...field}
@@ -189,9 +187,7 @@ export default function AdminSiteConfigPage() {
                 <FieldError errors={[fieldState.error]} />
               )}
               <p className="text-xs text-muted-foreground">
-                {t("common.defaultStorageHint", {
-                  size: formatSize(data.defaultUserCapacityBytes),
-                })}
+                {`Applied to new accounts only. Current: ${formatSize(data.defaultUserCapacityBytes)}.`}
               </p>
             </Field>
           )}
@@ -205,7 +201,7 @@ export default function AdminSiteConfigPage() {
       </FieldGroup>
 
       <Button type="submit" disabled={saving}>
-        {saving ? t("common.savingChanges") : t("common.saveChanges")}
+        {saving ? "Saving…" : "Save changes"}
       </Button>
     </form>
   );

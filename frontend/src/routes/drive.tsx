@@ -27,7 +27,6 @@ import { transferBridge } from "@/lib/transfer-bridge";
 import { toggleTransferList } from "@/stores/ui";
 import { Menu } from "@base-ui/react";
 import FilePopupMenu from "@/components/file-popup-menu";
-import { useTranslation } from "react-i18next";
 import ExtIcon from "@/components/icon";
 import { toast } from "sonner";
 import { Envelope } from "@/lib/crypto_wrappers";
@@ -66,7 +65,6 @@ function splitExt(filename: string): [string, string] {
 }
 
 function FileList() {
-  const { t } = useTranslation();
   const keys = useKeys();
   const path = useAppSelector((state) => state.path.value);
   const dispatch = useAppDispatch();
@@ -118,10 +116,10 @@ function FileList() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-lg">{t("drive.name")}</TableHead>
-            <TableHead>{t("drive.createdAt")}</TableHead>
-            <TableHead>{t("drive.size")}</TableHead>
-            <TableHead>{t("drive.actions")}</TableHead>
+            <TableHead className="w-lg">Name</TableHead>
+            <TableHead>Created at</TableHead>
+            <TableHead>Size</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -130,7 +128,7 @@ function FileList() {
             <TableRow className="h-12" onDoubleClick={() => dispatch(pop())}>
               <TableCell className="font-medium">
                 <FolderUp size={16} className="inline mx-2" />
-                {t("common.parentDir")}
+                {".."}
               </TableCell>
               <TableCell />
               <TableCell />

@@ -37,7 +37,6 @@ import { set } from "@/stores/key";
 import { toggleLoginDialog, toggleRegisterDialog } from "@/stores/ui";
 import sodium, { from_string, to_base64 } from "libsodium-wrappers";
 import api from "@/lib/api";
-import { useTranslation } from "react-i18next";
 import { formatError } from "@/lib/utils";
 import type { Keypair } from "@/lib/types";
 import { PrivateKey } from "@/lib/crypto_wrappers";
@@ -48,7 +47,6 @@ const schema = z.object({
 });
 
 export default function LoginDialog() {
-  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [, setRefreshToken] = useLocalStorage("vault-refresh-token", "");
   const dispatch = useAppDispatch();
@@ -100,7 +98,7 @@ export default function LoginDialog() {
         loginStateID,
       );
 
-      toast.success(t("common.loginSuccess"));
+      toast.success("Successfully logged in");
 
       const umk = await argon2id({
         iterations: kdfParams.timeCost,
@@ -155,9 +153,9 @@ export default function LoginDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="text-xl">{t("common.login")}</span>
+            <span className="text-xl">Login</span>
           </DialogTitle>
-          <DialogDescription>{t("common.loginDescription")}</DialogDescription>
+          <DialogDescription>{"Sign in with your username or email and password."}</DialogDescription>
         </DialogHeader>
 
         <form id="form-login" onSubmit={form.handleSubmit(onSubmit)}>
@@ -168,12 +166,12 @@ export default function LoginDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-login-username">
-                    {t("common.usernameOrEmail")}
+                    {"Username / email"}
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-login-username"
-                    placeholder={t("common.placeholderEmail")}
+                    placeholder={"user@example.com"}
                     autoComplete="username"
                   />
                   {fieldState.invalid && (
@@ -188,12 +186,12 @@ export default function LoginDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-login-password">
-                    {t("common.password")}
+                    Password
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-login-password"
-                    placeholder={t("common.placeholderPassword")}
+                    placeholder={"••••••••"}
                     autoComplete="current-password"
                     type="password"
                   />
@@ -210,7 +208,7 @@ export default function LoginDialog() {
           <div className="w-full flex flex-col gap-2">
             <div className="flex flex-row justify-end">
               <span>
-                {t("common.noAccountYet")}
+                {"No account yet?"}
                 <Button
                   variant="link"
                   type="button"
@@ -219,7 +217,7 @@ export default function LoginDialog() {
                     dispatch(toggleRegisterDialog(true));
                   }}
                 >
-                  {t("common.register")}
+                  Register
                 </Button>
               </span>
             </div>
@@ -230,10 +228,10 @@ export default function LoginDialog() {
           <Button type="submit" form="form-login" disabled={loading}>
             {loading && <Spinner />}
             {loading || <LogIn />}
-            {t("common.login")}
+            Login
           </Button>
           <DialogClose
-            render={<Button variant="outline">{t("common.cancel")}</Button>}
+            render={<Button variant="outline">Cancel</Button>}
           />
         </DialogFooter>
       </DialogContent>

@@ -14,12 +14,10 @@ import { Dialog as BaseDialog } from "@base-ui/react";
 import { transferBridge } from "@/lib/transfer-bridge";
 import { toggleTransferList } from "@/stores/ui";
 import DragDrop from "../drag-drop";
-import { useTranslation } from "react-i18next";
 
 const handle = BaseDialog.createHandle();
 
 export default function UploadDialog() {
-  const { t } = useTranslation();
   const keys = useKeys();
   const dispatch = useAppDispatch();
 
@@ -51,14 +49,14 @@ export default function UploadDialog() {
       <DialogTrigger
         render={
           <Button>
-            <Upload /> {t("common.upload")}
+            <Upload /> Upload
           </Button>
         }
       />
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("common.uploadDialogTitle")}</DialogTitle>
+          <DialogTitle>Upload new file</DialogTitle>
         </DialogHeader>
         <Field className='min-w-0 w-full'>
           {file === null && (
@@ -80,15 +78,13 @@ export default function UploadDialog() {
             </div>
           )}
           <FieldDescription>
-            {t("common.uploadToPath", {
-              path: `/${path.map((it) => it.folderName).join("/")}`,
-            })}
+            {`Will upload to ${`/${path.map((it) => it.folderName).join("/")}`}`}
           </FieldDescription>
         </Field>
 
         <Button onClick={() => submit()}>
           <Upload />
-          {t("common.upload")}
+          Upload
         </Button>
       </DialogContent>
     </Dialog>

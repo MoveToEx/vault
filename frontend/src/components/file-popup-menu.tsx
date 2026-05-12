@@ -26,7 +26,6 @@ import { mutate } from "@/lib/swr";
 import NewShareDialog from "./dialogs/new-share";
 import RenameDialog, { type RenameDialogPayload } from "./dialogs/rename";
 import MoveDialog, { type MoveDialogPayload } from "./dialogs/move";
-import { useTranslation } from "react-i18next";
 
 type Payload = {
   type: "folder" | "file";
@@ -52,7 +51,6 @@ function DeleteDialog({
 }: {
   handle: BaseAlertDialog.Handle<DeletePayload>;
 }) {
-  const { t } = useTranslation();
 
   return (
     <AlertDialog handle={handle}>
@@ -62,15 +60,15 @@ function DeleteDialog({
         return (
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>{t("common.confirmDeletion")}</AlertDialogTitle>
+              <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
               <AlertDialogDescription>
-                {t("common.deleteItemConfirm")}
+                {"Are you sure you want to delete this item? This cannot be undone."}
               </AlertDialogDescription>
             </AlertDialogHeader>
 
             <AlertDialogFooter>
               <AlertDialogCancel disabled={loading}>
-                {t("common.cancel")}
+                Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 disabled={loading}
@@ -89,7 +87,7 @@ function DeleteDialog({
                   handle.close();
                 }}
               >
-                {t("common.continue")}
+                Continue
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -104,7 +102,6 @@ export default function FilePopupMenu({
 }: {
   handle: BaseMenu.Handle<Payload>;
 }) {
-  const { t } = useTranslation();
 
   return (
     <div>
@@ -126,7 +123,7 @@ export default function FilePopupMenu({
                 className="text-destructive"
               >
                 <Trash />
-                {t("common.delete")}
+                Delete
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
@@ -135,7 +132,7 @@ export default function FilePopupMenu({
                 }}
               >
                 <Pencil />
-                {t("common.rename")}
+                Rename
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
@@ -144,7 +141,7 @@ export default function FilePopupMenu({
                 }}
               >
                 <FolderInput />
-                {t("common.move")}
+                Move
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
@@ -155,7 +152,7 @@ export default function FilePopupMenu({
                 disabled={payload?.type !== "file"}
               >
                 <Share2 />
-                {t("common.share")}
+                Share
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>

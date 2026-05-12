@@ -36,32 +36,30 @@ import { argon2id } from "@/workers";
 import sodium from "libsodium-wrappers";
 import { useAppDispatch, useAppSelector } from "@/stores";
 import { toggleRegisterDialog } from "@/stores/ui";
-import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 import { formatError } from "@/lib/utils";
 import { Envelope, PrivateKey } from "@/lib/crypto_wrappers";
 
 export default function RegisterDialog() {
-  const { t } = useTranslation();
   const registerSchema = useMemo(
     () =>
       z.object({
         email: z.email(),
         username: z
           .string()
-          .min(6, t("common.usernameMin6"))
-          .max(32, t("common.usernameMax32"))
-          .regex(/^[a-zA-Z0-9]+$/, t("common.usernameAlphanumeric")),
+          .min(6, "Username must be at least 6 characters")
+          .max(32, "Username must be at most 32 characters")
+          .regex(/^[a-zA-Z0-9]+$/, "Only letters and digits are allowed"),
         password: z
           .string()
-          .min(12, t("common.passwordMin12")),
+          .min(12, "Password must be at least 12 characters"),
         confirmPassword: z
           .string()
-          .min(12, t("common.passwordMin12")),
+          .min(12, "Password must be at least 12 characters"),
         kdfMemoryCost: z.number().min(64).max(1024),
         kdfTimeCost: z.number().min(1).max(100),
       }),
-    [t],
+    [],
   );
 
   const dispatch = useAppDispatch();
@@ -86,7 +84,7 @@ export default function RegisterDialog() {
     if (data.confirmPassword !== data.password) {
       form.setError("confirmPassword", {
         type: "validate",
-        message: t("common.passwordsMismatch"),
+        message: "Passwords do not match",
       });
       return;
     }
@@ -160,7 +158,7 @@ export default function RegisterDialog() {
         },
       });
 
-      toast.success(t("common.signedUp"));
+      toast.success("Signed up");
       dispatch(toggleRegisterDialog(false));
     } catch (e) {
       form.setError("root", {
@@ -183,7 +181,7 @@ export default function RegisterDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="text-xl">{t("common.register")}</span>
+            <span className="text-xl">Register</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -201,12 +199,12 @@ export default function RegisterDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-register-email">
-                    {t("common.email")}
+                    Email
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-register-email"
-                    placeholder={t("common.placeholderEmail")}
+                    placeholder={"user@example.com"}
                     autoComplete="email"
                   />
                   {fieldState.invalid && (
@@ -221,12 +219,12 @@ export default function RegisterDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-register-username">
-                    {t("common.username")}
+                    Username
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-register-username"
-                    placeholder={t("common.placeholderEmail")}
+                    placeholder={"user@example.com"}
                     autoComplete="username"
                   />
                   {fieldState.invalid && (
@@ -241,12 +239,12 @@ export default function RegisterDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-register-password">
-                    {t("common.password")}
+                    Password
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-register-password"
-                    placeholder={t("common.placeholderPassword")}
+                    placeholder={"••••••••"}
                     autoComplete="new-password"
                     type="password"
                   />
@@ -262,12 +260,12 @@ export default function RegisterDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-register-confirm-password">
-                    {t("common.confirmPassword")}
+                    Confirm password
                   </FieldLabel>
                   <Input
                     {...field}
                     id="form-register-confirm-password"
-                    placeholder={t("common.placeholderPassword")}
+                    placeholder={"••••••••"}
                     autoComplete="new-password"
                     type="password"
                   />
@@ -292,13 +290,13 @@ export default function RegisterDialog() {
             >
               {showKDF && <ChevronUp />}
               {showKDF || <ChevronDown />}
-              {t("common.advanced")}
+              Advanced
             </Button>
           </div>
 
           {showKDF && (
             <FieldSet>
-              <FieldLegend>{t("common.kdfLegend")}</FieldLegend>
+              <FieldLegend>KDF</FieldLegend>
 
               <FieldGroup>
                 <Controller
@@ -310,7 +308,7 @@ export default function RegisterDialog() {
                         className="flex flex-row justify-between items-center"
                         htmlFor="form-register-kdf-timecost"
                       >
-                        <span>{t("common.timeCost")}</span>
+                        <span>Time cost</span>
                         <span>{field.value}</span>
                       </FieldLabel>
                       <Slider
@@ -337,7 +335,7 @@ export default function RegisterDialog() {
                         className="flex flex-row justify-between items-center"
                         htmlFor="form-register-kdf-memcost"
                       >
-                        <span>{t("common.memoryCost")}</span>
+                        <span>Memory cost</span>
                         <span>{field.value} MiB</span>
                       </FieldLabel>
                       <Slider
@@ -361,10 +359,10 @@ export default function RegisterDialog() {
 
           <div className="flex flex-row justify-end">
             <span>
-              {t("common.alreadyHaveAccount")}
+              {"Already have an account?"}
               <DialogClose
                 render={
-                  <Button variant="link">{t("common.goBackToLogin")}</Button>
+                  <Button variant="link">Go back to login</Button>
                 }
               />
             </span>
@@ -374,10 +372,10 @@ export default function RegisterDialog() {
             <Button type="submit" disabled={loading}>
               {loading || <User />}
               {loading && <Spinner />}
-              {t("common.register")}
+              Register
             </Button>
             <DialogClose
-              render={<Button variant="outline">{t("common.cancel")}</Button>}
+              render={<Button variant="outline">Cancel</Button>}
             />
           </DialogFooter>
         </form>

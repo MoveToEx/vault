@@ -10,11 +10,9 @@ import { useLocation, useParams } from "react-router"
 import { transferBridge } from '@/lib/transfer-bridge';
 import { useAppDispatch } from "@/stores";
 import { toggleTransferList } from "@/stores/ui";
-import { useTranslation } from "react-i18next";
 import { PublicShare } from "@/lib/crypto_wrappers";
 
 export default function PublicSharePage() {
-  const { t } = useTranslation();
   const params = useParams();
   const dispatch = useAppDispatch();
 
@@ -52,7 +50,7 @@ export default function PublicSharePage() {
   if (!metadata || !data) {
     return (
       <div>
-        {t("common.invalidShareLink")}
+        Invalid or incomplete link
       </div>
     )
   }
@@ -61,7 +59,7 @@ export default function PublicSharePage() {
     <div className='flex flex-col items-center'>
       <div className='w-lg px-4 flex flex-col'>
         <div className='mb-8'>
-          {t("common.ownerSharedAFile", { owner: data.owner })}
+          {`${data.owner} shared a file`}
         </div>
         <div className='flex flex-col h-72 border'>
           <div className='flex-1 flex flex-col justify-center items-center gap-2'>
@@ -86,7 +84,7 @@ export default function PublicSharePage() {
               dispatch(toggleTransferList(true));
             }}>
               <Download />
-              {t("common.download")}
+              Download
             </Button>
           </div>
         </div>

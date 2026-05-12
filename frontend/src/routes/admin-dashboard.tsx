@@ -2,11 +2,8 @@ import api from "@/lib/api";
 import { formatSize } from "@/lib/utils";
 import useTaggedSWR from "@/lib/swr";
 import { Spinner } from "@/components/ui/spinner";
-import { useTranslation } from "react-i18next";
 
-export default function AdminDashboardPage() {
-  const { t } = useTranslation();
-  const { data, isLoading, error } = useTaggedSWR({
+export default function AdminDashboardPage() {  const { data, isLoading, error } = useTaggedSWR({
     id: "admin-stats",
     tags: ["admin"],
     args: [],
@@ -16,7 +13,7 @@ export default function AdminDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Spinner /> {t("common.loadingStatistics")}
+        <Spinner /> {"Loading statistics…"}
       </div>
     );
   }
@@ -24,20 +21,20 @@ export default function AdminDashboardPage() {
   if (error || !data) {
     return (
       <p className="text-sm text-destructive">
-        {t("common.couldNotLoadDashboard")}
+        {"Could not load dashboard statistics."}
       </p>
     );
   }
 
   const cards = [
-    { label: t("common.registeredUsers"), value: String(data.userCount) },
-    { label: t("common.filesStored"), value: String(data.fileCount) },
+    { label: "Registered users", value: String(data.userCount) },
+    { label: "Files stored", value: String(data.fileCount) },
     {
-      label: t("common.totalStorageUsed"),
+      label: "Total storage used",
       value: formatSize(data.totalStoredBytes),
     },
     {
-      label: t("common.activeUploadSessions"),
+      label: "Active upload sessions",
       value: String(data.activeUploadSessions),
     },
   ];

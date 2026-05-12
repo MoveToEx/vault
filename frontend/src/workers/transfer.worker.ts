@@ -1,4 +1,3 @@
-import { aeadComposite, aeadCompositeDecrypt } from "@/lib/crypto";
 import type {
   RpcPayload,
   RpcResult,
@@ -10,7 +9,7 @@ import type {
 import axios from "axios";
 import sodium, { from_base64, to_base64 } from "libsodium-wrappers";
 import { formatError } from "@/lib/utils";
-import { Envelope, PublicShare } from "@/lib/crypto_wrappers";
+import { Envelope, FileContent, PublicShare } from "@/lib/crypto_wrappers";
 
 async function rpc<K extends keyof TransferRpc>(
   type: K,
@@ -103,7 +102,7 @@ async function upload(file: File, parentId: number, signPriv: Uint8Array, kemPub
 
       const slice = file.slice(i * chunkSize, (i + 1) * chunkSize);
 
-      const body = aeadComposite(await slice.bytes(), fek);
+      const body = FileContent.encrypt(await slice.bytes(), fek);
 
       await axios.put(url, body, {
         headers: {
@@ -237,7 +236,7 @@ async function download({ resolve, resolveChunk, transferId }: DownloadParams) {
 
       const buf = f.data as Blob;
 
-      const plain = aeadCompositeDecrypt(await buf.bytes(), key);
+      const plain = FileContent.decrypt(await buf.bytes(), key);
 
       result.push(new Uint8Array(plain));
       post({

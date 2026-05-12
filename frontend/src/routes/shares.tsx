@@ -31,7 +31,6 @@ import {
 } from "react";
 import { Dialog as BaseDialog } from "@base-ui/react";
 import RevokeShareDialog from "@/components/dialogs/revoke-share";
-import { useTranslation } from "react-i18next";
 import usePublicShares from "@/hooks/use-public-shares";
 import RevokePublicShareDialog from "@/components/dialogs/revoke-public-share";
 import TrustSigningKeyDialog, {
@@ -84,12 +83,11 @@ function ListPagination(props: {
   hasMore: boolean;
   isLoading: boolean;
 }) {
-  const { t } = useTranslation();
   const { page, setPage, hasMore, isLoading } = props;
   return (
     <div className="flex items-center justify-between gap-4 pt-2">
       <p className="text-sm text-muted-foreground">
-        {t("common.pagedListPage", { page })}
+        {`Page ${page}`}
       </p>
       <div className="flex gap-2">
         <Button
@@ -98,7 +96,7 @@ function ListPagination(props: {
           disabled={page <= 1 || isLoading}
           onClick={() => setPage((p) => Math.max(1, p - 1))}
         >
-          {t("common.previous")}
+          Previous
         </Button>
         <Button
           variant="outline"
@@ -106,7 +104,7 @@ function ListPagination(props: {
           disabled={!hasMore || isLoading}
           onClick={() => setPage((p) => p + 1)}
         >
-          {t("common.next")}
+          Next
         </Button>
       </div>
     </div>
@@ -114,7 +112,6 @@ function ListPagination(props: {
 }
 
 function SharedWithMe() {
-  const { t } = useTranslation();
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useShares(page);
@@ -177,7 +174,7 @@ function SharedWithMe() {
           <EmptyMedia variant="icon">
             <Share2 />
           </EmptyMedia>
-          <EmptyTitle>{t("common.noFilesSharedWithYou")}</EmptyTitle>
+          <EmptyTitle>No files shared with you</EmptyTitle>
         </EmptyHeader>
       </Empty>
     );
@@ -192,10 +189,10 @@ function SharedWithMe() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t("common.fileName")}</TableHead>
-            <TableHead>{t("common.sharedAt")}</TableHead>
-            <TableHead>{t("common.sharedBy")}</TableHead>
-            <TableHead>{t("common.action")}</TableHead>
+            <TableHead>File name</TableHead>
+            <TableHead>Shared at</TableHead>
+            <TableHead>Shared by</TableHead>
+            <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -210,7 +207,7 @@ function SharedWithMe() {
                   ) : (
                     <span className="inline-flex items-center gap-2 text-muted-foreground">
                       <TriangleAlert className="size-4 text-amber-600" />
-                      {t("common.untrustedSigningKey")}
+                      Untrusted signing key
                     </span>
                   )}
                 </TableCell>
@@ -246,7 +243,7 @@ function SharedWithMe() {
                       }}
                     >
                       <TriangleAlert />
-                      {t("common.trustKey")}
+                      Trust key
                     </Button>
                   )}
                 </TableCell>
@@ -272,7 +269,6 @@ const revokeHandle = BaseDialog.createHandle<{
 }>();
 
 function SharedByMe() {
-  const { t } = useTranslation();
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useMyShares(page);
@@ -313,7 +309,7 @@ function SharedByMe() {
           <EmptyMedia variant="icon">
             <Share2 />
           </EmptyMedia>
-          <EmptyTitle>{t("common.noFilesSharedByYou")}</EmptyTitle>
+          <EmptyTitle>No files shared by you</EmptyTitle>
         </EmptyHeader>
       </Empty>
     );
@@ -325,11 +321,11 @@ function SharedByMe() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t("common.fileName")}</TableHead>
-            <TableHead>{t("common.sharedAt")}</TableHead>
-            <TableHead>{t("common.expiresAt")}</TableHead>
-            <TableHead>{t("common.sharedWith")}</TableHead>
-            <TableHead>{t("common.action")}</TableHead>
+            <TableHead>File name</TableHead>
+            <TableHead>Shared at</TableHead>
+            <TableHead>Expires at</TableHead>
+            <TableHead>Shared with</TableHead>
+            <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -381,7 +377,6 @@ const revokePublicHandle = BaseDialog.createHandle<{
 }>();
 
 function PublicShares() {
-  const { t } = useTranslation();
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = usePublicShares(page);
@@ -421,7 +416,7 @@ function PublicShares() {
           <EmptyMedia variant="icon">
             <Share2 />
           </EmptyMedia>
-          <EmptyTitle>{t("common.noPublicSharesByYou")}</EmptyTitle>
+          <EmptyTitle>You have not created any public shares</EmptyTitle>
         </EmptyHeader>
       </Empty>
     );
@@ -433,11 +428,11 @@ function PublicShares() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>{t("common.fileName")}</TableHead>
-            <TableHead>{t("common.sharedAt")}</TableHead>
-            <TableHead>{t("common.expiresAt")}</TableHead>
+            <TableHead>File name</TableHead>
+            <TableHead>Shared at</TableHead>
+            <TableHead>Expires at</TableHead>
             <TableHead>SID</TableHead>
-            <TableHead>{t("common.action")}</TableHead>
+            <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -484,16 +479,15 @@ function PublicShares() {
 }
 
 export default function SharesPage() {
-  const { t } = useTranslation();
 
   return (
     <div>
       <RequireUMK />
       <Tabs defaultValue='send'>
         <TabsList className='w-full mb-4'>
-          <TabsTrigger value='recv'>{t("common.sharedWithYou")}</TabsTrigger>
-          <TabsTrigger value='send'>{t("common.sharedByYou")}</TabsTrigger>
-          <TabsTrigger value='public'>{t('common.publicSharesByYou')}</TabsTrigger>
+          <TabsTrigger value='recv'>Received</TabsTrigger>
+          <TabsTrigger value='send'>Sent</TabsTrigger>
+          <TabsTrigger value='public'>Public</TabsTrigger>
         </TabsList>
         <TabsContent value='recv'>
           <SharedWithMe />

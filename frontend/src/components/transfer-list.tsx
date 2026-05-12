@@ -23,11 +23,9 @@ import {
   EmptyTitle,
 } from "./ui/empty";
 import { Progress, ProgressLabel, ProgressValue } from "./ui/progress";
-import { useTranslation } from "react-i18next";
 import { useMediaQuery } from "usehooks-ts";
 
 function Content() {
-  const { t } = useTranslation();
   const transfers = useAppSelector((state) => state.transfer.items);
 
   const items = Object.values(transfers).sort(
@@ -40,7 +38,7 @@ function Content() {
       <div className="md:hidden w-12 h-1 mx-auto mb-4 rounded-full bg-gray-300" />
 
       <Drawer.Title className="mb-1 text-lg font-medium">
-        {t("common.transferList")}
+        Transfer list
       </Drawer.Title>
       <div className="mb-6 text-base text-center">
         {items.length === 0 && (
@@ -49,9 +47,9 @@ function Content() {
               <EmptyMedia variant="icon">
                 <ArrowUpDown />
               </EmptyMedia>
-              <EmptyTitle>{t("common.noActiveTransfers")}</EmptyTitle>
+              <EmptyTitle>No active transfers yet</EmptyTitle>
               <EmptyDescription>
-                {t("common.transferListHint")}
+                {"Upload or download to create transfer tasks."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -114,8 +112,8 @@ function Content() {
               )}
               {it.status === "error" && (
                 <div className="flex flex-row items-center text-destructive gap-2">
-                  <CircleAlert size={16} className="inline" />{" "}
-                  {t("common.failedPrefix")} {it.error}
+                  <CircleAlert size={16} className="inline" /> 
+                  {"Failed:"} {it.error}
                 </div>
               )}
             </div>

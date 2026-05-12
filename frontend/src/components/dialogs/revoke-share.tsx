@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import api from "@/lib/api";
 import { mutate } from "@/lib/swr";
-import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { formatError } from "@/lib/utils";
 
@@ -26,7 +25,6 @@ export default function RevokeShareDialog({
 }: {
   handle: BaseAlertDialog.Handle<Payload>;
 }) {
-  const { t } = useTranslation();
 
   return (
     <AlertDialog handle={handle}>
@@ -37,9 +35,9 @@ export default function RevokeShareDialog({
         return (
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>{t("common.confirmRevocation")}</AlertDialogTitle>
+              <AlertDialogTitle>Confirm revocation</AlertDialogTitle>
               <AlertDialogDescription>
-                <p>{t("common.revokeShareConfirm")}</p>
+                <p>{"Are you sure you want to revoke this share? The recipient will no longer be able to download the encrypted file."}</p>
                 {error.length > 0 && (
                   <p className="text-destructive">{error}</p>
                 )}
@@ -48,7 +46,7 @@ export default function RevokeShareDialog({
 
             <AlertDialogFooter>
               <AlertDialogCancel disabled={loading}>
-                {t("common.cancel")}
+                Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 disabled={loading}
@@ -58,7 +56,7 @@ export default function RevokeShareDialog({
                   try {
                     await api.revokeShare(payload?.id ?? 0);
                     mutate("share");
-                    toast.success(t("common.shareRevoked"));
+                    toast.success("Share revoked");
                     handle.close();
                   } catch (e) {
                     setError(formatError(e));
@@ -67,7 +65,7 @@ export default function RevokeShareDialog({
                   }
                 }}
               >
-                {t("common.continue")}
+                Continue
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

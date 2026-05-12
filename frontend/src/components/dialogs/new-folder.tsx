@@ -20,7 +20,6 @@ import { useMemo, useState } from "react";
 import { Spinner } from "../ui/spinner";
 import { mutate } from "@/lib/swr";
 import { Dialog as BaseDialog } from "@base-ui/react";
-import { useTranslation } from "react-i18next";
 import { formatError } from "@/lib/utils";
 import { Envelope } from "@/lib/crypto_wrappers";
 
@@ -29,13 +28,12 @@ const handle = BaseDialog.createHandle();
 type NewFolderValues = { name: string };
 
 export default function NewFolderDialog() {
-  const { t } = useTranslation();
   const folderSchema = useMemo(
     () =>
       z.object({
-        name: z.string().min(1, t("common.minOneChar")),
+        name: z.string().min(1, "Required"),
       }),
-    [t],
+    [],
   );
 
   const form = useForm<NewFolderValues>({
@@ -81,13 +79,13 @@ export default function NewFolderDialog() {
       <DialogTrigger
         render={
           <Button variant="outline">
-            <Plus /> {t("common.newFolderButton")}
+            <Plus /> New folder
           </Button>
         }
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("common.createNewFolder")}</DialogTitle>
+          <DialogTitle>Create new folder</DialogTitle>
         </DialogHeader>
         <form id="form-new-folder" onSubmit={form.handleSubmit(submit)}>
           <FieldGroup>
@@ -97,7 +95,7 @@ export default function NewFolderDialog() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="form-new-folder-name">
-                    {t("common.folderName")}
+                    Folder name
                   </FieldLabel>
                   <Input {...field} id="form-new-folder-name" />
                   {fieldState.invalid && (
@@ -113,14 +111,14 @@ export default function NewFolderDialog() {
           <Button type="submit" form="form-new-folder" disabled={loading}>
             {loading && <Spinner />}
             {loading || <Check />}
-            {t("common.confirm")}
+            Confirm
           </Button>
 
           <DialogClose
             render={
               <Button variant="outline">
                 <X />
-                {t("common.cancel")}
+                Cancel
               </Button>
             }
           />
