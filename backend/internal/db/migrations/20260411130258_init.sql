@@ -172,6 +172,10 @@ CREATE TABLE IF NOT EXISTS site_config (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+INSERT INTO site_config (id, upload_expiry_seconds, registration_open, default_user_capacity_bytes)
+VALUES (1, 10800, TRUE, 2147483648)
+ON CONFLICT (id) DO NOTHING;
+
 -- +goose Down
 SELECT 'down SQL query';
 
