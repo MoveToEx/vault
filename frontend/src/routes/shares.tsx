@@ -17,11 +17,12 @@ import {
 import useAuth from "@/hooks/use-auth";
 import useMyShares from "@/hooks/use-my-shares";
 import useShares from "@/hooks/use-shares";
+import useTrustedSigningKeys from "@/hooks/use-trusted-signing-keys";
 import { transferBridge } from "@/lib/transfer-bridge";
 import type { FileMetadata } from "@/lib/types";
 import { useAppDispatch, useKeys } from "@/stores";
 import { toggleTransferList } from "@/stores/ui";
-import { Ban, Download, Share2 } from "lucide-react";
+import { Ban, Download, Share2, TriangleAlert } from "lucide-react";
 import {
   useMemo,
   useState,
@@ -33,16 +34,31 @@ import RevokeShareDialog from "@/components/dialogs/revoke-share";
 import { useTranslation } from "react-i18next";
 import usePublicShares from "@/hooks/use-public-shares";
 import RevokePublicShareDialog from "@/components/dialogs/revoke-public-share";
+import TrustSigningKeyDialog, {
+  type TrustSigningKeyPayload,
+} from "@/components/dialogs/trust-signing-key";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Envelope } from "@/lib/crypto_wrappers";
 
 type ShareMetadata = FileMetadata & {
+  trusted: true;
   createdAt: Date;
   expiresAt: Date;
   id: number;
   sender: string;
   sgnPub: Uint8Array;
 };
+
+type UntrustedShareMetadata = {
+  trusted: false;
+  createdAt: Date;
+  expiresAt: Date;
+  id: number;
+  sender: string;
+  sgnPub: Uint8Array;
+};
+
+type ShareRowMetadata = ShareMetadata | UntrustedShareMetadata;
 
 type MyShareMetadata = FileMetadata & {
   createdAt: Date;
@@ -58,6 +74,9 @@ type PublicShareMetadata = FileMetadata & {
 };
 
 const SHARES_LIST_PAGE_SIZE = 24;
+
+const trustSigningKeyHandle =
+  BaseDialog.createHandle<TrustSigningKeyPayload>();
 
 function ListPagination(props: {
   page: number;
@@ -102,14 +121,32 @@ function SharedWithMe() {
   const { data: user } = useAuth();
 
   const keys = useKeys();
+  const trustedSigningKeys = useTrustedSigningKeys(user?.id);
+  const { isTrusted, reload: reloadTrustedSigningKeys } = trustedSigningKeys;
   const dispatch = useAppDispatch();
 
   const decrypted = useMemo(() => {
     if (!data || !user || !keys) return [];
 
-    const result: ShareMetadata[] = [];
+    const result: ShareRowMetadata[] = [];
 
     for (const it of data) {
+      const base = {
+        createdAt: new Date(it.createdAt),
+        expiresAt: new Date(it.expiresAt),
+        id: it.id,
+        sender: it.sender,
+        sgnPub: it.sgnPub,
+      };
+
+      if (!isTrusted(it.sgnPub)) {
+        result.push({
+          ...base,
+          trusted: false,
+        });
+        continue;
+      }
+
       const metadata = Envelope.decrypt(
         it.envelope,
         it.kemCipher,
@@ -120,17 +157,14 @@ function SharedWithMe() {
       if (metadata.type !== 'file') continue; // expected never
 
       result.push({
+        ...base,
         ...metadata,
-        createdAt: new Date(it.createdAt),
-        expiresAt: new Date(it.expiresAt),
-        id: it.id,
-        sender: it.sender,
-        sgnPub: it.sgnPub,
+        trusted: true,
       });
     }
 
     return result;
-  }, [data, user, keys]);
+  }, [data, user, keys, isTrusted]);
 
   if (!user || !keys) {
     return <></>;
@@ -151,6 +185,10 @@ function SharedWithMe() {
 
   return (
     <div>
+      <TrustSigningKeyDialog
+        handle={trustSigningKeyHandle}
+        onTrusted={reloadTrustedSigningKeys}
+      />
       <Table>
         <TableHeader>
           <TableRow>
@@ -166,25 +204,51 @@ function SharedWithMe() {
             decrypted?.length > 0 &&
             decrypted.map((it) => (
               <TableRow key={it.id} className="group">
-                <TableCell>{it.name}</TableCell>
+                <TableCell>
+                  {it.trusted ? (
+                    it.name
+                  ) : (
+                    <span className="inline-flex items-center gap-2 text-muted-foreground">
+                      <TriangleAlert className="size-4 text-amber-600" />
+                      {t("common.untrustedSigningKey")}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell>{it.createdAt.toLocaleDateString()}</TableCell>
                 <TableCell>{it.sender}</TableCell>
                 <TableCell>
-                  <Button
-                    className="duration-[0] invisible group-hover:visible"
-                    variant="outline"
-                    size="icon-sm"
-                    onClick={() => {
-                      transferBridge.enqueueDownloadShare(
-                        it.id,
-                        it.sgnPub,
-                        keys.kem,
-                      );
-                      dispatch(toggleTransferList(true));
-                    }}
-                  >
-                    <Download />
-                  </Button>
+                  {it.trusted ? (
+                    <Button
+                      className="duration-[0] invisible group-hover:visible"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => {
+                        transferBridge.enqueueDownloadShare(
+                          it.id,
+                          it.sgnPub,
+                          keys.kem,
+                        );
+                        dispatch(toggleTransferList(true));
+                      }}
+                    >
+                      <Download />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        trustSigningKeyHandle.openWithPayload({
+                          userId: user.id,
+                          owner: it.sender,
+                          publicKey: it.sgnPub,
+                        });
+                      }}
+                    >
+                      <TriangleAlert />
+                      {t("common.trustKey")}
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
