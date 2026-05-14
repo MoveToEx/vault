@@ -171,7 +171,7 @@ export default function LoginDialog() {
                   <Input
                     {...field}
                     id="form-login-username"
-                    placeholder=user@example.com
+                    placeholder="user@example.com"
                     autoComplete="username"
                   />
                   {fieldState.invalid && (
@@ -191,7 +191,7 @@ export default function LoginDialog() {
                   <Input
                     {...field}
                     id="form-login-password"
-                    placeholder=••••••••
+                    placeholder="••••••••"
                     autoComplete="current-password"
                     type="password"
                   />

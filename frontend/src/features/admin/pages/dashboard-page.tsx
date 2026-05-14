@@ -21,7 +21,7 @@ export default function AdminDashboardPage() {
 
   if (error || !data) {
     return (
-      <pCould not load dashboard statistics.
+      <p>
         Could not load dashboard statistics.
       </p>
     );

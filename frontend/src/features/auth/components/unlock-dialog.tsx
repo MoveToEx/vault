@@ -111,7 +111,7 @@ export default function UnlockDialog({
                     {...field}
                     id="form-unlock-password"
                     type="password"
-                    placeholder=••••••••
+                    placeholder="••••••••"
                     autoComplete="current-password"
                     disabled={loading || error}
                   />

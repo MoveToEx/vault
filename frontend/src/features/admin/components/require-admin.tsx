@@ -26,7 +26,7 @@ export default function RequireAdmin({
 
   if (isLoading) {
     return (
-      <div classNameLoading…-center gap-2 p-8 text-muted-foreground">
+      <div className="text-center gap-2 p-8 text-muted-foreground">
         <Spinner /> {"Loading…"}
       </div>
     );

@@ -1,1 +1,0 @@
-This is a web drive with end-to-end encryption.

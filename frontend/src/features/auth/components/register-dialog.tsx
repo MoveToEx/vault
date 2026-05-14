@@ -204,7 +204,7 @@ export default function RegisterDialog() {
                   <Input
                     {...field}
                     id="form-register-email"
-                    placeholder=user@example.com
+                    placeholder="user@example.com"
                     autoComplete="email"
                   />
                   {fieldState.invalid && (
@@ -224,7 +224,7 @@ export default function RegisterDialog() {
                   <Input
                     {...field}
                     id="form-register-username"
-                    placeholder=user@example.com
+                    placeholder="user@example.com"
                     autoComplete="username"
                   />
                   {fieldState.invalid && (
@@ -244,7 +244,7 @@ export default function RegisterDialog() {
                   <Input
                     {...field}
                     id="form-register-password"
-                    placeholder=••••••••
+                    placeholder="••••••••"
                     autoComplete="new-password"
                     type="password"
                   />
@@ -265,7 +265,7 @@ export default function RegisterDialog() {
                   <Input
                     {...field}
                     id="form-register-confirm-password"
-                    placeholder=••••••••
+                    placeholder="••••••••"
                     autoComplete="new-password"
                     type="password"
                   />
