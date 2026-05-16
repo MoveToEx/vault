@@ -17,12 +17,11 @@ import PublicSharePage from "./features/shares/pages/public-share-page.tsx";
 const router = createBrowserRouter([
   {
     path: "/",
+    Component: HomePage,
+  },
+  {
     Component: Layout,
     children: [
-      {
-        index: true,
-        Component: HomePage,
-      },
       {
         path: "drive",
         Component: DrivePage,

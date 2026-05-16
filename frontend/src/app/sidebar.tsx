@@ -2,7 +2,6 @@ import {
   ChevronUp,
   ExternalLink,
   FolderOpen,
-  Home,
   Lock,
   LogIn,
   LogOut,
@@ -40,14 +39,6 @@ import type { FC } from "react";
 import { Progress } from "@base-ui/react";
 import useCapacity from "@/shared/hooks/use-capacity";
 import { PERMISSION_ADMIN } from "@/features/admin/components/require-admin";
-
-const navDefs = [
-  {
-    title: "Home",
-    url: "/",
-    icon: Home,
-  },
-];
 
 const userNavDefs = [
   {
@@ -215,14 +206,6 @@ export default function AppSidebar() {
       <SidebarContent>
         <SidebarGroup className="overflow-x-hidden">
           <SidebarGroupContent>
-            {navDefs.map(({ url, icon, title }) => (
-              <SidebarItem
-                url={url}
-                title={title}
-                Icon={icon}
-                key={title}
-              />
-            ))}
             {authUser && (
               userNavDefs.map(({ url, icon, title }) => (
                 <SidebarItem
