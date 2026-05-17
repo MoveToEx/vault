@@ -71,7 +71,7 @@ function Capacity() {
 
   return (
     <Progress.Root className='' value={data ? data.used / data.capacity * 100 : 0}>
-      <Progress.Label className='text-xs'>
+      <Progress.Label className='text-xs text-nowrap overflow-hidden'>
         {formatSize(data.used)} / {formatSize(data.capacity)}
       </Progress.Label>
       <Progress.Track className='h-0.5 bg-background'>
@@ -115,7 +115,7 @@ function AccountMenu() {
               <User2 />
               <div className='flex flex-1 flex-col flex-nowrap overflow-hidden'>
                 <div className='flex flex-1 flex-row items-center justify-between'>
-                  <span>
+                  <span className='text-nowrap'>
                     {data.username}
                   </span>
                 </div>
