@@ -159,7 +159,7 @@ func InitUpload(c *gin.Context) {
 		return
 	}
 
-	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action":   "upload_init",
 		"uploadId": up.ID,
 		"size":     payload.Size,

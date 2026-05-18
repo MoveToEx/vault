@@ -146,7 +146,7 @@ func GetFiles(c *gin.Context) {
 		})
 	}
 
-	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action": "list_folder",
 		"dirId":  payload.DirID,
 	}, cur.Envelope, cur.KemCipher)

@@ -219,7 +219,7 @@ func GetShares(c *gin.Context) {
 		})
 	}
 
-	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action": "share_incoming_list",
 		"limit":  payload.Limit,
 		"offset": payload.Offset,
@@ -274,7 +274,7 @@ func GetMyShares(c *gin.Context) {
 		})
 	}
 
-	utils.AppendLog(ctx, userID, sqlc.LogLevelInfo, map[string]any{
+	utils.AppendLog(ctx, userID, sqlc.LogLevelTrace, map[string]any{
 		"action": "share_outgoing_list",
 		"limit":  limit,
 		"offset": offset,
