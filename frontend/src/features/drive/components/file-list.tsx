@@ -12,7 +12,7 @@ import {
 import { formatError, formatSize } from "@/shared/lib/utils";
 import { pop, push } from "@/shared/stores/path";
 import { Button } from "@/shared/components/ui/button";
-import { Download, EllipsisVertical, Folder, FolderUp } from "lucide-react";
+import { Download, EllipsisVertical, Files, Folder, FolderUp } from "lucide-react";
 import { transferBridge } from "@/features/transfer/lib/transfer-bridge";
 import { toggleTransferList } from "@/shared/stores/ui";
 import { Menu } from "@base-ui/react";
@@ -20,6 +20,8 @@ import FilePopupMenu from "@/features/drive/components/file-popup-menu";
 import ExtIcon from "@/features/drive/components/file-icon";
 import { toast } from "sonner";
 import { Envelope } from "@/shared/lib/crypto_wrappers";
+import { Spinner } from "@/shared/components/ui/spinner";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/components/ui/empty";
 
 type Item =
   | {
@@ -66,21 +68,33 @@ export default function FileList() {
   const decrypted = useMemo<Item[]>(() => {
     if (!data || !keys) return [];
     const result: Item[] = [];
-    
+
     try {
+      for (const { id, createdAt, envelope, kemCipher } of data.folders) {
+        const metadata = Envelope.decrypt(envelope, kemCipher, keys.sign.publicKey, keys.kem.privateKey);
+
+        result.push({
+          ...metadata,
+          type: 'folder',
+          id,
+          createdAt: new Date(createdAt),
+          kemCipher,
+          envelope,
+        });
+      }
+
       for (const { size, id, createdAt, envelope, kemCipher } of data.files) {
         const metadata = Envelope.decrypt(envelope, kemCipher, keys.sign.publicKey, keys.kem.privateKey);
 
-        const item = {
+        result.push({
           ...metadata,
+          type: 'file',
           size,
           id,
           createdAt: new Date(createdAt),
           kemCipher,
           envelope,
-        };
-
-        result.push(item);
+        });
       }
 
       return result.sort((x, y) => {
@@ -198,6 +212,21 @@ export default function FileList() {
           ))}
         </TableBody>
       </Table>
+      {isLoading && (
+        <div className='h-32 w-full flex flex-row items-center justify-center gap-4'>
+          <Spinner /> Loading
+        </div>
+      )}
+      {!isLoading && (data?.files.length ?? 0) + (data?.folders.length ?? 0) === 0 && (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Files />
+            </EmptyMedia>
+            <EmptyTitle>No files yet</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      )}
     </div>
   );
 }
