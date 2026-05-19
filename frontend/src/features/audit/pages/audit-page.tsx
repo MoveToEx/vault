@@ -1,4 +1,4 @@
-import RequireUMK from "@/features/auth/components/require-umk";
+import RequireKeys from "@/features/auth/components/require-keys";
 import { Button } from "@/shared/components/ui/button";
 import {
   Empty,
@@ -190,7 +190,7 @@ export default function AuditPage() {
 
   return (
     <>
-      <RequireUMK />
+      <RequireKeys />
       <div className="flex flex-col gap-6 max-w-5xl mx-auto">
         {!keys ? (
           <Empty>

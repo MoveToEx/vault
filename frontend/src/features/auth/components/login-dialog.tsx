@@ -38,7 +38,6 @@ import { toggleLoginDialog, toggleRegisterDialog } from "@/shared/stores/ui";
 import sodium, { from_string, to_base64 } from "libsodium-wrappers";
 import api from "@/shared/lib/api";
 import { formatError } from "@/shared/lib/utils";
-import type { Keypair } from "@/shared/lib/types";
 import { PrivateKey } from "@/shared/lib/crypto_wrappers";
 
 const schema = z.object({
@@ -111,12 +110,12 @@ export default function LoginDialog() {
       const sk = {
         publicKey: sgnPub,
         privateKey: PrivateKey.decrypt(umk, sgnPri),
-      } as Keypair;
+      };
       
       const kem = {
         publicKey: kemPub,
         privateKey: PrivateKey.decrypt(umk, kemPri)
-      } as Keypair;
+      };
 
       setRefreshToken(refreshToken);
       dispatch(

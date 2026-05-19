@@ -2,7 +2,7 @@ import NewFolderDialog from "@/features/drive/dialogs/new-folder-dialog";
 import UploadDialog from "@/features/drive/dialogs/upload-dialog";
 import { useAppDispatch, useAppSelector } from "@/shared/stores";
 import { Fragment } from "react";
-import RequireKeys from "@/features/auth/components/require-umk";
+import RequireKeys from "@/features/auth/components/require-keys";
 import { popUntil, reset } from "@/shared/stores/path";
 import {
   Breadcrumb,

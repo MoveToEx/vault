@@ -1,4 +1,4 @@
-import RequireUMK from "@/features/auth/components/require-umk";
+import RequireKeys from "@/features/auth/components/require-keys";
 import { Button } from "@/shared/components/ui/button";
 import {
   Empty,
@@ -482,7 +482,7 @@ export default function SharesPage() {
 
   return (
     <div>
-      <RequireUMK />
+      <RequireKeys />
       <Tabs defaultValue='send'>
         <TabsList className='w-full mb-4'>
           <TabsTrigger value='recv'>Received</TabsTrigger>
