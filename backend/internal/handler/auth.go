@@ -343,7 +343,7 @@ func LoginFinish(c *gin.Context) {
 		UserID:       state.UserID,
 		ExpiresAt: pgtype.Timestamptz{
 			Valid: true,
-			Time:  time.Now().Add(time.Hour * 72),
+			Time:  time.Now().Add(time.Hour * 24 * 30),
 		},
 	})
 
