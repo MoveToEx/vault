@@ -30,14 +30,19 @@ import {
   type SetStateAction,
 } from "react";
 import { Dialog as BaseDialog } from "@base-ui/react";
-import RevokeShareDialog from "@/features/shares/dialogs/revoke-share-dialog";
+import RevokeShareDialog, {
+  type Payload as RevokePayload
+} from "@/features/shares/dialogs/revoke-share-dialog";
 import usePublicShares from "@/features/shares/hooks/use-public-shares";
-import RevokePublicShareDialog from "@/features/shares/dialogs/revoke-public-share-dialog";
+import RevokePublicShareDialog, {
+  type Payload as RevokePublicSharePayload
+} from "@/features/shares/dialogs/revoke-public-share-dialog";
 import TrustSigningKeyDialog, {
-  type TrustSigningKeyPayload,
+  type Payload as TrustSigningKeyPayload,
 } from "@/features/shares/dialogs/trust-signing-key-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import { Envelope } from "@/shared/lib/crypto_wrappers";
+import { Spinner } from "@/shared/components/ui/spinner";
 
 type ShareMetadata = FileMetadata & {
   trusted: true;
@@ -58,13 +63,6 @@ type UntrustedShareMetadata = {
 };
 
 type ShareRowMetadata = ShareMetadata | UntrustedShareMetadata;
-
-type MyShareMetadata = FileMetadata & {
-  createdAt: Date;
-  expiresAt: Date;
-  id: number;
-  receiver: string;
-};
 
 type PublicShareMetadata = FileMetadata & {
   createdAt: Date;
@@ -167,6 +165,14 @@ function SharedWithMe() {
     return <></>;
   }
 
+  if (isLoading) {
+    return (
+      <div className='w-full h-32 flex flex-row items-center justify-center gap-4'>
+        <Spinner /> Loading
+      </div>
+    )
+  }
+
   if (data && data.length === 0 && page === 1) {
     return (
       <Empty>
@@ -263,10 +269,7 @@ function SharedWithMe() {
   );
 }
 
-const revokeHandle = BaseDialog.createHandle<{
-  id: number;
-  filename: string;
-}>();
+const revokeHandle = BaseDialog.createHandle<RevokePayload>();
 
 function SharedByMe() {
   const [page, setPage] = useState(1);
@@ -279,27 +282,26 @@ function SharedByMe() {
   const decrypted = useMemo(() => {
     if (!data || !user || !keys) return [];
 
-    const result: MyShareMetadata[] = [];
-
-    for (const it of data) {
-      const metadata = Envelope.decrypt(it.envelope, it.kemCipher, keys.sign.publicKey, keys.kem.privateKey);
-
-      if (metadata.type !== 'file') continue;   // never
-
-      result.push({
-        ...metadata,
-        createdAt: new Date(it.createdAt),
-        expiresAt: new Date(it.expiresAt),
-        id: it.id,
-        receiver: it.receiver,
-      });
-    }
-
-    return result;
+    return data.map(it => ({
+      ...Envelope.decrypt(it.envelope, it.kemCipher, keys.sign.publicKey, keys.kem.privateKey),
+      createdAt: new Date(it.createdAt),
+      expiresAt: new Date(it.expiresAt),
+      id: it.id,
+      receiver: it.receiver
+    }))
+      .filter(it => it.type === 'file');
   }, [data, user, keys]);
 
   if (!user || !keys) {
     return <></>;
+  }
+
+  if (isLoading) {
+    return (
+      <div className='w-full h-32 flex flex-row items-center justify-center gap-4'>
+        <Spinner /> Loading
+      </div>
+    )
   }
 
   if (data && data.length === 0 && page === 1) {
@@ -371,10 +373,7 @@ function SharedByMe() {
   );
 }
 
-const revokePublicHandle = BaseDialog.createHandle<{
-  key: string;
-  filename: string;
-}>();
+const revokePublicHandle = BaseDialog.createHandle<RevokePublicSharePayload>();
 
 function PublicShares() {
   const [page, setPage] = useState(1);
@@ -409,6 +408,14 @@ function PublicShares() {
     return <></>;
   }
 
+  if (isLoading) {
+    return (
+      <div className='w-full h-32 flex flex-row items-center justify-center gap-4'>
+        <Spinner /> Loading
+      </div>
+    )
+  }
+
   if (data && data.length === 0 && page === 1) {
     return (
       <Empty>
@@ -438,7 +445,7 @@ function PublicShares() {
 
         <TableBody>
           {decrypted &&
-            decrypted?.length > 0 &&
+            decrypted.length > 0 &&
             decrypted.map((it) => (
               <TableRow key={it.key} className="group">
                 <TableCell>{it.name}</TableCell>

@@ -11,7 +11,7 @@ import AdminSection from "./features/admin/pages/admin-layout.tsx";
 import AdminDashboardPage from "./features/admin/pages/dashboard-page.tsx";
 import AdminSiteConfigPage from "./features/admin/pages/config-page.tsx";
 import AdminUsersPage from "./features/admin/pages/users-page.tsx";
-import UserSettingsPage from "./features/user-settings/pages/user-settings-page.tsx";
+import UserSettingsPage from "./features/user/pages/user-settings-page.tsx";
 import PublicSharePage from "./features/shares/pages/public-share-page.tsx";
 
 const router = createBrowserRouter([

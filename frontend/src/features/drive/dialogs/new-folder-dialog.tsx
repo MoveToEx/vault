@@ -75,7 +75,7 @@ export default function NewFolderDialog() {
   };
 
   return (
-    <Dialog handle={handle}>
+    <Dialog handle={handle} onOpenChangeComplete={() => form.reset()}>
       <DialogTrigger
         render={
           <Button variant="outline">

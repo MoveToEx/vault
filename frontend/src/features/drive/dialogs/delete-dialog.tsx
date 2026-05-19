@@ -1,4 +1,6 @@
-import { AlertDialog as BaseAlertDialog } from "@base-ui/react";
+import {
+  AlertDialog as BaseAlertDialog,
+} from "@base-ui/react";
 import { useState } from "react";
 import {
   AlertDialog,
@@ -12,15 +14,14 @@ import {
 } from "@/shared/components/ui/alert-dialog";
 import api from "@/shared/lib/api";
 import { mutate } from "@/shared/lib/swr";
-import { toast } from "sonner";
-import { formatError } from "@/shared/lib/utils";
 
 export type Payload = {
+  type: "folder" | "file";
   id: number;
-  filename: string;
-};
+  name: string;
+}
 
-export default function RevokeShareDialog({
+export default function DeleteDialog({
   handle,
 }: {
   handle: BaseAlertDialog.Handle<Payload>;
@@ -30,17 +31,13 @@ export default function RevokeShareDialog({
     <AlertDialog handle={handle}>
       {function Content({ payload }) {
         const [loading, setLoading] = useState(false);
-        const [error, setError] = useState("");
 
         return (
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirm revocation</AlertDialogTitle>
+              <AlertDialogTitle>Confirm deletion</AlertDialogTitle>
               <AlertDialogDescription>
-                <p>Are you sure you want to revoke this share? The recipient will no longer be able to download the encrypted file.</p>
-                {error.length > 0 && (
-                  <p className="text-destructive">{error}</p>
-                )}
+                Are you sure you want to delete this item? This cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
 
@@ -52,17 +49,17 @@ export default function RevokeShareDialog({
                 disabled={loading}
                 className="bg-destructive"
                 onClick={async () => {
+                  if (!payload) return;
+
                   setLoading(true);
-                  try {
-                    await api.revokeShare(payload?.id ?? 0);
-                    mutate("share");
-                    toast.success("Share revoked");
-                    handle.close();
-                  } catch (e) {
-                    setError(formatError(e));
-                  } finally {
-                    setLoading(false);
+                  if (payload.type === "file") {
+                    await api.deleteFile(payload.id);
+                  } else if (payload.type === "folder") {
+                    await api.deleteFolder(payload.id);
                   }
+                  setLoading(false);
+                  await mutate("file");
+                  handle.close();
                 }}
               >
                 Continue

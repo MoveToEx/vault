@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui
 import { formatError } from "@/shared/lib/utils";
 import { Envelope, PublicShare } from "@/shared/lib/crypto_wrappers";
 
-type Payload = {
+export type Payload = {
   id: number;
   name: string;
 };

@@ -16,7 +16,7 @@ import { Download, EllipsisVertical, Files, Folder, FolderUp } from "lucide-reac
 import { transferBridge } from "@/features/transfer/lib/transfer-bridge";
 import { toggleTransferList } from "@/shared/stores/ui";
 import { Menu } from "@base-ui/react";
-import FilePopupMenu from "@/features/drive/components/file-popup-menu";
+import FilePopupMenu, { type Payload as FileMenuPayload } from "@/features/drive/components/file-popup-menu";
 import ExtIcon from "@/features/drive/components/file-icon";
 import { toast } from "sonner";
 import { Envelope } from "@/shared/lib/crypto_wrappers";
@@ -42,13 +42,7 @@ type Item =
     envelope: Uint8Array;
   };
 
-const fileMenuHandle = Menu.createHandle<{
-  type: "folder" | "file";
-  id: number;
-  name: string;
-  kemCipher: Uint8Array;
-  envelope: Uint8Array;
-}>();
+const fileMenuHandle = Menu.createHandle<FileMenuPayload>();
 
 function splitExt(filename: string): [string, string] {
   const a = filename.split('.');
