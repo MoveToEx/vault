@@ -1,4 +1,4 @@
-import { to_base64 } from "libsodium-wrappers";
+import sodium, { to_base64 } from "libsodium-wrappers-sumo";
 
 const DB_NAME = "vault-trusted-signing-keys";
 const DB_VERSION = 1;
@@ -64,10 +64,8 @@ export function serializeSigningPublicKey(publicKey: Uint8Array) {
   return to_base64(publicKey);
 }
 
-export async function signingPublicKeyDigest(publicKey: Uint8Array) {
-  const input = new Uint8Array(publicKey.byteLength);
-  input.set(publicKey);
-  const hash = await crypto.subtle.digest("SHA-256", input.buffer);
+export function pkDigest(publicKey: Uint8Array) {
+  const hash = sodium.crypto_hash_sha256(publicKey);
   return Array.from(new Uint8Array(hash), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join(":");
@@ -92,7 +90,7 @@ export async function trustSigningPublicKey(params: {
     userId: params.userId,
     owner: params.owner,
     publicKey,
-    digest: await signingPublicKeyDigest(params.publicKey),
+    digest: await pkDigest(params.publicKey),
     trustedAt: new Date().toISOString(),
   };
 

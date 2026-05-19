@@ -39,6 +39,9 @@ import type { FC } from "react";
 import { Progress } from "@base-ui/react";
 import useCapacity from "@/shared/hooks/use-capacity";
 import { PERMISSION_ADMIN } from "@/features/admin/components/require-admin";
+import PubkeyDialog, {
+  PubkeyDialogMenuItem,
+} from "@/features/user/dialogs/pubkey-dialog";
 
 const userNavDefs = [
   {
@@ -108,6 +111,7 @@ function AccountMenu() {
 
   return (
     <>
+      <PubkeyDialog />
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
@@ -137,6 +141,9 @@ function AccountMenu() {
           >
             <Settings /> Settings
           </DropdownMenuItem>
+
+          <PubkeyDialogMenuItem />
+
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => {

@@ -9,17 +9,17 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
-import { Check, ShieldCheck, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, ShieldQuestionMark, X } from "lucide-react";
+import { useState } from "react";
 import { Spinner } from "@/shared/components/ui/spinner";
 import {
-  signingPublicKeyDigest,
   trustSigningPublicKey,
 } from "@/shared/lib/trusted-signing-keys";
 import { formatError } from "@/shared/lib/utils";
 import { toast } from "sonner";
+import Digest from "@/shared/components/digest";
 
-export type TrustSigningKeyPayload = {
+export type Payload = {
   userId: number;
   owner: string;
   publicKey: Uint8Array;
@@ -29,54 +29,37 @@ export default function TrustSigningKeyDialog({
   handle,
   onTrusted,
 }: {
-  handle: BaseDialog.Handle<TrustSigningKeyPayload>;
+  handle: BaseDialog.Handle<Payload>;
   onTrusted?: () => void;
 }) {
 
   return (
     <Dialog handle={handle}>
       {function Content({ payload }) {
-        const [digest, setDigest] = useState("");
         const [loading, setLoading] = useState(false);
         const [error, setError] = useState("");
-
-        useEffect(() => {
-          setDigest("");
-          setError("");
-          if (!payload) return;
-
-          void signingPublicKeyDigest(payload.publicKey)
-            .then(setDigest)
-            .catch((e) => setError(formatError(e)));
-        }, [payload]);
 
         return (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Trust signing key</DialogTitle>
+              <DialogTitle className='flex flex-row items-center gap-2'>
+                <ShieldQuestionMark className='size-4' />
+                Trust signing key
+              </DialogTitle>
               <DialogDescription>
-                {`Trust ${payload?.owner ?? ""}'s signing public key before showing encrypted share metadata from this sender.`}
+                Trust {payload?.owner}'s signing public key to reveal metadata.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-3">
-              <div className="rounded-lg border bg-muted/30 p-3">
-                <div className="mb-1 flex items-center gap-2 text-sm font-medium">
-                  <ShieldCheck className="size-4" />
-                  Signing public key digest
-                </div>
-                <p className="break-all font-mono text-xs text-muted-foreground">
-                  {digest || "Loading…"}
-                </p>
-              </div>
-              {error.length > 0 && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
-            </div>
+            {payload && <Digest message={payload?.publicKey} />}
+
+            {error.length > 0 && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
 
             <DialogFooter>
               <Button
-                disabled={!payload || loading || !digest}
+                disabled={!payload || loading}
                 onClick={async () => {
                   if (!payload) return;
 
