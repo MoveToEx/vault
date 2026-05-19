@@ -1,6 +1,7 @@
 import { Button } from "@/shared/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -10,12 +11,9 @@ import { Field, FieldDescription } from "@/shared/components/ui/field";
 import { useAppDispatch, useAppSelector, useKeys } from "@/shared/stores";
 import { FileIcon, Upload } from "lucide-react";
 import { useState } from "react";
-import { Dialog as BaseDialog } from "@base-ui/react";
 import { transferBridge } from "@/features/transfer/lib/transfer-bridge";
 import { toggleTransferList } from "@/shared/stores/ui";
 import DragDrop from "@/features/drive/components/drag-drop";
-
-const handle = BaseDialog.createHandle();
 
 export default function UploadDialog() {
   const keys = useKeys();
@@ -23,7 +21,7 @@ export default function UploadDialog() {
 
   const path = useAppSelector((state) => state.path.value);
 
-  const [file, setFile] = useState(null as File | null);
+  const [file, setFile] = useState<File | null>(null);
 
   const submit = async () => {
     if (!file || !keys) return;
@@ -33,13 +31,10 @@ export default function UploadDialog() {
     transferBridge.enqueueUpload(file, pathId, keys.sign.privateKey, keys.kem.publicKey);
 
     dispatch(toggleTransferList(true));
-
-    handle.close();
   };
 
   return (
     <Dialog
-      handle={handle}
       onOpenChangeComplete={(open) => {
         if (!open) {
           setFile(null);
@@ -78,14 +73,16 @@ export default function UploadDialog() {
             </div>
           )}
           <FieldDescription>
-            {`Will upload to ${`/${path.map((it) => it.folderName).join("/")}`}`}
+            Will upload to {path.map((it) => it.folderName).join("/")}
           </FieldDescription>
         </Field>
 
-        <Button onClick={() => submit()}>
-          <Upload />
-          Upload
-        </Button>
+        <DialogClose render={
+          <Button disabled={file === null} onClick={() => submit()}>
+            <Upload />
+            Upload
+          </Button>
+        } />
       </DialogContent>
     </Dialog>
   );
